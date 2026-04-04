@@ -27,7 +27,22 @@ app.get('/api/series', async (req, res) => {
             }
         });
 
-        res.json({ success: true, data: series });
+        // ENHANCE METADATA DENGAN ANILIST (HD PREVIEWS)
+        const enhancedSeries = await Promise.all(series.map(async (item) => {
+            const anilistData = await fetchAniListInfo(item.title);
+            if (anilistData) {
+                return {
+                    ...item,
+                    title: anilistData.cleanTitle || item.title,
+                    img: anilistData.hdImage, // Tambahkan gambar HD
+                    banner: anilistData.banner,
+                    score: anilistData.score
+                };
+            }
+            return item;
+        }));
+
+        res.json({ success: true, data: enhancedSeries });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
