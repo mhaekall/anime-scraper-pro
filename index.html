@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AnimeTube Premium</title>
+<!-- Google Fonts & Icons -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+
+<style>
+  :root {
+    --bg-color: #0f0f0f;
+    --surface-color: #272727;
+    --surface-hover: #3f3f3f;
+    --text-primary: #f1f1f1;
+    --text-secondary: #aaaaaa;
+    --border-color: #3f3f3f;
+    --google-blue: #3ea6ff; /* YouTube dark mode blue link color */
+    --google-blue-solid: #1a73e8; /* Google corporate blue */
+    --accent-bg: #263850;
+    --danger: #ff4e45;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body { 
+    background-color: var(--bg-color); 
+    color: var(--text-primary); 
+    font-family: 'Roboto', sans-serif; 
+    overflow-x: hidden;
+    padding-bottom: 60px; /* Space for bottom nav */
+  }
+
+  /* Typography */
+  h1, h2, h3, h4 { font-weight: 700; }
+  .text-sm { font-size: 14px; }
+  .text-xs { font-size: 12px; }
+  .text-secondary { color: var(--text-secondary); }
+
+  /* Navbar */
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    height: 56px;
+    background-color: var(--bg-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-left, .nav-right { display: flex; align-items: center; gap: 16px; }
+  .logo { display: flex; align-items: center; gap: 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; cursor: pointer; }
+  .logo .material-symbols-outlined { color: var(--google-blue-solid); font-variation-settings: 'FILL' 1; font-size: 28px; }
+  
+  .search-box {
+    display: flex;
+    align-items: center;
+    flex: 0 1 600px;
+    height: 40px;
+    background-color: #121212;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding-left: 16px;
+    margin: 0 40px;
+  }
+  .search-box input {
+    flex: 1; background: transparent; border: none; color: white; font-size: 16px; outline: none;
+  }
+  .search-btn {
+    background-color: var(--surface-color); border: none; border-left: 1px solid var(--border-color);
+    border-radius: 0 20px 20px 0; width: 64px; height: 100%; cursor: pointer; display: flex; justify-content: center; align-items: center; color: white;
+  }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background-color: var(--google-blue-solid); display: flex; justify-content: center; align-items: center; font-weight: 500; cursor: pointer;}
+
+  /* Categories Bar */
+  .categories-bar {
+    display: flex; gap: 12px; padding: 12px 16px; overflow-x: auto; border-bottom: 1px solid var(--border-color); background: var(--bg-color);
+    position: sticky; top: 56px; z-index: 99; white-space: nowrap; scrollbar-width: none;
+  }
+  .categories-bar::-webkit-scrollbar { display: none; }
+  .cat-chip { background: var(--surface-color); padding: 6px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; border: 1px solid transparent;}
+  .cat-chip.active { background: var(--text-primary); color: var(--bg-color); }
+
+  /* Views */
+  .view { display: none; padding: 24px; max-width: 2000px; margin: 0 auto; }
+  .view.active { display: block; }
+  .loader { text-align: center; padding: 40px; color: var(--text-secondary); }
+
+  /* Home Grid */
+  .grid-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    row-gap: 40px;
+  }
+  .video-card { cursor: pointer; }
+  .thumbnail {
+    width: 100%; aspect-ratio: 16/9; background-color: var(--surface-color); border-radius: 12px; margin-bottom: 12px; position: relative; overflow: hidden;
+  }
+  .thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+  .duration { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.8); padding: 3px 4px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+  .card-info { display: flex; gap: 12px; }
+  .card-avatar { width: 36px; height: 36px; border-radius: 50%; background-color: var(--surface-color); flex-shrink: 0; overflow:hidden;}
+  .card-avatar img { width:100%; height:100%; object-fit:cover; }
+  .card-text { display: flex; flex-direction: column; }
+  .card-title { font-size: 16px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; line-height: 1.4; }
+
+  /* Watch View Layout */
+  .watch-layout {
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .watch-primary { flex: 1; min-width: 0; }
+  .watch-secondary { width: 400px; flex-shrink: 0; }
+
+  /* Player */
+  .player-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background-color: black;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  iframe { width: 100%; height: 100%; border: none; }
+
+  /* Video Meta */
+  .video-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+  .video-actions-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;}
+  
+  .channel-info { display: flex; align-items: center; gap: 12px; }
+  .channel-avatar { width: 40px; height: 40px; border-radius: 50%; background-color: var(--google-blue-solid); display:flex; justify-content:center; align-items:center; font-weight:bold; overflow:hidden;}
+  .channel-avatar img { width:100%; height:100%; object-fit:cover; }
+  .subscribe-btn { background-color: var(--text-primary); color: var(--bg-color); border: none; border-radius: 18px; padding: 0 16px; height: 36px; font-weight: 500; cursor: pointer; margin-left: 12px;}
+  
+  .action-buttons { display: flex; gap: 8px; }
+  .action-btn { 
+    display: flex; align-items: center; gap: 6px; background-color: var(--surface-color); 
+    border: none; border-radius: 18px; padding: 0 16px; height: 36px; color: var(--text-primary); cursor: pointer; font-weight: 500; font-size: 14px;
+  }
+  .action-btn:hover { background-color: var(--surface-hover); }
+  .action-btn .material-symbols-outlined { font-size: 20px; }
+  .action-btn.blue { background-color: var(--accent-bg); color: var(--google-blue); }
+
+  /* Description & Controls */
+  .description-box {
+    background-color: var(--surface-color);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .views-date { font-weight: 500; margin-bottom: 8px; display: block;}
+
+  /* Streaming & Download Sections */
+  .section-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;}
+  .server-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .chip {
+    padding: 8px 16px; background-color: var(--surface-color); border: 1px solid var(--border-color);
+    border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500;
+  }
+  .chip:hover { background-color: var(--surface-hover); }
+  .chip.active { background-color: var(--text-primary); color: var(--bg-color); }
+  .chip.download { border-color: var(--google-blue-solid); color: var(--google-blue); }
+  
+  .quality-badge { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+  /* Comments Prototype */
+  .comment-section { margin-top: 24px; }
+  .comment-input-row { display: flex; gap: 16px; margin-bottom: 24px; margin-top: 16px;}
+  .comment-input-row input { flex: 1; background: transparent; border: none; border-bottom: 1px solid var(--border-color); color: white; outline: none; font-size: 14px;}
+  .comment-thread { display: flex; gap: 16px; margin-bottom: 16px; }
+  .comment-avatar { width: 40px; height: 40px; border-radius: 50%; background-color: var(--surface-color); flex-shrink: 0;}
+  .comment-body { font-size: 14px; }
+  .comment-author { font-weight: 500; margin-bottom: 4px; display: flex; gap: 8px; align-items: center;}
+  .comment-time { color: var(--text-secondary); font-size: 12px; font-weight: 400;}
+
+  /* Up Next Items */
+  .up-next-item { display: flex; gap: 8px; margin-bottom: 8px; cursor: pointer; padding: 4px; border-radius: 8px; }
+  .up-next-item:hover { background-color: var(--surface-color); }
+  .up-next-thumb { width: 168px; height: 94px; background-color: var(--surface-color); border-radius: 8px; flex-shrink: 0; position: relative; overflow: hidden;}
+  .up-next-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .up-next-info { display: flex; flex-direction: column; }
+  .up-next-title { font-size: 14px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
+
+  /* Bottom Navigation */
+  .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: var(--bg-color);
+      border-top: 1px solid var(--border-color);
+      z-index: 1000;
+      padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0;
+      color: var(--text-primary);
+      cursor: pointer;
+      text-decoration: none;
+  }
+  .nav-item:hover { background-color: var(--surface-color); }
+  .nav-item span.material-symbols-outlined { font-size: 24px; margin-bottom: 2px;}
+  .nav-item span.nav-label { font-size: 10px; }
+  .nav-item.active { color: var(--text-primary); }
+  .nav-item.active span.material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+
+  /* Mobile Responsive */
+  @media (max-width: 1000px) {
+    .watch-layout { flex-direction: column; padding: 0; }
+    .watch-primary { padding: 0; }
+    .player-container { border-radius: 0; margin-bottom: 12px; }
+    .video-title, .video-actions-row, .description-box, .section-title, .server-chips, .comment-section { padding: 0 12px; }
+    .watch-secondary { width: 100%; padding: 12px; }
+    .search-box { display: none; }
+    .view { padding: 12px; }
+    .bottom-nav { display: flex; }
+    .logo { font-size: 18px; }
+    .grid-layout { grid-template-columns: repeat(auto-fill, minmax(100%, 1fr)); row-gap: 24px;}
+    .thumbnail { border-radius: 0; margin-left: -12px; margin-right: -12px; width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<div class="navbar">
+  <div class="nav-left">
+    <span class="material-symbols-outlined" style="cursor:pointer; display:none;" id="desktopMenu">menu</span>
+    <div class="logo" onclick="showView('homeView'); loadHome();">
+      <span class="material-symbols-outlined">play_circle</span>
+      AnimeTube
+    </div>
+  </div>
+  <div class="search-box">
+    <input type="text" id="desktopSearch" placeholder="Telusuri anime..." onkeyup="if(event.key === 'Enter') handleSearch(this.value)" />
+    <button class="search-btn" onclick="handleSearch(document.getElementById('desktopSearch').value)"><span class="material-symbols-outlined">search</span></button>
+  </div>
+  <div class="nav-right">
+    <span class="material-symbols-outlined" style="cursor:pointer;" onclick="document.getElementById('mobileSearchBox').style.display='flex'">search</span>
+    <span class="material-symbols-outlined" style="cursor:pointer;">cast</span>
+    <span class="material-symbols-outlined" style="cursor:pointer;">notifications</span>
+    <div class="avatar">U</div>
+  </div>
+</div>
+
+<!-- Mobile Search Bar Overlay -->
+<div id="mobileSearchBox" style="display:none; position:fixed; top:0; left:0; right:0; height:56px; background:var(--bg-color); z-index:101; padding:8px 16px; align-items:center; gap:8px;">
+  <span class="material-symbols-outlined" onclick="document.getElementById('mobileSearchBox').style.display='none'">arrow_back</span>
+  <input type="text" id="mobileSearch" placeholder="Telusuri anime..." style="flex:1; background:var(--surface-color); border:none; padding:8px 16px; border-radius:20px; color:white; outline:none;" onkeyup="if(event.key === 'Enter') { handleSearch(this.value); document.getElementById('mobileSearchBox').style.display='none'; }" />
+</div>
+
+<!-- Categories Bar -->
+<div class="categories-bar" id="catBar">
+  <div class="cat-chip active" onclick="loadHome()">Home</div>
+  <div class="cat-chip" onclick="loadLibrary()">A-Z Library</div>
+  <div class="cat-chip">Action</div>
+  <div class="cat-chip">Isekai</div>
+  <div class="cat-chip">Romance</div>
+  <div class="cat-chip">Comedy</div>
+</div>
+
+<!-- Loader -->
+<div id="loadingView" class="view loader active">
+  <span class="material-symbols-outlined" style="font-size: 48px; animation: spin 1s linear infinite;">sync</span>
+  <p style="margin-top: 16px;">Memuat data dari Oploverz...</p>
+</div>
+
+<!-- Home: Live Previews Grid -->
+<div id="homeView" class="view">
+  <div class="grid-layout" id="homeGrid"></div>
+</div>
+
+<!-- Library: A-Z List -->
+<div id="libraryView" class="view">
+  <h3 style="margin-bottom: 16px;">Semua Anime (A-Z)</h3>
+  <div class="grid-layout" id="libraryGrid"></div>
+</div>
+
+<!-- Search Results View -->
+<div id="searchView" class="view">
+  <h3 style="margin-bottom: 16px;" id="searchTitle">Hasil Pencarian</h3>
+  <div class="grid-layout" id="searchGrid"></div>
+</div>
+
+<!-- Watch View: Player & Episodes -->
+<div id="watchView" class="view" style="padding: 0;">
+  <div class="watch-layout">
+    
+    <!-- Primary (Left) -->
+    <div class="watch-primary">
+      <div class="player-container">
+        <iframe id="iframePlayer" allowfullscreen></iframe>
+      </div>
+
+      <div style="padding: 0 16px;">
+        <h1 class="video-title" id="videoTitle">Memuat Video...</h1>
+        
+        <div class="video-actions-row">
+          <div class="channel-info">
+            <div class="channel-avatar"><img src="https://backapi.oploverz.ac/uploads/settings/website/favicons/3161ce4d-ce90-4d07-b019-57bf64a9594e.png" alt="OP"></div>
+            <div>
+              <div style="font-weight: 500; font-size: 16px;">Oploverz Official</div>
+              <div class="text-xs text-secondary">2.1M subscriber</div>
+            </div>
+            <button class="subscribe-btn">Subscribe</button>
+          </div>
+
+          <div class="action-buttons">
+            <button class="action-btn">
+              <span class="material-symbols-outlined">thumb_up</span> 14K
+              <span style="border-left: 1px solid var(--border-color); margin: 0 6px; height: 20px;"></span>
+              <span class="material-symbols-outlined">thumb_down</span>
+            </button>
+            <button class="action-btn"><span class="material-symbols-outlined">share</span> Bagikan</button>
+            <button class="action-btn blue"><span class="material-symbols-outlined">download</span> Download</button>
+            <button class="action-btn"><span class="material-symbols-outlined">more_horiz</span></button>
+          </div>
+        </div>
+
+        <div class="description-box">
+          <span class="views-date">245.102x ditonton • Diperbarui hari ini</span>
+          <p>Tonton episode terbaru dengan kualitas HD. AnimeTube mengumpulkan link streaming dan download dari server pihak ketiga secara otomatis untuk pengalaman nonton tanpa batas.</p>
+        </div>
+
+        <!-- Servers Selection -->
+        <h3 class="section-title"><span class="material-symbols-outlined" style="color:var(--google-blue-solid)">dns</span> Server Streaming (Nonton Langsung)</h3>
+        <div class="server-chips" id="streamingGrid">
+          <p class="text-sm text-secondary">Mencari server streaming...</p>
+        </div>
+
+        <h3 class="section-title"><span class="material-symbols-outlined" style="color:var(--google-blue-solid)">cloud_download</span> Link Download (Eksternal)</h3>
+        <div class="server-chips" id="downloadGrid">
+          <p class="text-sm text-secondary">Mencari link download...</p>
+        </div>
+
+        <!-- Comments Prototype -->
+        <div class="comment-section">
+          <h3 style="margin-bottom: 16px;">1.240 Komentar</h3>
+          <div class="comment-input-row">
+            <div class="avatar">U</div>
+            <input type="text" placeholder="Tambahkan komentar..." />
+          </div>
+          <div class="comment-thread">
+            <div class="comment-avatar" style="background-color:#00796b; display:flex; justify-content:center; align-items:center; font-weight:bold;">A</div>
+            <div>
+              <div class="comment-author">AnimeLover99 <span class="comment-time">2 jam yang lalu</span></div>
+              <div class="comment-body">Wah akhirnya update juga! Kualitas 1080p nya jernih banget, mantap admin! 🔥</div>
+              <div class="action-buttons" style="margin-top: 8px;">
+                <span class="material-symbols-outlined" style="font-size:16px; cursor:pointer;">thumb_up</span>
+                <span class="text-xs">240</span>
+                <span class="material-symbols-outlined" style="font-size:16px; cursor:pointer; margin-left: 8px;">thumb_down</span>
+                <span class="text-xs" style="margin-left: 16px; font-weight:500; cursor:pointer;">Balas</span>
+              </div>
+            </div>
+          </div>
+          <div class="comment-thread">
+            <div class="comment-avatar" style="background-color:#c2185b; display:flex; justify-content:center; align-items:center; font-weight:bold;">W</div>
+            <div>
+              <div class="comment-author">WibuSejati <span class="comment-time">5 jam yang lalu</span></div>
+              <div class="comment-body">Gak sabar nunggu episode minggu depan. Animasinya gila sih episode ini.</div>
+              <div class="action-buttons" style="margin-top: 8px;">
+                <span class="material-symbols-outlined" style="font-size:16px; cursor:pointer;">thumb_up</span>
+                <span class="text-xs">112</span>
+                <span class="material-symbols-outlined" style="font-size:16px; cursor:pointer; margin-left: 8px;">thumb_down</span>
+                <span class="text-xs" style="margin-left: 16px; font-weight:500; cursor:pointer;">Balas</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Secondary (Right / Up Next) -->
+    <div class="watch-secondary">
+      <h3 style="margin-bottom: 16px; font-size: 16px;">Daftar Episode</h3>
+      <div id="episodeGridList"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="loadHome(); updateNav(this)">
+    <span class="material-symbols-outlined">home</span>
+    <span class="nav-label">Beranda</span>
+  </div>
+  <div class="nav-item" onclick="alert('Shorts prototype!')">
+    <span class="material-symbols-outlined">app_shortcut</span>
+    <span class="nav-label">Shorts</span>
+  </div>
+  <div class="nav-item" onclick="loadLibrary(); updateNav(this)">
+    <span class="material-symbols-outlined">subscriptions</span>
+    <span class="nav-label">A-Z</span>
+  </div>
+  <div class="nav-item" onclick="alert('Koleksi prototype!')">
+    <span class="material-symbols-outlined">video_library</span>
+    <span class="nav-label">Koleksi</span>
+  </div>
+</div>
+
+<style>
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+  @media (min-width: 1001px) { .navbar .material-symbols-outlined[onclick*="mobileSearchBox"] { display: none; } }
+</style>
+
+<script>
+const API_BASE = 'http://localhost:3000/api';
+let currentSeriesUrl = '';
+let currentSeriesTitle = '';
+let allSeriesCache = []; // To hold A-Z list for fast searching
+
+// Helper to generate a consistent random image
+function getThumb(str) {
+  const seed = (str.length * 13) % 1000;
+  return `https://picsum.photos/seed/${seed}/640/360`;
+}
+
+function updateNav(element) {
+    document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+    element.classList.add('active');
+}
+
+function setActiveCat(index) {
+    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.cat-chip')[index].classList.add('active');
+}
+
+function showView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+    
+    if(viewId !== 'watchView') {
+        document.getElementById('iframePlayer').src = '';
+    }
+    
+    if(viewId === 'watchView') {
+        document.getElementById('catBar').style.display = 'none';
+    } else {
+        document.getElementById('catBar').style.display = 'flex';
+    }
+    window.scrollTo(0,0);
+}
+
+// Render Card HTML
+function createCardHtml(item, isLatest=false) {
+    const views = Math.floor(Math.random() * 900 + 100) + ' rb x ditonton';
+    const days = Math.floor(Math.random() * 14 + 1) + ' hari yang lalu';
+    const duration = Math.floor(Math.random() * 10 + 14) + ':' + (Math.floor(Math.random() * 50) + 10);
+    const imgSrc = item.img || getThumb(item.title);
+    
+    return `
+      <div class="thumbnail">
+        <img src="${imgSrc}" alt="thumbnail" loading="lazy">
+        <span class="duration">${duration}</span>
+      </div>
+      <div class="card-info">
+        <div class="card-avatar"><img src="https://backapi.oploverz.ac/uploads/settings/website/favicons/3161ce4d-ce90-4d07-b019-57bf64a9594e.png"></div>
+        <div class="card-text">
+          <div class="card-title">${item.title}</div>
+          <div class="text-sm text-secondary">Oploverz Official ${isLatest ? '• Baru Rilis' : ''}</div>
+          <div class="text-sm text-secondary">${views} • ${days}</div>
+        </div>
+      </div>
+    `;
+}
+
+async function loadHome() {
+    setActiveCat(0);
+    showView('loadingView');
+    try {
+        const res = await fetch(`${API_BASE}/home`);
+        const { data } = await res.json();
+        
+        const grid = document.getElementById('homeGrid');
+        grid.innerHTML = '';
+        data.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            card.innerHTML = createCardHtml(item, true);
+            card.onclick = () => fetchEpisodes(item.url, item.title, item.episodeUrl); // Go direct to episode if clicked on home
+            grid.appendChild(card);
+        });
+        showView('homeView');
+    } catch (e) {
+        alert('Gagal memuat beranda: ' + e.message);
+        loadLibrary();
+    }
+}
+
+async function loadLibrary() {
+    setActiveCat(1);
+    if(allSeriesCache.length > 0) {
+        renderLibrary(allSeriesCache);
+        showView('libraryView');
+        return;
+    }
+    
+    showView('loadingView');
+    try {
+        const res = await fetch(`${API_BASE}/series`);
+        const { data } = await res.json();
+        allSeriesCache = data;
+        renderLibrary(allSeriesCache);
+        showView('libraryView');
+    } catch (e) {
+        alert('Gagal memuat pustaka: ' + e.message);
+    }
+}
+
+function renderLibrary(list) {
+    const grid = document.getElementById('libraryGrid');
+    grid.innerHTML = '';
+    list.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.innerHTML = createCardHtml(item);
+        card.onclick = () => fetchEpisodes(item.url, item.title);
+        grid.appendChild(card);
+    });
+}
+
+function handleSearch(query) {
+    if(!query.trim()) return;
+    
+    if(allSeriesCache.length === 0) {
+        alert("Pustaka sedang dimuat, coba lagi dalam beberapa detik.");
+        loadLibrary().then(() => doSearch(query));
+        return;
+    }
+    doSearch(query);
+}
+
+function doSearch(query) {
+    document.getElementById('searchTitle').innerText = `Hasil Pencarian: "${query}"`;
+    const grid = document.getElementById('searchGrid');
+    grid.innerHTML = '';
+    
+    const results = allSeriesCache.filter(item => item.title.toLowerCase().includes(query.toLowerCase()));
+    
+    if(results.length === 0) {
+        grid.innerHTML = '<p class="text-secondary">Tidak ditemukan anime dengan kata kunci tersebut.</p>';
+    } else {
+        results.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            card.innerHTML = createCardHtml(item);
+            card.onclick = () => fetchEpisodes(item.url, item.title);
+            grid.appendChild(card);
+        });
+    }
+    showView('searchView');
+    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+}
+
+async function fetchEpisodes(url, title, autoPlayEpUrl=null) {
+    showView('loadingView');
+    
+    try {
+        const res = await fetch(`${API_BASE}/episodes?url=${encodeURIComponent(url)}`);
+        const { data } = await res.json();
+        
+        const list = document.getElementById('episodeGridList');
+        list.innerHTML = '';
+        
+        if (data.length === 0) list.innerHTML = '<p class="text-secondary text-sm">Tidak ada episode.</p>';
+        
+        data.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'up-next-item';
+            const isLatest = index === 0;
+            
+            card.innerHTML = `
+              <div class="up-next-thumb">
+                <img src="${getThumb(item.title)}" alt="thumb">
+                <span class="duration">24:00</span>
+              </div>
+              <div class="up-next-info">
+                <div class="up-next-title">${item.title}</div>
+                <div class="text-xs text-secondary">Oploverz</div>
+                <div class="text-xs text-secondary">${isLatest ? 'Baru rilis' : 'Tersedia'}</div>
+              </div>
+            `;
+            card.onclick = () => {
+                document.getElementById('videoTitle').innerText = item.title;
+                fetchVideo(item.url);
+                window.scrollTo(0,0);
+            };
+            list.appendChild(card);
+        });
+        
+        if(autoPlayEpUrl) {
+            const found = data.find(e => e.url === autoPlayEpUrl);
+            const targetEp = found || data[0];
+            if(targetEp) {
+                document.getElementById('videoTitle').innerText = targetEp.title;
+                fetchVideo(targetEp.url);
+            }
+        } else if(data.length > 0) {
+            document.getElementById('videoTitle').innerText = data[0].title;
+            fetchVideo(data[0].url);
+        }
+        
+        showView('watchView');
+    } catch (e) {
+        alert('Gagal memuat episode: ' + e.message);
+        showView('homeView');
+    }
+}
+
+async function fetchVideo(url) {
+    const streamGrid = document.getElementById('streamingGrid');
+    const downloadGrid = document.getElementById('downloadGrid');
+    
+    streamGrid.innerHTML = '<span class="material-symbols-outlined" style="animation: spin 1s linear infinite;">sync</span> Loading...';
+    downloadGrid.innerHTML = '';
+    
+    try {
+        const res = await fetch(`${API_BASE}/scrape?url=${encodeURIComponent(url)}`);
+        const { sources } = await res.json();
+        
+        streamGrid.innerHTML = '';
+        downloadGrid.innerHTML = '';
+        
+        let hasStream = false;
+        
+        sources.forEach((source) => {
+            const isStream = source.type === 'iframe' && !source.provider.toLowerCase().includes('external');
+            const targetGrid = isStream ? streamGrid : downloadGrid;
+            
+            const chip = document.createElement('div');
+            chip.className = 'chip' + (isStream ? '' : ' download');
+            
+            chip.innerHTML = `
+              <span class="quality-badge">${source.quality || 'Auto'}</span>
+              ${source.provider}
+              <span class="material-symbols-outlined" style="font-size:16px; margin-left:4px;">${isStream ? 'play_circle' : 'open_in_new'}</span>
+            `;
+            
+            if(isStream) {
+                chip.onclick = () => {
+                    document.querySelectorAll('#streamingGrid .chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    playEmbed(source.resolved);
+                };
+                if(!hasStream) {
+                    chip.click();
+                    hasStream = true;
+                }
+            } else {
+                chip.onclick = () => window.open(source.resolved, '_blank');
+            }
+            
+            targetGrid.appendChild(chip);
+        });
+        
+        if (!hasStream) {
+            streamGrid.innerHTML = '<p class="text-sm text-secondary">Video streaming belum tersedia/diproteksi.</p>';
+            document.getElementById('iframePlayer').src = '';
+        }
+        
+        if(downloadGrid.innerHTML === '') {
+            downloadGrid.innerHTML = '<p class="text-sm text-secondary">Link download belum tersedia.</p>';
+        }
+
+    } catch (e) {
+        streamGrid.innerHTML = `<p class="text-sm" style="color:var(--danger)">Gagal memuat video: ${e.message}</p>`;
+    }
+}
+
+function playEmbed(url) {
+    document.getElementById('iframePlayer').src = url;
+}
+
+// Start App
+loadHome();
+</script>
+</body>
+</html>
