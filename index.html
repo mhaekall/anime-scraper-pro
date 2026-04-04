@@ -133,6 +133,7 @@
 
   /* Video Meta */
   .video-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+  .video-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
   .video-actions-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;}
   
   .channel-info { display: flex; align-items: center; gap: 12px; }
@@ -338,12 +339,9 @@
         </div>
 
         <!-- Servers Selection -->
-        <h3 class="section-title"><span class="material-symbols-outlined" style="color:var(--google-blue-solid)">dns</span> Server Streaming (Nonton Langsung)</h3>
-        <div class="server-chips" id="streamingGrid">
-          <p class="text-sm text-secondary">Mencari server streaming...</p>
-        </div>
+        <div id="streamingGrid" style="display:none;"></div>
 
-        <h3 class="section-title"><span class="material-symbols-outlined" style="color:var(--google-blue-solid)">cloud_download</span> Link Download (Eksternal)</h3>
+        <h3 class="section-title"><span class="material-symbols-outlined" style="color:var(--google-blue-solid)">cloud_download</span> Link Download & Server Alternatif</h3>
         <div class="server-chips" id="downloadGrid">
           <p class="text-sm text-secondary">Mencari link download...</p>
         </div>
