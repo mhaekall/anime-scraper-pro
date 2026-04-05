@@ -28,6 +28,11 @@ export default async function AnimeDetail({ params }: { params: Promise<{ id: st
   const synopsis = detail?.synopsis || "";
   const score = detail?.score;
   const genres = detail?.genres || [];
+  const status = detail?.status;
+  const totalEpisodes = detail?.totalEpisodes;
+  const season = detail?.season;
+  const seasonYear = detail?.seasonYear;
+  const studios = detail?.studios || [];
 
   return (
     <main className="min-h-screen bg-black pb-24 text-white">
@@ -71,13 +76,25 @@ export default async function AnimeDetail({ params }: { params: Promise<{ id: st
 
              <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight text-white drop-shadow-lg text-balance leading-tight">{seriesTitle}</h1>
              
+             {/* Metadata Bar */}
+             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 sm:gap-6 text-xs sm:text-sm font-semibold text-white/60">
+               {status && (
+                 <span className={`px-2 py-1 rounded-md ${status === 'RELEASING' ? 'bg-blue-500/20 text-blue-400' : 'bg-white/10 text-white/80'}`}>
+                   {status === 'RELEASING' ? 'ONGOING' : status === 'FINISHED' ? 'TAMAT' : status}
+                 </span>
+               )}
+               {totalEpisodes && <span>Total: {totalEpisodes} Episode</span>}
+               {season && seasonYear && <span>Musim: {season} {seasonYear}</span>}
+               {studios.length > 0 && <span className="hidden sm:inline">Studio: {studios.join(", ")}</span>}
+             </div>
+             
              {synopsis ? (
                <div 
-                 className="text-sm sm:text-base text-white/70 line-clamp-3 md:line-clamp-4 leading-relaxed max-w-3xl font-medium prose prose-invert"
+                 className="text-sm sm:text-base text-white/70 line-clamp-3 md:line-clamp-4 leading-relaxed max-w-3xl font-medium prose prose-invert mt-2"
                  dangerouslySetInnerHTML={{ __html: synopsis }}
                />
              ) : (
-               <p className="text-sm sm:text-base text-white/60 line-clamp-3 md:line-clamp-4 leading-relaxed max-w-3xl font-medium">
+               <p className="text-sm sm:text-base text-white/60 line-clamp-3 md:line-clamp-4 leading-relaxed max-w-3xl font-medium mt-2">
                  Tidak ada sinopsis resmi yang tersedia untuk seri anime ini.
                </p>
              )}

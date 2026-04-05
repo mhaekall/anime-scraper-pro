@@ -10,7 +10,7 @@ echo "🔧 Patching workerd for Termux..."
 find node_modules -name "main.js" -path "*/workerd/lib/main.js" -exec sed -i 's/function generateBinPath() {/function generateBinPath() { return __filename;/g' {} +
 
 echo "🛠️  Building project with @cloudflare/next-on-pages..."
-npx @cloudflare/next-on-pages
+CI=true npx --yes @cloudflare/next-on-pages
 
 echo "🔧 Patching next-on-pages async_hooks module resolution for Next 15..."
 find .vercel/output/static/_worker.js -type f -name "*.js" -exec sed -i 's/"async_hooks"/"node:async_hooks"/g' {} +

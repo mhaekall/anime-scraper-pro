@@ -162,38 +162,139 @@ def determine_quality(text: str):
     if '360' in text: return '360p'
     return 'Auto'
 
-async def resolve_video_source(url: str):
-    # This function takes an iframe URL and returns a direct video URL if possible.
+async def resolve_4meplayer(url: str, client: httpx.AsyncClient) -> str:
+    """Extract direct stream from 4meplayer.pro"""
+    try:
+        hash_id = url.split('#')[-1]
+        if not hash_id:
+            return url
+        
+        # 4meplayer uses API endpoint
+        api_url = f"https://oplo2.4meplayer.pro/api/source/{hash_id}"
+        res = await client.post(api_url, data={'r': '', 'd': 'oplo2.4meplayer.pro'})
+        data = res.json()
+        
+        if data.get('success') and data.get('data'):
+            # Sort by quality, prefer 720p
+            sources = data['data']
+            # Find 720p first, fallback to highest
+            for s in sources:
+                if '720' in str(s.get('label', '')):
+                    return s.get('file', url)
+            # fallback to first source
+            return sources[0].get('file', url) if sources else url
+    except Exception as e:
+        print(f"[4meplayer] resolve error: {e}")
+    return url
+
+async def resolve_streamtape(url: str, client: httpx.AsyncClient) -> str:
+    """Extract direct mp4 from streamtape"""
+    try:
+        res = await client.get(url)
+        html = res.text
+        
+        # Streamtape obfuscates with two string concatenations
+        match1 = re.search(r"document\.getElementById\('norobotlink'\)\.innerHTML = (.+?);", html)
+        match2 = re.search(r"var _0x[\w]+ = '([^']+)'", html)
+        
+        # More reliable: find the /get_video?id= pattern
+        token_match = re.search(r"(//streamtape\.com/get_video\?id=[^&'\"]+&expires=[^&'\"]+&ip=[^&'\"]+&token=[^&'\"]+)", html)
+        if token_match:
+            return 'https:' + token_match.group(1)
+            
+        # Alternative extraction
+        link_match = re.search(r'get_video\?id=(.+?)&token=(.+?)(?:&|\'|")', html)
+        if link_match:
+            return f"https://streamtape.com/get_video?id={link_match.group(1)}&token={link_match.group(2)}&stream=1"
+    except Exception as e:
+        print(f"[streamtape] resolve error: {e}")
+    return url
+
+async def resolve_mp4upload(url: str, client: httpx.AsyncClient) -> str:
+    """Extract direct mp4 from mp4upload"""
+    try:
+        res = await client.get(url)
+        html = res.text
+        
+        # Mp4upload embeds src in eval(function(...))
+        # Find the direct file URL pattern
+        match = re.search(r'"file":"(https?://[^"]+\.mp4[^"]*)"', html)
+        if match:
+            return match.group(1).replace('\\/', '/')
+            
+        # Alternative: jwplayer setup
+        match2 = re.search(r'file:\s*"(https?://[^"]+)"', html)
+        if match2:
+            return match2.group(1)
+    except Exception as e:
+        print(f"[mp4upload] resolve error: {e}")
+    return url
+
+async def resolve_doodstream(url: str, client: httpx.AsyncClient) -> str:
+    """Extract direct stream from doodstream - multi step"""
+    try:
+        res = await client.get(url)
+        html = res.text
+        
+        # Step 1: get pass_md5 URL
+        pass_match = re.search(r'/pass_md5/[^\'\"]+', html)
+        if not pass_match:
+            return url
+            
+        pass_url = 'https://dood.to' + pass_match.group(0)
+        
+        # Step 2: fetch pass URL with referer
+        res2 = await client.get(pass_url, headers={'Referer': url})
+        token = res2.text
+        
+        # Step 3: construct final URL
+        import random, string, time
+        rand = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+        final_url = f"{token}{rand}?token={pass_match.group(0).split('/')[-1]}&expiry={int(time.time())}"
+        return final_url
+    except Exception as e:
+        print(f"[doodstream] resolve error: {e}")
+    return url
+
+async def resolve_video_source(url: str) -> str:
+    client_local = httpx.AsyncClient(
+        verify=False, 
+        headers=HEADERS, 
+        timeout=10.0, 
+        follow_redirects=True
+    )
     try:
         if 'desustream' in url or 'desudrives' in url:
-            # Desustream uses a JSON mode to get the video link (often a Blogger URL)
             fetch_url = f"{url}&mode=json" if '?' in url else f"{url}?mode=json"
-            res = await client.get(fetch_url)
+            res = await client_local.get(fetch_url)
             data = res.json()
             if data.get('ok') and data.get('video'):
                 return await resolve_video_source(data['video'].replace('&amp;', '&'))
                 
-        if 'blogger.com' in url:
-            # Blogger video page
-            res = await client.get(url)
-            # Find play_url
+        elif 'blogger.com' in url:
+            res = await client_local.get(url)
             match = re.search(r'"play_url":"([^"]+)"', res.text)
             if match:
-                decoded_url = match.group(1).encode('utf-8').decode('unicode_escape')
-                return decoded_url
-
-        if '4meplayer.pro' in url or 'oplo2.' in url:
-            res = await client.get(url)
-            soup = BeautifulSoup(res.text, 'lxml')
-            iframe = soup.find('iframe')
-            if iframe and iframe.get('src'):
-                return await resolve_video_source(iframe['src'])
+                return match.group(1).encode('utf-8').decode('unicode_escape')
                 
+        elif '4meplayer' in url or 'oplo2.' in url:
+            return await resolve_4meplayer(url, client_local)
+            
+        elif 'streamtape' in url:
+            return await resolve_streamtape(url, client_local)
+            
+        elif 'mp4upload' in url:
+            return await resolve_mp4upload(url, client_local)
+            
+        elif 'dood' in url or 'doodstream' in url:
+            return await resolve_doodstream(url, client_local)
+            
     except Exception as e:
         print(f"Resolve error for {url}: {e}")
-        pass
+    finally:
+        await client_local.aclose()
     
-    return url # Return original if cannot resolve
+    return url
 
 @app.get('/api/home')
 async def get_home():
