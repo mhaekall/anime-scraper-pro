@@ -42,6 +42,7 @@ GET_ANIME_DETAILS = """
       title {
         romaji
         english
+        native
       }
       coverImage {
         extraLarge
@@ -52,8 +53,31 @@ GET_ANIME_DETAILS = """
       averageScore
       popularity
       trending
+      episodes
+      status
+      season
+      seasonYear
       description(asHtml: false)
       genres
+      studios {
+        nodes {
+          name
+          isAnimationStudio
+        }
+      }
+      recommendations {
+        nodes {
+          mediaRecommendation {
+            id
+            title { romaji english }
+            coverImage { large }
+          }
+        }
+      }
+      nextAiringEpisode {
+        episode
+        timeUntilAiring
+      }
     }
   }
 """
@@ -79,15 +103,41 @@ async def fetch_anilist_info(title: str):
             media = data.get('data', {}).get('Media')
             
             if media:
+                # Extract studios
+                studios = []
+                if media.get('studios') and media['studios'].get('nodes'):
+                    studios = [s['name'] for s in media['studios']['nodes'] if s.get('isAnimationStudio')]
+                
+                # Extract recommendations
+                recs = []
+                if media.get('recommendations') and media['recommendations'].get('nodes'):
+                    for r in media['recommendations']['nodes']:
+                        rec_media = r.get('mediaRecommendation')
+                        if rec_media:
+                            recs.append({
+                                'id': rec_media.get('id'),
+                                'title': rec_media.get('title', {}).get('english') or rec_media.get('title', {}).get('romaji'),
+                                'cover': rec_media.get('coverImage', {}).get('large')
+                            })
+
                 result = {
                     'cleanTitle': media['title']['english'] or media['title']['romaji'],
+                    'nativeTitle': media['title'].get('native'),
                     'hdImage': media['coverImage']['extraLarge'] or media['coverImage']['large'],
+                    'color': media['coverImage'].get('color'),
                     'banner': media['bannerImage'],
                     'score': media['averageScore'],
                     'popularity': media.get('popularity', 0),
                     'trending': media.get('trending', 0),
                     'description': media.get('description'),
-                    'genres': media.get('genres', [])
+                    'genres': media.get('genres', []),
+                    'episodes': media.get('episodes'),
+                    'status': media.get('status'),
+                    'season': media.get('season'),
+                    'seasonYear': media.get('seasonYear'),
+                    'studios': studios,
+                    'recommendations': recs,
+                    'nextAiringEpisode': media.get('nextAiringEpisode')
                 }
                 anilist_cache[search_query] = result
                 return result
@@ -321,11 +371,21 @@ async def get_series_detail(url: str = Query(..., description="Target URL of the
             'success': True, 
             'data': {
                 'title': slug_title, # Keep slug title to prevent season mismatches from AniList
+                'cleanTitle': anilist_data['cleanTitle'] if anilist_data else None,
+                'nativeTitle': anilist_data['nativeTitle'] if anilist_data else None,
                 'poster': anilist_data['hdImage'] if anilist_data else poster,
+                'color': anilist_data['color'] if anilist_data else None,
                 'banner': anilist_data['banner'] if anilist_data else None,
                 'synopsis': anilist_data['description'] if anilist_data and anilist_data['description'] else fallback_desc,
                 'score': anilist_data['score'] if anilist_data else None,
                 'genres': anilist_data['genres'] if anilist_data else [],
+                'status': anilist_data['status'] if anilist_data else None,
+                'totalEpisodes': anilist_data['episodes'] if anilist_data else None,
+                'season': anilist_data['season'] if anilist_data else None,
+                'seasonYear': anilist_data['seasonYear'] if anilist_data else None,
+                'studios': anilist_data['studios'] if anilist_data else [],
+                'recommendations': anilist_data['recommendations'] if anilist_data else [],
+                'nextAiringEpisode': anilist_data['nextAiringEpisode'] if anilist_data else None,
                 'episodes': episodes
             }
         }
@@ -453,4 +513,3 @@ async def scrape_episode(url: str = Query(..., description="Episode URL to scrap
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-     raise HTTPException(status_code=500, detail=str(e))
