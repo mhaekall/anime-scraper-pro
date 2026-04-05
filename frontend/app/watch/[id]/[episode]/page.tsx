@@ -89,6 +89,8 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
             <Player 
               title={`${title} - Eps ${episodeDisplay}`} 
               sources={sources} 
+              animeSlug={id}
+              episodeNum={parseInt(episode.replace(/\\D/g, '')) || 1}
             />
           ) : (
              <div className="w-full aspect-video flex flex-col gap-4 items-center justify-center bg-zinc-900 rounded-[2rem] border border-white/10 ring-1 ring-white/5">

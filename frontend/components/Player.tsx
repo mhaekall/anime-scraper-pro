@@ -14,6 +14,8 @@ interface PlayerProps {
   title: string;
   poster?: string;
   sources: Source[];
+  animeSlug?: string;
+  episodeNum?: number;
 }
 
 const QUALITY_RANK: Record<string, number> = {
@@ -26,7 +28,7 @@ function fmt(s: number) {
   return `${m}:${sec.toString().padStart(2, '0')}`;
 }
 
-export function Player({ title, poster, sources }: PlayerProps) {
+export function Player({ title, poster, sources, animeSlug, episodeNum }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -153,6 +155,37 @@ export function Player({ title, poster, sources }: PlayerProps) {
       video.removeEventListener('ended', onEnded);
     };
   }, []);
+
+  // Sync progress to cloud
+  useEffect(() => {
+    if (!animeSlug || !episodeNum || duration <= 0) return;
+    
+    const sync = async () => {
+      try {
+        await fetch('/api/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            animeSlug,
+            animeTitle: title.split(' - ')[0] || title,
+            animeCover: poster,
+            episode: episodeNum,
+            episodeTitle: title,
+            timestampSec: Math.floor(progress),
+            durationSec: Math.floor(duration),
+            source: current?.provider,
+            quality: current?.quality
+          })
+        });
+      } catch (e) {
+        console.error("Sync error", e);
+      }
+    };
+
+    // only sync if playing or paused recently (let's just sync every 15s)
+    const interval = setInterval(sync, 15000); 
+    return () => clearInterval(interval);
+  }, [progress, duration, animeSlug, episodeNum, title, poster, current]);
 
   // Auto-hide controls
   const showCtrl = useCallback(() => {
