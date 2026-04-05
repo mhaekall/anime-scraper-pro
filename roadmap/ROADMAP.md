@@ -10,25 +10,38 @@ Fase ini berfokus pada perbaikan mesin *scraper* yang masih rapuh dan mengekstra
 *   [x] **Svelte Payload Parsing (Bug 3):** Membuang Regex pencarian HTML string (seperti `episodeNumber:`) dan beralih ke ekstraksi JSON terstruktur dari tag `<script type="application/json" data-sveltekit-fetched>` atau fungsi `kit.start(...)`. Ini menjamin akurasi 100% pada ekstraksi episode.
 *   [x] **Ekstraksi `downloadUrl`:** Mengekstrak array unduhan (kualitas dan tautan) dari payload JSON Oploverz dan menyajikannya ke tombol "Unduh" di *Watch Page*.
 
-## 🗄️ Fase 2: Cloud Infrastructure & Database Layer
-Fase ini mengamankan aplikasi dari kehilangan data saat server *restart* dan membuka pintu untuk fitur sosial interaktif.
+## 🌟 Fase 2: AniList Data Enrichment (✅ SELESAI)
+Memaksimalkan GraphQL API AniList untuk melengkapi metadata tayangan tanpa harus bergantung pada hasil scrape HTML yang rentan rusak.
 
-*   [ ] **Redis Caching Pipeline (Bug 4):** Mengganti `TTLCache` (in-memory Python) dengan Upstash Redis atau Redis Cloud. Ini menjamin *cache* (seperti data AniList) bertahan saat mesin Hugging Face tertidur (sleep) atau *restart*, dan memungkinkan skalabilitas multi-worker.
-*   [ ] **Integrasi Supabase (PostgreSQL):** Menyiapkan arsitektur *database serverless*.
-*   [ ] **Cloud Watch History:** Memindahkan fitur "Melanjutkan Tontonan" dari *localStorage* (klien) ke Supabase. Pengguna bisa melanjutkan tontonan di PC meski terakhir menonton di HP.
+*   [x] **Penambahan GraphQL Fields:** Mengambil status (`RELEASING`/`FINISHED`), musim tayang, daftar studio animasi, total episode resmi, dan rekomendasi tontonan.
+*   [x] **Penyuntikan ke API Detail:** `/api/series-detail` kini langsung menyertakan metadata penuh dari AniList yang siap dirender di UI.
 
-## 🤝 Fase 3: User Experience, Social & PWA
-Fase ini menyulap aplikasi menjadi produk kelas industri sungguhan (seperti iQIYI/Netflix/Bstation).
+## 🍿 Fase 3: Advanced Native Player & UI/UX (✅ SELESAI)
+Membuang *iframe* usang dan menggantinya dengan pemutar Native HLS.js milik sendiri.
 
-*   [ ] **NextAuth (OAuthentication):** Fitur masuk (*Login/Register*) menggunakan akun Google, Discord, atau GitHub.
-*   [ ] **Fitur Komunitas Real-Time:** Mengubah *mockup* komponen "Komentar", "Suka/Tidak Suka", dan "Koleksi" menjadi sistem basis data relasional (menggunakan Supabase) yang berfungsi secara *real-time*.
-*   [ ] **Progressive Web App (PWA):** Menanamkan *Service Worker* dan file `manifest.json` agar *website* ini bisa di-instal layaknya aplikasi *Native* (berbentuk ikon) di *homescreen* Android dan iOS pengguna, lengkap dengan fitur *Offline Fallback* layar peringatan koneksi.
+*   [x] **Custom Player (HLS & MP4):** Menambahkan `Player.tsx` khusus dengan fitur Auto-Hide, Keyboard Shortcuts (Youtube-style), dan sinkronisasi durasi lintas-resolusi.
+*   [x] **Metadata Injection ke UI:** Menyuntikkan hasil Fase 2 (Status, Musim, Studio) ke halaman detail tontonan.
 
-## 🕸️ Fase 4: Multi-Source Engine (Otakudesu & Samehadaku)
-Mengubah arsitektur *scraper* dari *Single-Source* (hanya Oploverz) menjadi arsitektur modular (*Provider Pattern*) yang mampu melakukan *Fallback* (Mencari ke web B jika web A rusak) dan Agregasi.
+## ⚡ Fase 4: Upstash Redis & Background Cron Worker (✅ SELESAI)
+Memisahkan proses *scraping* dari halaman utama (*Frontend*) untuk menembus batas latensi (0ms load time).
+
+*   [x] **Hugging Face Cron Job:** Membuat fungsi `asyncio.create_task` di FastAPI untuk men-scrape halaman depan Oploverz/Otakudesu setiap 1 jam di latar belakang.
+*   [x] **Upstash Redis Pipeline:** Membuang in-memory cache dan menyimpan JSON berukuran besar langsung ke Serverless Redis (Upstash) via REST API.
+*   [x] **0ms Home API:** Rute `/api/home` dimodifikasi menjadi sekadar mengambil data statis dari Redis, memberikan waktu respon instan.
+
+## 🗄️ Fase 5: Supabase, Drizzle ORM, & Better-Auth (✅ SELESAI)
+Membangun lapisan *Database* permanen dengan arsitektur Edge-friendly menggunakan prinsip *Lateral Thinking*.
+
+*   [x] **Drizzle ORM & Postgres:** Menggunakan koneksi PostgreSQL (via driver `postgres`) langsung ke Supabase untuk menulis skema *watch_history* dan *users*.
+*   [x] **Better-Auth (Google Login):** Menyingkirkan Supabase Auth demi Better-Auth (Google Provider) yang dikonfigurasi menancap langsung ke adapter Drizzle ORM.
+*   [x] **Halaman Profil (`/profile`):** Membangun UI *Glassmorphism* untuk pengguna agar bisa masuk (*Login*) dan keluar (*Logout*).
+*   [x] **Sinkronisasi Lanjutkan Tontonan:** Memugar `Player.tsx` untuk melakukan `POST /api/history` setiap 15 detik ke *Cloud*, menggeser `localStorage`.
+
+## 🕸️ Fase 6: Multi-Source Engine & PWA (SELANJUTNYA)
+Mengubah arsitektur *scraper* dari *Single-Source* (hanya Oploverz) menjadi arsitektur modular (*Provider Pattern*) yang mampu melakukan *Fallback*.
 
 *   [ ] **Arsitektur Modular:** Memisahkan logika Oploverz ke dalam `backend/providers/oploverz.py`.
 *   [ ] **Provider: Otakudesu:** Membuat `backend/providers/otakudesu.py` dengan penanganan khusus: Bypass proteksi Cloudflare (menggunakan User-Agent Mobile) dan ekstraksi *Nonce* AJAX (`action=2a79a4440f&nonce=...`) untuk mendapatkan iframe video.
-*   [ ] **Provider: Samehadaku:** Membuat `backend/providers/samehadaku.py` yang mengekstrak langsung *iframe* dari halaman episode.
-*   [ ] **Aggregator Endpoint (`/api/multi-source`):** Membangun *endpoint* baru yang akan menembak ke semua *provider* secara paralel (maksimal *timeout* 8 detik), menyatukan hasilnya, menyortir berdasarkan kualitas resolusi (1080p > 720p), lalu mengirimkannya ke *Frontend*.
+*   [ ] **Aggregator Endpoint (`/api/multi-source`):** Membangun *endpoint* baru yang akan menembak ke semua *provider* secara paralel.
+*   [ ] **Serwist PWA:** Mengubah situs Next.js menjadi *Progressive Web App* yang dapat diinstal dan bekerja secara *offline-first*.
 
