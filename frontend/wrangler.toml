@@ -2,3 +2,8 @@ name = "anime-scraper-pro"
 compatibility_date = "2024-03-20"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
+
+[vars]
+# DATABASE_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, BETTER_AUTH_SECRET are managed via Cloudflare Pages Settings (Dashboard)
+BETTER_AUTH_URL = "https://anime-scraper-pro.pages.dev"
+NEXT_PUBLIC_APP_URL = "https://anime-scraper-pro.pages.dev"

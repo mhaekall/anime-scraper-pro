@@ -1,18 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['@neondatabase/serverless', 'better-auth', 'drizzle-orm'],
   webpack: (config, { nextRuntime }) => {
     if (nextRuntime === 'edge') {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         net: false,
         tls: false,
-        crypto: false,
-        stream: false,
-        perf_hooks: false,
         fs: false,
         dns: false,
-        os: false,
-        path: false,
         child_process: false,
       };
     }
