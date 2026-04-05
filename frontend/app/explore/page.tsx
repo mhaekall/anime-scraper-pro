@@ -9,7 +9,7 @@ export default async function ExplorePage() {
 
   try {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://jonyyyyyyyu-anime-scraper-api.hf.space";
-    const res = await fetch(`${API_URL}/api/series`, { cache: 'no-store' });
+    const res = await fetch(`${API_URL}/api/series`);
     if (res.ok) {
       const data = await res.json();
       animes = data.data || [];

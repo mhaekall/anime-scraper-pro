@@ -13,7 +13,7 @@ echo "🛠️  Building project with @cloudflare/next-on-pages..."
 npx @cloudflare/next-on-pages
 
 echo "🔧 Patching next-on-pages async_hooks module resolution for Next 15..."
-find .vercel/output/static/_worker.js -type f -name "*.js" -exec sed -i 's/__next-on-pages-dist__\/functions\/async_hooks/node:async_hooks/g' {} +
+find .vercel/output/static/_worker.js -type f -name "*.js" -exec sed -i 's/"async_hooks"/"node:async_hooks"/g' {} +
 
 echo "📤 Deploying to Cloudflare Pages..."
 CI=true npx wrangler pages deploy --project-name $PROJECT_NAME --branch main

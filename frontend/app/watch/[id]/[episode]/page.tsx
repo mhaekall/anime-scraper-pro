@@ -23,8 +23,8 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     
     // Fetch both scrape and details in parallel for max speed
     const [scrapeRes, detailRes] = await Promise.all([
-      fetch(`${API_URL}/api/scrape?url=${encodeURIComponent(url)}`, { cache: 'no-store' }),
-      fetch(`${API_URL}/api/series-detail?url=${encodeURIComponent(seriesUrl)}`, { cache: 'no-store' })
+      fetch(`${API_URL}/api/scrape?url=${encodeURIComponent(url)}`),
+      fetch(`${API_URL}/api/series-detail?url=${encodeURIComponent(seriesUrl)}`)
     ]);
 
     if (scrapeRes.ok) {

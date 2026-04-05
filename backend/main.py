@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BASE_URL = 'https://anime.oploverz.ac'
+BASE_URL = 'https://o.oploverz.ltd'
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -131,6 +131,13 @@ async def resolve_video_source(url: str):
             if match:
                 decoded_url = match.group(1).encode('utf-8').decode('unicode_escape')
                 return decoded_url
+
+        if '4meplayer.pro' in url or 'oplo2.' in url:
+            res = await client.get(url)
+            soup = BeautifulSoup(res.text, 'lxml')
+            iframe = soup.find('iframe')
+            if iframe and iframe.get('src'):
+                return await resolve_video_source(iframe['src'])
                 
     except Exception as e:
         print(f"Resolve error for {url}: {e}")
@@ -333,14 +340,17 @@ async def get_episodes(url: str = Query(..., description="Target URL of the seri
         episodes = []
         seen = set()
         
-        # Oploverz hides episode list in Svelte payload
-        matches = re.findall(r'episodeNumber:"([^"]+)"', r.text)
-        
-        for ep_num in matches:
-            if ep_num not in seen:
-                seen.add(ep_num)
-                full_url = f"{url.rstrip('/')}/episode/{ep_num}"
-                episodes.append({'title': f'Episode {ep_num}', 'url': full_url})
+        # Robust Svelte payload extraction
+        payload_match = re.search(r'kit\.start\(app,\s*element,\s*(\{.*?\})\);', r.text, re.DOTALL)
+        if payload_match:
+            payload = payload_match.group(1)
+            matches = re.findall(r'episodeNumber:"([^"]+)"', payload)
+            
+            for ep_num in matches:
+                if ep_num not in seen:
+                    seen.add(ep_num)
+                    full_url = f"{url.rstrip('/')}/episode/{ep_num}"
+                    episodes.append({'title': f'Episode {ep_num}', 'url': full_url})
                 
         # Return episodes in chronological order if possible (Oploverz usually lists descending, so we might reverse it or leave it)
         # Let's leave it as is, which is usually newest first.
@@ -367,8 +377,34 @@ async def scrape_episode(url: str = Query(..., description="Episode URL to scrap
         anilist_data = await fetch_anilist_info(anime_title)
         poster = anilist_data['hdImage'] if anilist_data else ""
 
-        # --- SVELTE PAYLOAD EXTRACTION ---
-        stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', html)
+        # --- SVELTE PAYLOAD EXTRACTION (Robust Method) ---
+        downloads = []
+        payload_match = re.search(r'kit\.start\(app,\s*element,\s*(\{.*?\})\);', html, re.DOTALL)
+        if payload_match:
+            payload = payload_match.group(1)
+            stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', payload)
+            
+            # Extract Downloads
+            down_match = re.search(r'downloadUrl:\s*(\[\{format.*?)\]\}\]\}', payload, re.DOTALL)
+            if down_match:
+                down_str = down_match.group(1) + ']}]'
+                fmt_blocks = re.finditer(r'format:\"([^\"]+)\",resolutions:\[(.*?)\]\}\]', down_str, re.DOTALL)
+                for fmt in fmt_blocks:
+                    f_type = fmt.group(1)
+                    res_str = fmt.group(2)
+                    quals = re.finditer(r'quality:\"([^\"]+)\",download_links:\[(.*?)\]\}', res_str, re.DOTALL)
+                    
+                    for q in quals:
+                        q_type = q.group(1)
+                        links_str = q.group(2)
+                        links = []
+                        for link in re.finditer(r'host:\"([^\"]+)\",url:\"([^\"]+)\"', links_str):
+                            links.append({'host': link.group(1), 'url': link.group(2)})
+                        
+                        downloads.append({'format': f_type, 'quality': q_type, 'links': links})
+        else:
+            # Fallback if kit.start is missing
+            stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', html)
         
         bad_keywords = ['youtube', 'facebook', 'twitter', 'instagram', 't.me', 'ads', 'banner', 'histats', 'google', 'wp-admin', 'cutt.ly', 't2m.io', 'vtxlinks', 'ombak', 'togel', 'slot', 'gcbos', 'guguk', 'joiboy', 'tapme', 'infodomain', 'tempatsucii']
 
@@ -409,6 +445,7 @@ async def scrape_episode(url: str = Query(..., description="Episode URL to scrap
         return {
             'success': True, 
             'sources': embeds,
+            'downloads': downloads,
             'anime': {
                 'title': anime_title,
                 'poster': poster
@@ -416,3 +453,4 @@ async def scrape_episode(url: str = Query(..., description="Episode URL to scrap
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+     raise HTTPException(status_code=500, detail=str(e))

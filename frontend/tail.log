@@ -1,11 +1,11 @@
 {
-    "wallTime": 5,
-    "cpuTime": 4,
+    "wallTime": 3,
+    "cpuTime": 2,
     "truncated": false,
     "executionModel": "stateless",
     "outcome": "ok",
     "scriptVersion": {
-        "id": "4c79387c-d91d-4af1-b7a7-1c527a880bea"
+        "id": "b79e301d-6772-448e-9d60-7837e426cacc"
     },
     "scriptName": "pages-worker--12332909-production",
     "diagnosticsChannelEvents": [],
@@ -13,26 +13,26 @@
     "logs": [
         {
             "message": [
-                "Error: No such module \"__next-on-pages-dist__/functions/async_hooks\".\n  imported from \"__next-on-pages-dist__/functions/index.func.js\""
+                "Error: No such module \"__next-on-pages-dist__/functions/async_hooks\".\n  imported from \"__next-on-pages-dist__/functions/explore.func.js\""
             ],
             "level": "error",
-            "timestamp": 1775367721009
+            "timestamp": 1775382930310
         }
     ],
-    "eventTimestamp": 1775367720926,
+    "eventTimestamp": 1775382930258,
     "event": {
         "request": {
-            "url": "https://4da473f0.anime-scraper-pro.pages.dev/",
+            "url": "https://84675b14.anime-scraper-pro.pages.dev/explore",
             "method": "GET",
             "headers": {
                 "accept": "*/*",
                 "accept-encoding": "gzip, br",
                 "cf-connecting-ip": "103.157.79.38",
                 "cf-ipcountry": "ID",
-                "cf-ray": "9e763a1fbc4c44c6",
+                "cf-ray": "9e77ad721a007ac6",
                 "cf-visitor": "{\"scheme\":\"https\"}",
                 "connection": "Keep-Alive",
-                "host": "4da473f0.anime-scraper-pro.pages.dev",
+                "host": "84675b14.anime-scraper-pro.pages.dev",
                 "user-agent": "curl/8.18.0",
                 "x-forwarded-proto": "https",
                 "x-real-ip": "103.157.79.38"
@@ -42,7 +42,7 @@
                 "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
                 "edgeRequestKeepAliveStatus": 1,
                 "requestHeaderNames": {},
-                "clientTcpRtt": 19,
+                "clientTcpRtt": 20,
                 "clientQuicRtt": 0,
                 "colo": "SIN",
                 "asn": 141114,
@@ -59,15 +59,15 @@
                 "postalCode": "16431",
                 "tlsVersion": "TLSv1.3",
                 "tlsCipher": "AEAD-AES256-GCM-SHA384",
-                "tlsClientRandom": "p46B/cfznoqZ6jY7rtR4IZAaW+TcSQdH6CHT70doFOY=",
+                "tlsClientRandom": "uTwg9f8bh8lYmsz8AIadsgK70wiYT4rrjyyRH79Cfts=",
                 "tlsClientCiphersSha1": "hCCNuWP9ky6AR69i97wdKYbhFQo=",
                 "tlsClientExtensionsSha1": "4oF0LRxQXUDhrRY0MazQAVJh7Go=",
                 "tlsClientExtensionsSha1Le": "Ea9swA+X7+AQtmDnJ28MlyPK/Fg=",
                 "tlsExportedAuthenticator": {
-                    "clientHandshake": "d0751a55bf4cf80f6bdc52d446551d48b02e70535f51c902933f43e5cd457d3193d01b3fbac9dec6bd0078c8fc9f21fa",
-                    "serverHandshake": "374e8672afe23a397fb715f12a39109418e3f7c1f3dce2bc5cd62310e4033aa13a52f35c372d549f4ee02a8c600932b0",
-                    "clientFinished": "6ed864b6c14d9ef686fe1b305982d7c4108af0c0ab12d50c79e70002946ed5985efdb4105485020644b1363f7c4e6a09",
-                    "serverFinished": "4eb20ba2bfeb144e7dcff1d5a8a2746b18e6470954c5fe66f14cf0ef918c129cd82139da1c1513b77374c702eed88cbf"
+                    "clientHandshake": "2aa5fd88f719c2c12d59e93301ce6134b19c5c399c9285a8e45a4aab545c911599e514c6efdbb22aee4fb068f8bccdda",
+                    "serverHandshake": "0bf6a7e695370db451ebda9edf7b8bdbd308db6332920be165e24afd2a1740d3f8a7b830829b26a32427efe60864a953",
+                    "clientFinished": "be3efaf8bc638baec833e48a19b1c67d2f7f75807ceec820ba4b0dea24151c5139cde1a88cb078a29f9c59a9f303f6bb",
+                    "serverFinished": "116478b28ebf400834cf6810873a42a09fed30f6bd3e183ffcae53b7b2cc964e374588c7722408c663ca406f6c355912"
                 },
                 "tlsClientHelloLength": "1583",
                 "tlsClientAuth": {
@@ -95,9 +95,9 @@
                 },
                 "verifiedBotCategory": "",
                 "edgeL4": {
-                    "deliveryRate": 218885
+                    "deliveryRate": 196481
                 },
-                "pagesHostName": "4da473f0.anime-scraper-pro.pages.dev",
+                "pagesHostName": "84675b14.anime-scraper-pro.pages.dev",
                 "botManagement": {
                     "corporateProxy": false,
                     "verifiedBot": false,
