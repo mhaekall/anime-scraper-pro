@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { Info, PlayCircle } from "lucide-react";
 
@@ -35,13 +34,10 @@ export function TopSeriesGrid({ animes, title }: TopSeriesGridProps) {
           const id = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
 
           return (
-            <motion.div
+            <div
               key={idx}
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1, duration: 0.5 }}
-              className="snap-start shrink-0 relative flex items-end group w-[180px] sm:w-[220px] pb-4"
+              className="snap-start shrink-0 relative flex items-end group w-[180px] sm:w-[220px] pb-4 animate-in fade-in slide-in-from-right-4 duration-700 fill-mode-both"
+              style={{ animationDelay: `${idx * 100}ms` }}
             >
               {/* Massive Stroke Number (Rank) - Positioned behind and to the left */}
               <span 
@@ -81,7 +77,7 @@ export function TopSeriesGrid({ animes, title }: TopSeriesGridProps) {
                   </div>
                 )}
               </Link>
-            </motion.div>
+            </div>
           );
         })}
       </div>

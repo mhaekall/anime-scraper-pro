@@ -3,6 +3,7 @@ import { PlayCircle, ArrowLeft, Clock, Star } from "lucide-react";
 import { EpisodeList } from "@/components/EpisodeList";
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 export default async function AnimeDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,7 +11,7 @@ export default async function AnimeDetail({ params }: { params: Promise<{ id: st
 
   try {
     const url = `https://o.oploverz.ltd/series/${id}/`;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://jonyyyyyyyu-anime-scraper-api.hf.space";
     const res = await fetch(`${API_URL}/api/series-detail?url=${encodeURIComponent(url)}`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();

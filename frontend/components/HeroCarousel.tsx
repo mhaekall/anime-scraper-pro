@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { Play, Info } from "lucide-react";
 
@@ -24,18 +23,15 @@ export function HeroCarousel({ anime }: HeroCarouselProps) {
   return (
     <div className="relative w-full h-[70vh] min-h-[500px] max-h-[800px] overflow-hidden rounded-b-[2.5rem] bg-zinc-900 border-b border-white/5">
       {/* Background Image with Parallax effect simulation */}
-      <motion.div 
-        className="absolute inset-0 w-full h-full"
-        initial={{ scale: 1.05 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
+      <div 
+        className="absolute inset-0 w-full h-full animate-in zoom-in-105 duration-1000 ease-out fill-mode-both"
       >
         <img
           src={banner}
           alt={anime.title}
           className="object-cover w-full h-full opacity-80"
         />
-      </motion.div>
+      </div>
 
       {/* Grand Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
@@ -43,11 +39,8 @@ export function HeroCarousel({ anime }: HeroCarouselProps) {
 
       {/* Content Container */}
       <div className="absolute bottom-0 left-0 w-full p-6 sm:p-12 md:p-16 flex flex-col justify-end">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-3xl flex flex-col gap-5"
+        <div
+          className="max-w-3xl flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 fill-mode-both"
         >
           {score && (
             <div className="flex items-center gap-2 mb-1">
@@ -80,7 +73,7 @@ export function HeroCarousel({ anime }: HeroCarouselProps) {
               </button>
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

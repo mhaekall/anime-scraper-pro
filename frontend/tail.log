@@ -1,0 +1,117 @@
+{
+    "wallTime": 5,
+    "cpuTime": 4,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "4c79387c-d91d-4af1-b7a7-1c527a880bea"
+    },
+    "scriptName": "pages-worker--12332909-production",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [
+        {
+            "message": [
+                "Error: No such module \"__next-on-pages-dist__/functions/async_hooks\".\n  imported from \"__next-on-pages-dist__/functions/index.func.js\""
+            ],
+            "level": "error",
+            "timestamp": 1775367721009
+        }
+    ],
+    "eventTimestamp": 1775367720926,
+    "event": {
+        "request": {
+            "url": "https://4da473f0.anime-scraper-pro.pages.dev/",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "103.157.79.38",
+                "cf-ipcountry": "ID",
+                "cf-ray": "9e763a1fbc4c44c6",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "4da473f0.anime-scraper-pro.pages.dev",
+                "user-agent": "curl/8.18.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "103.157.79.38"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 19,
+                "clientQuicRtt": 0,
+                "colo": "SIN",
+                "asn": 141114,
+                "asOrganization": "PT Super Media Indonesia",
+                "country": "ID",
+                "isEUCountry": false,
+                "city": "Depok",
+                "continent": "AS",
+                "region": "West Java",
+                "regionCode": "JB",
+                "timezone": "Asia/Jakarta",
+                "longitude": "106.81861",
+                "latitude": "-6.4",
+                "postalCode": "16431",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "p46B/cfznoqZ6jY7rtR4IZAaW+TcSQdH6CHT70doFOY=",
+                "tlsClientCiphersSha1": "hCCNuWP9ky6AR69i97wdKYbhFQo=",
+                "tlsClientExtensionsSha1": "4oF0LRxQXUDhrRY0MazQAVJh7Go=",
+                "tlsClientExtensionsSha1Le": "Ea9swA+X7+AQtmDnJ28MlyPK/Fg=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "d0751a55bf4cf80f6bdc52d446551d48b02e70535f51c902933f43e5cd457d3193d01b3fbac9dec6bd0078c8fc9f21fa",
+                    "serverHandshake": "374e8672afe23a397fb715f12a39109418e3f7c1f3dce2bc5cd62310e4033aa13a52f35c372d549f4ee02a8c600932b0",
+                    "clientFinished": "6ed864b6c14d9ef686fe1b305982d7c4108af0c0ab12d50c79e70002946ed5985efdb4105485020644b1363f7c4e6a09",
+                    "serverFinished": "4eb20ba2bfeb144e7dcff1d5a8a2746b18e6470954c5fe66f14cf0ef918c129cd82139da1c1513b77374c702eed88cbf"
+                },
+                "tlsClientHelloLength": "1583",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 218885
+                },
+                "pagesHostName": "4da473f0.anime-scraper-pro.pages.dev",
+                "botManagement": {
+                    "corporateProxy": false,
+                    "verifiedBot": false,
+                    "jsDetection": {
+                        "passed": false
+                    },
+                    "staticResource": false,
+                    "detectionIds": {},
+                    "score": 99
+                }
+            }
+        },
+        "response": {
+            "status": 500
+        }
+    }
+}

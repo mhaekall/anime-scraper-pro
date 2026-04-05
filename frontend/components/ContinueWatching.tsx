@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PlayCircle, Clock } from "lucide-react";
-import { motion } from "framer-motion";
 
 export function ContinueWatching() {
   const [history, setHistory] = useState<any[]>([]);
@@ -28,12 +27,10 @@ export function ContinueWatching() {
 
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
         {history.map((item, idx) => (
-          <motion.div
+          <div
             key={item.id + item.epId}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="snap-start shrink-0 w-[280px] sm:w-[320px]"
+            className="snap-start shrink-0 w-[280px] sm:w-[320px] animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-both"
+            style={{ animationDelay: `${idx * 100}ms` }}
           >
             <Link href={`/watch/${item.id}/${item.epId}`} className="group relative flex flex-col gap-3">
               <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-zinc-900 shadow-xl ring-1 ring-white/10 transition-all duration-300 group-hover:ring-blue-500/50">
@@ -59,7 +56,7 @@ export function ContinueWatching() {
                 </div>
               </div>
             </Link>
-          </motion.div>
+          </div>
         ))}
       </div>
     </section>

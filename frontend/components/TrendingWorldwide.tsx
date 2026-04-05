@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Flame, Star } from "lucide-react";
 import Link from "next/link";
 
@@ -47,12 +46,10 @@ export function TrendingWorldwide() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {TRENDING_ANIME.map((anime, idx) => (
-          <motion.div
+          <div
             key={anime.id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: idx * 0.15, duration: 0.6 }}
+            className="animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-both"
+            style={{ animationDelay: `${idx * 150}ms` }}
           >
             <Link href={`/explore`} className="group relative flex flex-col h-full overflow-hidden rounded-3xl bg-zinc-900 border border-white/10 shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(234,88,12,0.15)] hover:border-orange-500/30">
               
@@ -78,7 +75,7 @@ export function TrendingWorldwide() {
               </div>
               
             </Link>
-          </motion.div>
+          </div>
         ))}
       </div>
     </section>

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PlayCircle, ArrowDownUp } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface Episode {
   title: string;
@@ -45,18 +44,14 @@ export function EpisodeList({ episodes, animeId }: EpisodeListProps) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-        <AnimatePresence>
           {currentView.map((ep, idx) => {
             const cleanUrl = ep.url.replace(/\/$/, '');
             const epId = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
 
             return (
-              <motion.div
+              <div
                 key={`ep-${epId}-${idx}`}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
+                className="animate-in fade-in zoom-in-95 duration-200"
               >
                 <Link href={`/watch/${animeId}/${epId}`}>
                   <div className="glass-panel group flex flex-col justify-center gap-2 overflow-hidden rounded-2xl p-3 sm:p-4 transition-all duration-300 hover:bg-white/10 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(59,130,246,0.15)] border border-white/5 hover:border-blue-500/30">
@@ -66,10 +61,9 @@ export function EpisodeList({ episodes, animeId }: EpisodeListProps) {
                     </div>
                   </div>
                 </Link>
-              </motion.div>
+              </div>
             );
           })}
-        </AnimatePresence>
       </div>
 
       {visibleCount < episodes.length && (

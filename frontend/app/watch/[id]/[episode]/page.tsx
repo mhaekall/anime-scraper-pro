@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Clock, ThumbsUp, ThumbsDown, Share2, Download, B
 import { HistoryTracker } from "@/components/HistoryTracker";
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 export default async function WatchPage({ params }: { params: Promise<{ id: string, episode: string }> }) {
   const { id, episode } = await params;
@@ -18,7 +19,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   try {
     const url = `https://o.oploverz.ltd/series/${id}/episode/${episode}/`;
     const seriesUrl = `https://o.oploverz.ltd/series/${id}/`;
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://jonyyyyyyyu-anime-scraper-api.hf.space";
     
     // Fetch both scrape and details in parallel for max speed
     const [scrapeRes, detailRes] = await Promise.all([

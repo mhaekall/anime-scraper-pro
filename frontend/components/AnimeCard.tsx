@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { Info, Image as ImageIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -95,34 +94,26 @@ export function AnimeCard({ anime, id, idx, epId }: { anime: any, id: string, id
   };
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: Math.min(idx * 0.05, 0.3) }} // Cap delay
+      className="animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both"
+      style={{ animationDelay: `${Math.min(idx * 50, 300)}ms` }}
     >
       <div className="group relative flex flex-col gap-3">
         <Link href={`/anime/${id}`} className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl bg-zinc-900 shadow-xl ring-1 ring-white/10 transition-all duration-300 group-hover:shadow-[0_0_30px_rgba(255,255,255,0.15)] group-hover:ring-white/30 block cursor-pointer">
           {imgUrl ? (
-            <motion.img
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
+            <img
               src={imgUrl}
               alt={anime.title}
-              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 animate-in fade-in duration-500"
               loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 transition-transform duration-700 ease-out group-hover:scale-110">
                {isVisible ? (
-                 <motion.div 
-                   animate={{ opacity: [0.5, 1, 0.5] }} 
-                   transition={{ duration: 1.5, repeat: Infinity }}
-                   className="flex flex-col items-center gap-2"
-                 >
+                 <div className="flex flex-col items-center gap-2 animate-pulse">
                     <ImageIcon className="w-8 h-8 text-white/20" />
-                 </motion.div>
+                 </div>
                ) : (
                  <span className="text-4xl font-black text-white/20 tracking-tighter select-none">{getInitials(anime.title)}</span>
                )}
@@ -148,6 +139,6 @@ export function AnimeCard({ anime, id, idx, epId }: { anime: any, id: string, id
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

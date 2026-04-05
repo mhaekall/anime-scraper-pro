@@ -1,16 +1,15 @@
 import { LibraryGrid } from "@/components/LibraryGrid";
 import { Compass } from "lucide-react";
 
-export const revalidate = 3600; // Cache for 1 hour
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 export default async function ExplorePage() {
   let animes = [];
-  
+
   try {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-    // We use no-store or revalidate based on preference. 
-    // Since this is the full A-Z library, 1 hour caching is perfect.
-    const res = await fetch(`${API_URL}/api/series`, { next: { revalidate: 3600 } });
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://jonyyyyyyyu-anime-scraper-api.hf.space";
+    const res = await fetch(`${API_URL}/api/series`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       animes = data.data || [];
