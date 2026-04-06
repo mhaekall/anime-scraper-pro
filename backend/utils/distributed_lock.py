@@ -60,12 +60,11 @@ class DistributedLock:
             return True
         return False
     
-    @asynccontextmanager
     async def __aenter__(self):
         acquired = await self.acquire()
         if not acquired:
             raise TimeoutError(f"Could not acquire lock '{self.key}'")
-        try:
-            yield self
-        finally:
-            await self.release()
+        return self
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.release()

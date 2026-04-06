@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, boolean, serial, unique, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, boolean, serial, unique, index, jsonb } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -77,3 +77,34 @@ export const bookmarks = pgTable("bookmarks", {
   unq: unique().on(t.userId, t.animeSlug),
   userUpdatedAtIdx: index("bm_user_updated_idx").on(t.userId, t.updatedAt),
 }));
+
+export const animeMetadata = pgTable("anime_metadata", {
+  anilistId: integer("anilistId").primaryKey(),
+  cleanTitle: text("cleanTitle").notNull(),
+  nativeTitle: text("nativeTitle"),
+  coverImage: text("coverImage"),
+  bannerImage: text("bannerImage"),
+  synopsis: text("synopsis"),
+  score: integer("score"),
+  status: text("status"),
+  totalEpisodes: integer("totalEpisodes"),
+  season: text("season"),
+  year: integer("year"),
+  studios: jsonb("studios"),
+  genres: jsonb("genres"),
+  recommendations: jsonb("recommendations"),
+  nextAiringEpisode: jsonb("nextAiringEpisode"),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow()
+});
+
+export const animeMappings = pgTable("anime_mappings", {
+  id: serial("id").primaryKey(),
+  anilistId: integer("anilistId").notNull().references(() => animeMetadata.anilistId, { onDelete: "cascade" }),
+  providerId: text("providerId").notNull(), // e.g. "oploverz", "otakudesu"
+  providerSlug: text("providerSlug").notNull(), // The raw slug from the provider
+  updatedAt: timestamp("updatedAt").notNull().defaultNow()
+}, (t) => ({
+  unqMapping: unique().on(t.providerId, t.providerSlug),
+  anilistIdx: index("mapping_anilist_idx").on(t.anilistId)
+}));
+
