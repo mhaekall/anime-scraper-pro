@@ -153,13 +153,16 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     searchHistory, addSearchHistory, clearSearchHistory
   };
 
-  // Prevent hydration mismatch
-  if (!mounted) return <div style={{ visibility: 'hidden' }}>{children}</div>;
-
   return (
     <AppContext.Provider value={value}>
-      <Toaster />
-      {children}
+      {!mounted ? (
+        <div style={{ visibility: 'hidden' }}>{children}</div>
+      ) : (
+        <>
+          <Toaster />
+          {children}
+        </>
+      )}
     </AppContext.Provider>
   );
 };
