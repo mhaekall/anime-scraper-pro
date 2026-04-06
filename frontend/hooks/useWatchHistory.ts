@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const HISTORY_KEY = '/api/history';
 const LOCAL_KEY = 'anime_watch_history_v2';
@@ -37,16 +37,24 @@ const fetcher = async (url: string): Promise<WatchHistoryItem[]> => {
 };
 
 export function useWatchHistory() {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { data: history = [], mutate, isLoading } = useSWR<WatchHistoryItem[]>(
-    HISTORY_KEY,
+    mounted ? HISTORY_KEY : null,
     fetcher,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
       dedupingInterval: 30000,
-      fallbackData: getLocalHistory(),
     }
   );
+
+  // Load local data instantly if cloud is loading and we are mounted
+  const displayHistory = (history.length === 0 && isLoading && mounted) ? getLocalHistory() : history;
 
   const updateProgress = useCallback(async (item: Omit<WatchHistoryItem, 'id' | 'updatedAt'>) => {
     updateLocalHistory(item);
@@ -78,18 +86,18 @@ export function useWatchHistory() {
         return optimisticData(current);
       },
       {
-        optimisticData: optimisticData(history),
+        optimisticData: optimisticData(displayHistory),
         revalidate: false,
         rollbackOnError: false,
       }
     );
-  }, [mutate, history]);
+  }, [mutate, displayHistory]);
 
   const getProgress = useCallback((animeSlug: string, episode: number) => {
-    return history.find(h => h.animeSlug === animeSlug && h.episode === episode);
-  }, [history]);
+    return displayHistory.find(h => h.animeSlug === animeSlug && h.episode === episode);
+  }, [displayHistory]);
 
-  return { history, isLoading, updateProgress, getProgress };
+  return { history: displayHistory, isLoading: isLoading || !mounted, updateProgress, getProgress };
 }
 
 function getLocalHistory(): WatchHistoryItem[] {
