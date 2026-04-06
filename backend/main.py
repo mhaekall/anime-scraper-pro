@@ -53,8 +53,11 @@ from utils.distributed_lock import DistributedLock
 
 from providers.oploverz import OploverzProvider
 from providers.otakudesu import OtakudesuProvider
+from providers.doronime import DoronimeProvider
+
 oploverz_provider = OploverzProvider()
 otakudesu_provider = OtakudesuProvider()
+doronime_provider = DoronimeProvider()
 
 
 
@@ -94,115 +97,99 @@ async def background_scrape_job():
         )
         try:
             async with lock:
-                print("[Cron] Starting background scrape job...")
+                print("[Cron] Starting Aggregator Scrape Job...")
+                # Fetch from providers
+                # We'll fetch from Oploverz as the primary discovery source for now
                 url1 = 'https://o.oploverz.ltd/'
                 url2 = 'https://o.oploverz.ltd/page/2/'
-                url_series = 'https://o.oploverz.ltd/series/'
                 
-                r1, r2, r_series = await asyncio.gather(
+                r1, r2 = await asyncio.gather(
                     scraping_client.get(url1),
-                    scraping_client.get(url2),
-                    scraping_client.get(url_series)
+                    scraping_client.get(url2)
                 )
 
-            
-            items = []
-            seen = set()
+                items = []
+                seen_titles = set()
+                combined_html = r1.text + r2.text
+                soup = BeautifulSoup(combined_html, 'lxml')
 
-            combined_html = r1.text + r2.text
-            soup = BeautifulSoup(combined_html, 'lxml')
-
-            for a in soup.select('a[href*="/episode/"]'):
-                img_tag = a.find('img')
-                img = img_tag.get('src') if img_tag else None
-                
-                title = img_tag.get('alt') or a.get('title') if img_tag else None
-                if title and title.startswith('cover-'):
-                    title = title.replace('cover-', '').replace('-', ' ').title()
-                
-                if not title or not title.strip():
-                    parts = a.get('href').split('/')
-                    if len(parts) > 2:
-                        title = parts[2].replace('-', ' ').title()
-                
-                if img and 'poster' in img:
-                    href = a.get('href')
-                    series_url_part = href.split('/episode/')[0]
+                for a in soup.select('a[href*="/episode/"]'):
+                    img_tag = a.find('img')
+                    img = img_tag.get('src') if img_tag else None
+                    raw_title = img_tag.get('alt') or a.get('title') if img_tag else None
                     
-                    if title and title not in seen:
-                        seen.add(title)
-                        series_url = series_url_part if series_url_part.startswith('http') else BASE_URL + series_url_part
-                        ep_url = href if href.startswith('http') else BASE_URL + href
+                    if raw_title and raw_title not in seen_titles:
+                        # Clean title for AniList
+                        clean_title = raw_title.split('Episode')[0].replace('Nonton', '').replace(' | Oploverz', '').strip()
+                        if not clean_title: continue
                         
+                        seen_titles.add(raw_title)
                         items.append({
-                            'title': title,
-                            'url': series_url,
-                            'episodeUrl': ep_url,
-                            'img': img
+                            'title': clean_title,
+                            'url': a.get('href') if a.get('href').startswith('http') else BASE_URL + a.get('href'),
+                            'raw_img': img
                         })
 
-            series_list = []
-            seen_series = set()
-            soup_series = BeautifulSoup(r_series.text, 'lxml')
-            
-            for a in soup_series.select('a[href^="/series/"]'):
-                href = a.get('href')
-                if href and len(href) > 8:
-                    parts = href.strip('/').split('/')
-                    if len(parts) >= 2 and parts[0] == 'series':
-                        slug = parts[1]
-                        if slug not in seen_series:
-                            title = slug.replace('-', ' ').title()
-                            seen_series.add(slug)
-                            
-                            full_url = href if href.startswith('http') else BASE_URL + href
-                            series_list.append({
-                                'title': title,
-                                'url': full_url,
-                                'img': None
-                            })
-                    
-            series_list = series_list[:40]
-            
-            async def enhance_item(item):
-                anilist_data = await fetch_anilist_info(item['title'])
-                if anilist_data:
-                    return {
-                        **item,
-                        'title': item['title'], 
-                        'img': anilist_data['hdImage'] or item['img'],
-                        'banner': anilist_data['banner'],
-                        'score': anilist_data['score'],
-                        'popularity': anilist_data.get('popularity', 0)
-                    }
-                return item
+                async def process_and_validate(item):
+                    try:
+                        # 1. VIDEO SOURCE CHECK (Peeking)
+                        # We perform a quick fetch to see if the page actually has video embeds
+                        # This is the "Source-First" gatekeeper
+                        ep_res = await scraping_client.get(item['url'], timeout=10.0)
+                        html = ep_res.text
+                        
+                        # Check for common video markers across providers
+                        has_video = False
+                        if 'kit.start' in html: has_video = True # Oploverz marker
+                        if '<iframe' in html: has_video = True    # Generic/Otakudesu/Doronime marker
+                        if 'downloadUrl' in html: has_video = True # Download fallback
+                        
+                        if not has_video:
+                            print(f"[Aggregator] Skipping {item['title']} - No video sources found on page.")
+                            return None
+
+                        # 2. AniList Enrichment
+                        anilist_data = await fetch_anilist_info(item['title'])
+                        
+                        if anilist_data and anilist_data.get('hdImage'):
+                            return {
+                                'title': item['title'],
+                                'url': item['url'],
+                                'img': anilist_data['hdImage'],
+                                'banner': anilist_data['banner'],
+                                'score': anilist_data['score'],
+                                'popularity': anilist_data.get('popularity', 0),
+                                'anilistId': anilist_data['anilistId'],
+                                'type': 'latest'
+                            }
+                    except Exception as e:
+                        print(f"[Aggregator] Validation error for {item['title']}: {e}")
+                    return None
+
+                # Process in parallel with controlled concurrency
+                enhanced_items = await asyncio.gather(*(process_and_validate(i) for i in items[:30]))
+                valid_items = [i for i in enhanced_items if i]
+
+                # Update Redis with valid, rich data
+                final_data = {
+                    'latest_episodes': valid_items[:24],
+                    'last_updated': int(asyncio.get_event_loop().time())
+                }
                 
-            enhanced_items = await asyncio.gather(*(enhance_item(item) for item in items[:30]))
-            enhanced_series = await asyncio.gather(*(enhance_item(s) for s in series_list))
-            
-            filtered_items = [i for i in enhanced_items if i.get('img')]
-            filtered_series = [s for s in enhanced_series if s.get('score') is not None]
-            
-            filtered_series.sort(key=lambda x: x.get('popularity', 0), reverse=True)
-            
-            final_data = {
-                'latest_episodes': filtered_items[:24],
-                'popular_series': filtered_series[:20]
-            }
-            
-            await upstash_set("home_data", final_data, ex=3600)
-            print("[Cron] Scrape job finished. Saved to Redis.")
-            consecutive_failures = 0
+                await upstash_set("home_data", final_data, ex=3600)
+                print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis.")
+                consecutive_failures = 0
+                
         except TimeoutError:
             print("[Cron] Another instance is running, skipping")
         except Exception as e:
             consecutive_failures += 1
-            print(f"[Cron] Error: {e}")
-            backoff = min(60 * (2 ** (consecutive_failures - 1)), 900)
-            await asyncio.sleep(backoff)
+            print(f"[Cron] Aggregator Error: {e}")
+            await asyncio.sleep(60)
             continue
             
         await asyncio.sleep(3600)
+
 
 
 # In-memory cache for AniList
