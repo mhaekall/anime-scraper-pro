@@ -25,8 +25,8 @@ export function HomeView() {
   const popularSeries = data?.data?.popular_series || [];
   const debugError = error ? `Fetch failed: ${error.message}` : null;
 
-  const heroAnime = latestEpisodes.length > 0 ? latestEpisodes[0] : null;
-  const gridAnimes = latestEpisodes.length > 1 ? latestEpisodes.slice(1) : [];
+  const heroAnimes = latestEpisodes.slice(0, 6);
+  const gridAnimes = latestEpisodes.slice(6);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -61,7 +61,7 @@ export function HomeView() {
       </div>
 
       <div className="mb-10">
-        {heroAnime && <HeroCarousel anime={heroAnime} />}
+        {heroAnimes.length > 0 && <HeroCarousel animes={heroAnimes} />}
       </div>
 
       <div className="flex flex-col">
