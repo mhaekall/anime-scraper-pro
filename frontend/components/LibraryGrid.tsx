@@ -78,6 +78,7 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
       if (activeFilter) vars.genres = [activeFilter];
       
       const data = await fetchAniList(SEARCH_ADVANCED, vars);
+      console.log("Search Result Data:", data);
       
       if (data?.error) {
         setResults([]);
@@ -115,12 +116,14 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
 
   return (
     <div className="w-full pb-32">
-      <div className="sticky top-0 z-20 bg-[#000000]/90 backdrop-blur-xl pt-12 px-5 md:px-8 pb-4 border-b border-white/5">
-        <h1 className="text-[32px] md:text-[40px] font-black text-white tracking-tight mb-5">Eksplorasi</h1>
-        
+      <div className="pt-12 px-5 md:px-8 mb-5">
+        <h1 className="text-[32px] md:text-[40px] font-black text-white tracking-tight">Eksplorasi</h1>
+      </div>
+
+      <div className="sticky top-0 z-20 bg-[#000000]/90 backdrop-blur-xl px-5 md:px-8 pb-4 border-b border-white/5">
         {/* Advanced Search Input */}
-        <div className="relative group">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E93] group-focus-within:text-[var(--accent)] transition-colors" style={{ '--accent': settings.accentColor } as any}><Icons.Search /></div>
+        <div className="relative group pt-4">
+          <div className="absolute left-4 top-[calc(50%+8px)] -translate-y-1/2 text-[#8E8E93] group-focus-within:text-[var(--accent)] transition-colors" style={{ '--accent': settings.accentColor } as any}><Icons.Search /></div>
           <input 
             type="text" 
             value={query} 
@@ -129,7 +132,7 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
             style={{ '--accent': settings.accentColor } as any}
             placeholder="Cari judul anime, genre, atau studio..." 
           />
-          {query && <button onClick={() => setQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#2C2C2E] rounded-full flex items-center justify-center text-[#8E8E93] hover:text-white"><Icons.Close /></button>}
+          {query && <button onClick={() => { setQuery(''); setResults([]); }} className="absolute right-4 top-[calc(50%+8px)] -translate-y-1/2 w-6 h-6 bg-[#2C2C2E] rounded-full flex items-center justify-center text-[#8E8E93] hover:text-white"><Icons.Close /></button>}
         </div>
 
         {/* Genre Filters (Horizontal Scroll) */}
