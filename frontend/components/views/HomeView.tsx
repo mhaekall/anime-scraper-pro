@@ -7,7 +7,13 @@ import { AnimeGrid } from "@/components/AnimeGrid";
 import { TopSeriesGrid } from "@/components/TopSeriesGrid";
 import { ContinueWatching } from "@/components/ContinueWatching";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://jonyyyyyyyu-anime-scraper-api.hf.space";
+  return fetch(`${API_URL}${url}`).then((res) => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  });
+};
 
 export function HomeView() {
   const { data, error, isLoading } = useSWR('/api/home', fetcher, {
