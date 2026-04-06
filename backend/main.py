@@ -51,6 +51,12 @@ scraping_client = httpx.AsyncClient(
 
 from utils.distributed_lock import DistributedLock
 
+from providers.oploverz import OploverzProvider
+from providers.otakudesu import OtakudesuProvider
+oploverz_provider = OploverzProvider()
+otakudesu_provider = OtakudesuProvider()
+
+
 
 import os
 import json
@@ -641,6 +647,13 @@ async def get_series_detail(url: str = Query(..., description="Target URL of the
 async def get_episodes(url: str = Query(..., description="Target URL of the series")):
     try:
         r = await scraping_client.get(url)
+        if r.status_code in (301, 302, 303, 307, 308):
+            next_url = r.headers.get('location')
+            if next_url:
+                if not next_url.startswith('http'):
+                    next_url = urllib.parse.urljoin(url, next_url)
+                validate_scrape_url(next_url)
+                r = await scraping_client.get(next_url)
         
         episodes = []
         seen = set()
@@ -779,6 +792,117 @@ async def scrape_episode(url: str = Query(..., description="Episode URL to scrap
                 'title': anime_title,
                 'poster': poster
             }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get('/api/multi-source')
+async def get_multi_source(title: str = Query(..., description="Anime clean title"), ep: int = Query(..., description="Episode number"), oploverz_url: str = Query(None, description="Oploverz exact episode URL")):
+    """Aggregator endpoint that fetches sources from multiple providers concurrently"""
+    try:
+        tasks = []
+        
+        # 1. Oploverz Strategy
+        # If we already have the oploverz url from the frontend, we use it directly
+        if oploverz_url:
+            tasks.append(oploverz_provider.get_episode_sources(oploverz_url))
+        
+        # 2. Otakudesu Strategy
+        # We need to search Otakudesu for the title, find the matching series, find the matching episode, and extract sources.
+        async def fetch_otakudesu():
+            try:
+                # Naive search approach just for demonstration
+                # Search using the clean title on Otakudesu
+                search_url = f"https://otakudesu.cloud/?s={urllib.parse.quote_plus(title)}&post_type=anime"
+                r = await otakudesu_provider.client.get(search_url)
+                soup = BeautifulSoup(r.text, 'lxml')
+                
+                # Find first search result
+                first_result = soup.select_one('ul.chivsrc li h2 a')
+                if not first_result:
+                    return {'sources': []}
+                
+                series_url = first_result.get('href')
+                
+                # Get series details (episode list)
+                details = await otakudesu_provider.get_anime_detail(series_url)
+                
+                # Find matching episode
+                target_ep_url = None
+                for e in details.get('episodes', []):
+                    # Attempt to extract episode number from Otakudesu title e.g., "Episode 12 Sub Indo"
+                    num_match = re.search(r'\b(?:Episode|Eps)\s*(\d+(?:\.\d+)?)\b', e['title'], re.IGNORECASE)
+                    if num_match:
+                        try:
+                            if float(num_match.group(1)) == float(ep):
+                                target_ep_url = e['url']
+                                break
+                        except:
+                            pass
+                
+                if target_ep_url:
+                    sources = await otakudesu_provider.get_episode_sources(target_ep_url)
+                    return {'sources': sources}
+            except Exception as e:
+                print(f"[Otakudesu Aggregator] Error: {e}")
+            return {'sources': []}
+            
+        tasks.append(fetch_otakudesu())
+        
+        # Run concurrently
+        results = await asyncio.gather(*tasks)
+        
+        all_sources = []
+        downloads = []
+        
+        # Process Oploverz results
+        if len(results) > 0 and oploverz_url:
+            op_res = results[0]
+            # Oploverz still needs resolving
+            raw_embeds = op_res.get('sources', [])
+            downloads = op_res.get('downloads', [])
+            
+            async def process_embed(embed):
+                resolved_url = await resolve_video_source(embed['url'])
+                return {
+                    'provider': embed['provider'],
+                    'domain': embed['domain'],
+                    'quality': embed['quality'],
+                    'resolved': resolved_url,
+                    'type': 'direct' if resolved_url.endswith(('.m3u8', '.mp4')) else 'iframe',
+                    'source': 'oploverz'
+                }
+            op_resolved = await asyncio.gather(*(process_embed(e) for e in raw_embeds))
+            all_sources.extend(op_resolved)
+        
+        # Process Otakudesu results
+        if len(results) > 1 or not oploverz_url:
+            ot_res = results[1] if oploverz_url else results[0]
+            ot_raw_embeds = ot_res.get('sources', [])
+            
+            # Resolve Otakudesu sources using our generic resolvers
+            async def process_otakudesu(embed):
+                resolved_url = await resolve_video_source(embed['resolved']) # Actually it is raw URL in 'resolved' key from provider
+                return {
+                    'provider': embed['provider'],
+                    'domain': extract_domain(embed['resolved']),
+                    'quality': embed['quality'],
+                    'resolved': resolved_url,
+                    'type': 'direct' if resolved_url.endswith(('.m3u8', '.mp4')) else 'iframe',
+                    'source': 'otakudesu'
+                }
+            ot_resolved = await asyncio.gather(*(process_otakudesu(e) for e in ot_raw_embeds))
+            all_sources.extend(ot_resolved)
+            
+        # Sort combined sources
+        rank = {"1080p": 5, "720p": 4, "480p": 3, "360p": 2, "Auto": 1}
+        all_sources.sort(key=lambda x: rank.get(x['quality'], 1), reverse=True)
+
+        return {
+            'success': True, 
+            'sources': all_sources,
+            'downloads': downloads
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

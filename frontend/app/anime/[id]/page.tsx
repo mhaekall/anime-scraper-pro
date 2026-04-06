@@ -8,26 +8,30 @@ export const runtime = 'edge';
 export default async function AnimeDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let detail: any = null;
+  let fetchError: string | null = null;
 
   try {
-    const url = `https://o.oploverz.ltd/series/${id}/`;
+    const url = `https://o.oploverz.ltd/series/${id}`;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://jonyyyyyyyu-anime-scraper-api.hf.space";
     const res = await fetch(`${API_URL}/api/series-detail?url=${encodeURIComponent(url)}`, {
-      cache: 'no-store',
       headers: {
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-store',
+        'Pragma': 'no-cache'
       }
     });
     if (res.ok) {
       const data = await res.json();
       detail = data.data;
+    } else {
+      fetchError = `HTTP ${res.status}: ${await res.text()}`;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Fetch series-detail error:", error);
+    fetchError = error.message || String(error);
   }
 
   const episodes = detail?.episodes || [];
-  const seriesTitle = detail?.title || "Daftar Episode";
+  const seriesTitle = detail?.title || (fetchError ? `Error: ${fetchError}` : "Daftar Episode");
   const poster = detail?.poster || "";
   const banner = detail?.banner || poster; // Fallback to poster if no banner
   const synopsis = detail?.synopsis || "";
