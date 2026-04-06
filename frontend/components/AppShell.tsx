@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { HomeView } from "./views/HomeView";
-import { ExploreView } from "./views/ExploreView";
-import CollectionView from "./views/CollectionView";
-import ProfileView from "./views/ProfileView";
+import dynamic from 'next/dynamic';
 import { Home, PlaySquare, FolderDot, User } from "lucide-react";
+
+// Dynamically import views to avoid hydration/prerender issues with Better Auth session hooks
+const HomeView = dynamic(() => import("./views/HomeView").then(mod => mod.HomeView), { ssr: false });
+const ExploreView = dynamic(() => import("./views/ExploreView").then(mod => mod.ExploreView), { ssr: false });
+const CollectionView = dynamic(() => import("./views/CollectionView"), { ssr: false });
+const ProfileView = dynamic(() => import("./views/ProfileView"), { ssr: false });
 
 export function AppShell() {
   const [activeTab, setActiveTab] = useState(0);

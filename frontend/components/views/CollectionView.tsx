@@ -81,6 +81,7 @@ export default function CollectionClient() {
                     <div className="flex gap-2 mt-3 pt-3 border-t border-[#2C2C2E]">
                       {activeTab !== 'watching' && <button onClick={() => updateWatchlistStatus(item.id, 'watching')} className="flex-1 py-1.5 bg-[#2C2C2E] rounded-[10px] text-[11px] font-bold text-white hover:bg-[#3A3A3C] transition-colors">Tonton</button>}
                       {activeTab !== 'completed' && <button onClick={() => updateWatchlistStatus(item.id, 'completed', item.totalEps)} className="flex-1 py-1.5 bg-[#2C2C2E] rounded-[10px] text-[11px] font-bold text-[#30D158] hover:bg-[#3A3A3C] transition-colors">Tamat</button>}
+                      {activeTab !== 'dropped' && <button onClick={() => updateWatchlistStatus(item.id, 'dropped')} className="flex-1 py-1.5 bg-[#2C2C2E] rounded-[10px] text-[11px] font-bold text-[#FF453A] hover:bg-[#3A3A3C] transition-colors">Drop</button>}
                       <button onClick={() => handleRemove(item.id)} className="px-3 py-1.5 bg-[#FF453A]/10 text-[#FF453A] rounded-[10px] hover:bg-[#FF453A]/20 transition-colors"><Icons.Trash /></button>
                     </div>
                   </div>

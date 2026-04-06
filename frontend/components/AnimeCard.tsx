@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { Icons } from "./Icons";
 import { useThemeContext } from "./ThemeProvider";
+import { useWatchHistory } from "@/hooks/useWatchHistory";
 
 const GET_ANIME_COVER = `
   query ($search: String) {
@@ -22,6 +23,14 @@ export function AnimeCard({ anime, id, idx, epId, showRank = false, rankIndex = 
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { settings } = useThemeContext();
+  const { history } = useWatchHistory();
+
+  // Find latest watch history for this anime
+  const watchedData = history.find(h => h.animeSlug === id);
+  const progressPct = watchedData && watchedData.durationSec > 0 
+    ? (watchedData.timestampSec / watchedData.durationSec) * 100 
+    : 0;
+  const isCompleted = watchedData?.completed || progressPct > 90;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -142,11 +151,28 @@ export function AnimeCard({ anime, id, idx, epId, showRank = false, rankIndex = 
             </div>
           </div>
         </div>
+
+        {/* Progress Bar (Visual) */}
+        {watchedData && (
+          <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20 z-20">
+            <div 
+              className="h-full transition-all duration-300" 
+              style={{ width: `${progressPct}%`, backgroundColor: settings.accentColor }} 
+            />
+          </div>
+        )}
       </Link>
       
-      <h3 className="text-[#F2F2F7] font-semibold text-[13px] line-clamp-2 leading-[1.3] px-1 transition-colors duration-300 group-hover:text-white" title={title}>
-        {title}
-      </h3>
+      <div className="flex flex-col gap-0.5 px-1">
+        <h3 className="text-[#F2F2F7] font-semibold text-[13px] line-clamp-2 leading-[1.3] transition-colors duration-300 group-hover:text-white" title={title}>
+          {title}
+        </h3>
+        {isCompleted && (
+          <span className="text-[10px] font-bold text-[#30D158] uppercase tracking-wider flex items-center gap-1 mt-0.5">
+            <Icons.Check cls="w-3 h-3" /> Selesai
+          </span>
+        )}
+      </div>
     </div>
   );
 }

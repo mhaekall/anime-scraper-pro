@@ -64,8 +64,15 @@ export function ContinueWatching() {
                   <div className="h-full transition-all" style={{ width: `${progressPct}%`, backgroundColor: settings.accentColor }} />
                 </div>
               </div>
-              <h3 className="text-white font-bold text-[14px] line-clamp-1 group-hover:text-[var(--accent)] transition-colors" style={{ '--accent': settings.accentColor } as any}>{item.animeTitle}</h3>
-              <p className="text-[#8E8E93] text-[12px] mt-0.5">Ep {item.episode} • {formatTime(item.timestampSec)} / {formatTime(item.durationSec)}</p>
+              <div className="flex justify-between items-start mt-2">
+                <div className="flex-1 min-w-0 pr-2">
+                  <h3 className="text-white font-bold text-[14px] line-clamp-1 group-hover:text-[var(--accent)] transition-colors" style={{ '--accent': settings.accentColor } as any}>{item.animeTitle}</h3>
+                  <p className="text-[#8E8E93] text-[12px] mt-0.5">{formatTime(item.timestampSec)} / {formatTime(item.durationSec)}</p>
+                </div>
+                <div className="flex-shrink-0 px-2 py-1 bg-white/10 rounded border border-white/5 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1 group-hover:bg-white/20 transition-colors">
+                  <Icons.Play cls="w-2.5 h-2.5" /> Lanjut Eps {item.episode}
+                </div>
+              </div>
             </Link>
           );
         })}

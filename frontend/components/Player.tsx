@@ -25,6 +25,13 @@ const QUALITY_RANK: Record<string, number> = {
   "1080p": 4, "720p": 3, "480p": 2, "360p": 1, "Auto": 0
 };
 
+const getProxiedUrl = (url: string) => {
+  if (!url || url.includes('/api/v1/stream')) return url;
+  // Gunakan URL absolut ke backend jika perlu, atau relatif jika satu domain
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  return `${backendUrl}/api/v1/stream?url=${encodeURIComponent(url)}`;
+};
+
 const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
 
 function fmt(s: number) {
@@ -35,16 +42,17 @@ function fmt(s: number) {
 
 export function Player({ title, poster, sources, animeSlug, episodeNum }: PlayerProps) {
   const { updateProgress } = useWatchHistory();
-  const { settings } = useThemeContext();
+  const { settings, watchlist, updateWatchlistStatus } = useThemeContext();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sort sources by quality
+  // Sort sources by quality and Wrap with Proxy
   const sorted = [...sources]
     .filter(s => s.type !== 'iframe' && s.resolved)
+    .map(s => ({ ...s, resolved: getProxiedUrl(s.resolved) }))
     .sort((a, b) => (QUALITY_RANK[b.quality] || 0) - (QUALITY_RANK[a.quality] || 0));
 
   // Default to 720p if available
@@ -181,11 +189,19 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
       completed: duration > 0 && (progress / duration) > 0.9,
     };
 
-    const interval = setInterval(() => updateProgress(progressData), 15000); 
+    const interval = setInterval(() => {
+      updateProgress(progressData);
+      if (animeSlug && watchlist.find(w => w.id === animeSlug)) {
+        updateWatchlistStatus(animeSlug, undefined, episodeNum);
+      }
+    }, 15000); 
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         navigator.sendBeacon('/api/history', JSON.stringify(progressData));
+        if (animeSlug && watchlist.find(w => w.id === animeSlug)) {
+          updateWatchlistStatus(animeSlug, undefined, episodeNum);
+        }
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -193,7 +209,12 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
     return () => {
       clearInterval(interval);
       // Final save on unmount
-      if (progress > 5) updateProgress(progressData);
+      if (progress > 5) {
+        updateProgress(progressData);
+        if (animeSlug && watchlist.find(w => w.id === animeSlug)) {
+          updateWatchlistStatus(animeSlug, undefined, episodeNum);
+        }
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [progress, duration, animeSlug, episodeNum, title, poster, current, updateProgress]);
