@@ -43,7 +43,11 @@ const fetchAniList = async (query: string, variables = {}) => {
   }
 };
 
-export function LibraryGrid() {
+interface LibraryGridProps {
+  animes: any[];
+}
+
+export function LibraryGrid({ animes }: LibraryGridProps) {
   const { settings, searchHistory, addSearchHistory, clearSearchHistory } = useThemeContext();
   const [query, setQuery] = useState('');
   const dq = useDebounce(query, 800); // 800ms debounce for API
@@ -170,19 +174,33 @@ export function LibraryGrid() {
             <h2 className="text-[18px] font-black text-white mb-4">Koleksi Pilihan</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {[
-                { t: "Pemenang Anime Awards 2024", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-nNgE6mD0r6vM.jpg", color: "#FFD60A" },
-                { t: "Masterpiece Studio MAPPA", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/145064-1S0e047W4Tus.jpg", color: "#FF453A" },
-                { t: "Isekai Reinkarnasi Overpower", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/108465-RgsMpKMZQaSm.jpg", color: "#BF5AF2" },
-                { t: "Romansa Bikin Baper", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/114535-1L6oW3Xp2aFm.jpg", color: "#FF375F" }
+                { t: "Pemenang Anime Awards 2024", q: "Frieren", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-nNgE6mD0r6vM.jpg", color: "#FFD60A" },
+                { t: "Masterpiece Studio MAPPA", q: "Jujutsu Kaisen", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/145064-1S0e047W4Tus.jpg", color: "#FF453A" },
+                { t: "Isekai Reinkarnasi Overpower", q: "Tensei shitara Slime", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/108465-RgsMpKMZQaSm.jpg", color: "#BF5AF2" },
+                { t: "Romansa Bikin Baper", q: "Kaguya-sama", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/114535-1L6oW3Xp2aFm.jpg", color: "#FF375F" }
               ].map((c, i) => (
-                <div key={i} className="h-[120px] rounded-[20px] relative overflow-hidden group cursor-pointer border border-white/10">
-                  <img src={c.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={c.t} loading="lazy" />
-                  <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-colors" />
-                  <div className="absolute inset-y-0 left-0 w-1/2 opacity-60 mix-blend-overlay pointer-events-none" style={{ background: `linear-gradient(to right, ${c.color}, transparent)` }} />
-                  <h3 className="absolute bottom-4 left-5 right-5 text-white font-black text-[18px] leading-tight drop-shadow-md z-10">{c.t}</h3>
+                <div key={i} onClick={() => setQuery(c.q)} className="h-[120px] rounded-[20px] relative overflow-hidden group cursor-pointer border border-white/10 bg-[#1C1C1E]">
+                  <img src={c.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 z-0" alt={c.t} loading="lazy" />
+                  <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-colors z-10" />
+                  <div className="absolute inset-y-0 left-0 w-3/4 opacity-80 mix-blend-overlay pointer-events-none z-10" style={{ background: `linear-gradient(to right, ${c.color}, transparent)` }} />
+                  <h3 className="absolute bottom-4 left-5 right-5 text-white font-black text-[18px] leading-tight drop-shadow-md z-20">{c.t}</h3>
                 </div>
               ))}
             </div>
+
+            {/* Show some random animes if not searching */}
+            {animes && animes.length > 0 && (
+              <>
+                <h2 className="text-[18px] font-black text-white mb-4">Mungkin Anda Suka</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5 pb-10">
+                    {animes.slice(0, 18).map((anime: any, idx: number) => {
+                      const cleanUrl = (anime.url || '').replace(/\/$/, '');
+                      const id = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
+                      return <AnimeCard key={id + idx} anime={anime} id={id} idx={idx} />;
+                    })}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
