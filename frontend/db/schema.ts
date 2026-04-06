@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, boolean, serial, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, boolean, serial, unique, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
 	id: text("id").primaryKey(),
@@ -61,7 +61,10 @@ export const watchHistory = pgTable("watch_history", {
   quality: text("quality").default("720p"),
   updatedAt: timestamp("updatedAt").notNull()
 }, (t) => ({
-  unq: unique().on(t.userId, t.animeSlug, t.episode)
+  unq: unique().on(t.userId, t.animeSlug, t.episode),
+  userUpdatedAtIdx: index("wh_user_updated_at_idx").on(t.userId, t.updatedAt),
+  userSlugEpisodeIdx: index("wh_user_slug_ep_idx").on(t.userId, t.animeSlug, t.episode),
+  userCompletedIdx: index("wh_user_completed_idx").on(t.userId, t.completed, t.updatedAt),
 }));
 
 export const bookmarks = pgTable("bookmarks", {
@@ -71,5 +74,6 @@ export const bookmarks = pgTable("bookmarks", {
   status: text("status").default("plan_to_watch"),
   updatedAt: timestamp("updatedAt").notNull()
 }, (t) => ({
-  unq: unique().on(t.userId, t.animeSlug)
+  unq: unique().on(t.userId, t.animeSlug),
+  userUpdatedAtIdx: index("bm_user_updated_idx").on(t.userId, t.updatedAt),
 }));

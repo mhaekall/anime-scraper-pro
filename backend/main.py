@@ -36,8 +36,21 @@ HEADERS = {
     'Upgrade-Insecure-Requests': '1'
 }
 
-# Async HTTP Client with proper TLS config
+
+# Async HTTP Client with proper TLS config for internal/trusted APIs
 client = httpx.AsyncClient(verify=False, headers=HEADERS, timeout=30.0, follow_redirects=True)
+
+from utils.ssrf_guard import validate_scrape_url, SSRFSafeTransport, SSRFError
+scraping_client = httpx.AsyncClient(
+    verify=False,
+    headers=HEADERS,
+    timeout=30.0,
+    follow_redirects=False,
+    transport=SSRFSafeTransport(),
+)
+
+from utils.distributed_lock import DistributedLock
+
 
 import os
 import json
@@ -65,18 +78,27 @@ async def upstash_set(key: str, value: dict, ex: int = 3600):
     return False
 
 async def background_scrape_job():
+    consecutive_failures = 0
     while True:
+        lock = DistributedLock(
+            upstash_get_fn=upstash_get,
+            upstash_set_fn=upstash_set,
+            upstash_del_fn=lambda k: client.post(f"{UPSTASH_REDIS_REST_URL}/del/{k}", headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}),
+            key="background_scrape"
+        )
         try:
-            print("[Cron] Starting background scrape job...")
-            url1 = 'https://o.oploverz.ltd/'
-            url2 = 'https://o.oploverz.ltd/page/2/'
-            url_series = 'https://o.oploverz.ltd/series/'
-            
-            r1, r2, r_series = await asyncio.gather(
-                client.get(url1),
-                client.get(url2),
-                client.get(url_series)
-            )
+            async with lock:
+                print("[Cron] Starting background scrape job...")
+                url1 = 'https://o.oploverz.ltd/'
+                url2 = 'https://o.oploverz.ltd/page/2/'
+                url_series = 'https://o.oploverz.ltd/series/'
+                
+                r1, r2, r_series = await asyncio.gather(
+                    scraping_client.get(url1),
+                    scraping_client.get(url2),
+                    scraping_client.get(url_series)
+                )
+
             
             items = []
             seen = set()
@@ -164,8 +186,15 @@ async def background_scrape_job():
             
             await upstash_set("home_data", final_data, ex=3600)
             print("[Cron] Scrape job finished. Saved to Redis.")
+            consecutive_failures = 0
+        except TimeoutError:
+            print("[Cron] Another instance is running, skipping")
         except Exception as e:
+            consecutive_failures += 1
             print(f"[Cron] Error: {e}")
+            backoff = min(60 * (2 ** (consecutive_failures - 1)), 900)
+            await asyncio.sleep(backoff)
+            continue
             
         await asyncio.sleep(3600)
 
@@ -399,6 +428,7 @@ async def resolve_doodstream(url: str, client: httpx.AsyncClient) -> str:
 
 async def resolve_video_source(url: str) -> str:
     client_local = httpx.AsyncClient(
+        transport=SSRFSafeTransport(),
         verify=False, 
         headers=HEADERS, 
         timeout=10.0, 
@@ -454,7 +484,7 @@ async def get_home():
 async def get_series():
     try:
         url = 'https://o.oploverz.ltd/series'
-        r = await client.get(url)
+        r = await scraping_client.get(url)
         soup = BeautifulSoup(r.text, 'lxml')
         series = []
         seen = set()
@@ -485,7 +515,7 @@ async def get_series():
 @app.get('/api/series-detail')
 async def get_series_detail(url: str = Query(..., description="Target URL of the series")):
     try:
-        r = await client.get(url)
+        r = await scraping_client.get(url)
         soup = BeautifulSoup(r.text, 'lxml')
         
         # Extract title from slug to ensure clean AniList query
@@ -544,7 +574,7 @@ async def get_series_detail(url: str = Query(..., description="Target URL of the
 @app.get('/api/episodes')
 async def get_episodes(url: str = Query(..., description="Target URL of the series")):
     try:
-        r = await client.get(url)
+        r = await scraping_client.get(url)
         
         episodes = []
         seen = set()
@@ -571,7 +601,20 @@ async def get_episodes(url: str = Query(..., description="Target URL of the seri
 @app.get('/api/scrape')
 async def scrape_episode(url: str = Query(..., description="Episode URL to scrape")):
     try:
-        r = await client.get(url)
+        validate_scrape_url(url)
+    except SSRFError as e:
+        raise HTTPException(status_code=400, detail=f"URL tidak valid: {str(e)}")
+
+    try:
+        r = await scraping_client.get(url)
+        if r.status_code in (301, 302, 303, 307, 308):
+            # Manual redirect handling for safety
+            next_url = r.headers.get('location')
+            if next_url:
+                if not next_url.startswith('http'):
+                    next_url = urllib.parse.urljoin(url, next_url)
+                validate_scrape_url(next_url)
+                r = await scraping_client.get(next_url)
         html = r.text
         soup = BeautifulSoup(html, 'lxml')
         

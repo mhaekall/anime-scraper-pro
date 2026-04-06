@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
+import { useWatchHistory } from "@/hooks/useWatchHistory";
 
 interface Source {
   resolved: string;
@@ -29,6 +30,7 @@ function fmt(s: number) {
 }
 
 export function Player({ title, poster, sources, animeSlug, episodeNum }: PlayerProps) {
+  const { updateProgress, getProgress } = useWatchHistory();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -156,36 +158,37 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
     };
   }, []);
 
-  // Sync progress to cloud
+  // Sync progress to cloud & Handle Sudden Exit
   useEffect(() => {
     if (!animeSlug || !episodeNum || duration <= 0) return;
     
-    const sync = async () => {
-      try {
-        await fetch('/api/history', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            animeSlug,
-            animeTitle: title.split(' - ')[0] || title,
-            animeCover: poster,
-            episode: episodeNum,
-            episodeTitle: title,
-            timestampSec: Math.floor(progress),
-            durationSec: Math.floor(duration),
-            source: current?.provider,
-            quality: current?.quality
-          })
-        });
-      } catch (e) {
-        console.error("Sync error", e);
-      }
+    const progressData = {
+      animeSlug,
+      animeTitle: title.split(' - ')[0] || title,
+      animeCover: poster,
+      episode: episodeNum,
+      episodeTitle: title,
+      timestampSec: Math.floor(progress),
+      durationSec: Math.floor(duration),
+      source: current?.provider,
+      quality: current?.quality,
+      completed: duration > 0 && (progress / duration) > 0.9,
     };
 
-    // only sync if playing or paused recently (let's just sync every 15s)
-    const interval = setInterval(sync, 15000); 
-    return () => clearInterval(interval);
-  }, [progress, duration, animeSlug, episodeNum, title, poster, current]);
+    const interval = setInterval(() => updateProgress(progressData), 15000); 
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        navigator.sendBeacon('/api/history', JSON.stringify(progressData));
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [progress, duration, animeSlug, episodeNum, title, poster, current, updateProgress]);
 
   // Auto-hide controls
   const showCtrl = useCallback(() => {
