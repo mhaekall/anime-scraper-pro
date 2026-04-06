@@ -2,28 +2,31 @@
 
 import { useWatchHistory } from "@/hooks/useWatchHistory";
 import Link from "next/link";
-import { PlayCircle, Clock } from "lucide-react";
+import { Icons } from "./Icons";
+import { useThemeContext } from "./ThemeProvider";
+
+const formatTime = (seconds: number) => {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+};
 
 export function ContinueWatching() {
   const { history, isLoading } = useWatchHistory();
+  const { settings } = useThemeContext();
 
   if (isLoading) {
     return (
-      <section className="flex flex-col gap-6 w-full mt-4 mb-8">
-        <div className="flex items-center gap-2">
-          <Clock className="text-blue-500 w-6 h-6" />
-          <h2 className="text-2xl font-bold text-white/90">Melanjutkan Tontonan</h2>
-        </div>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="mb-10 px-5 md:px-8 w-full">
+        <h2 className="text-[20px] md:text-[24px] font-black text-white mb-4">Lanjutkan Menonton</h2>
+        <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
           {[1, 2, 3].map(i => (
-            <div key={i} className="shrink-0 w-[280px] aspect-video bg-zinc-800 rounded-2xl animate-pulse" />
+            <div key={i} className="shrink-0 w-[240px] md:w-[280px] aspect-video bg-[#1C1C1E] rounded-[16px] animate-pulse border border-white/5" />
           ))}
         </div>
-      </section>
+      </div>
     );
   }
-
-  if (history.length === 0) return null;
 
   const inProgress = history
     .filter(item => !item.completed && item.timestampSec > 0)
@@ -32,58 +35,41 @@ export function ContinueWatching() {
   if (inProgress.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-6 w-full mt-4 mb-8">
-      <div className="flex items-center gap-2">
-        <Clock className="text-blue-500 w-6 h-6" />
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white/90">
-          Melanjutkan Tontonan
-        </h2>
-      </div>
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+    <div className="mb-10 px-5 md:px-8 w-full overflow-hidden">
+      <h2 className="text-[20px] md:text-[24px] font-black text-white mb-4">Lanjutkan Menonton</h2>
+      <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar" style={{ WebkitOverflowScrolling: "touch" }}>
         {inProgress.map((item, idx) => {
           const progressPct = item.durationSec > 0
             ? Math.min((item.timestampSec / item.durationSec) * 100, 100)
             : 0;
 
           return (
-            <div key={`${item.animeSlug}-${item.episode}-${idx}`}
-              className="snap-start shrink-0 w-[280px] sm:w-[320px] animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-both"
-              style={{ animationDelay: `${idx * 100}ms` }}>
-              <Link href={`/watch/${item.animeSlug}/${item.episode}`}
-                className="group relative flex flex-col gap-3">
-                <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10 group-hover:ring-blue-500/50 transition-all">
-                  {item.animeCover ? (
-                    <img src={item.animeCover} alt={item.animeTitle}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
-                      <PlayCircle className="w-12 h-12 text-white/10" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
-                  
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-20">
-                    <div className="h-full bg-blue-500 transition-all"
-                      style={{ width: `${progressPct}%` }} />
+            <Link key={`${item.animeSlug}-${item.episode}-${idx}`} href={`/watch/${item.animeSlug}/${item.episode}`} className="min-w-[240px] md:min-w-[280px] snap-center cursor-pointer group animate-fade-in block" style={{ WebkitTapHighlightColor: "transparent" }}>
+              <div className="w-full aspect-video rounded-[16px] bg-[#1C1C1E] relative overflow-hidden mb-3 border border-white/5 group-hover:border-white/20 transition-colors shadow-lg">
+                {item.animeCover ? (
+                  <img src={item.animeCover} className="w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-500" alt={item.animeTitle} />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#2C2C2E]">
+                    <Icons.ImageOff />
                   </div>
-
-                  <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-white line-clamp-1">{item.animeTitle}</span>
-                      <span className="text-xs text-blue-400 font-medium">
-                        Eps {item.episode} • {Math.floor(item.timestampSec / 60)}m tersisa
-                      </span>
-                    </div>
-                    <div className="p-2 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                      <PlayCircle className="w-4 h-4" fill="currentColor" />
-                    </div>
+                )}
+                
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center border border-white/20 text-white shadow-[0_10px_30px_rgba(0,0,0,0.5)] group-hover:bg-[var(--accent)] group-hover:border-transparent transition-colors" style={{ '--accent': settings.accentColor } as any}>
+                    <Icons.Play />
                   </div>
                 </div>
-              </Link>
-            </div>
+                
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20">
+                  <div className="h-full transition-all" style={{ width: `${progressPct}%`, backgroundColor: settings.accentColor }} />
+                </div>
+              </div>
+              <h3 className="text-white font-bold text-[14px] line-clamp-1 group-hover:text-[var(--accent)] transition-colors" style={{ '--accent': settings.accentColor } as any}>{item.animeTitle}</h3>
+              <p className="text-[#8E8E93] text-[12px] mt-0.5">Ep {item.episode} • {formatTime(item.timestampSec)} / {formatTime(item.durationSec)}</p>
+            </Link>
           );
         })}
       </div>
-    </section>
+    </div>
   );
 }

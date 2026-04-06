@@ -1,24 +1,30 @@
 "use client";
 
 import { AnimeCard } from "./AnimeCard";
+import { Icons } from "./Icons";
+import { useThemeContext } from "./ThemeProvider";
 
 interface AnimeGridProps {
   animes: any[];
   title: string;
+  showRank?: boolean;
 }
 
-export function AnimeGrid({ animes, title }: AnimeGridProps) {
+export function AnimeGrid({ animes, title, showRank = false }: AnimeGridProps) {
+  const { settings } = useThemeContext();
+
   if (!animes || animes.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white/90">
-          {title}
-        </h2>
+    <div className="mb-8 md:mb-10 w-full overflow-hidden">
+      <div className="flex items-center justify-between mb-4 px-5 md:px-8">
+        <h2 className="text-[20px] md:text-[24px] font-black text-white tracking-tight">{title}</h2>
+        <button className="text-[var(--accent)] text-[13px] md:text-[14px] font-bold active:opacity-70 transition-opacity flex items-center gap-1" style={{ '--accent': settings.accentColor } as any}>
+          Lihat Semua <Icons.ChevronRight />
+        </button>
       </div>
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-8">
+      <div className="flex gap-3 md:gap-5 overflow-x-auto pb-6 snap-x snap-mandatory hide-scrollbar px-5 md:px-8" style={{ WebkitOverflowScrolling: "touch" }}>
         {animes.map((anime: any, idx: number) => {
           const cleanUrl = (anime.url || '').replace(/\/$/, '');
           const id = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
@@ -27,10 +33,12 @@ export function AnimeGrid({ animes, title }: AnimeGridProps) {
           const epId = cleanEpUrl.substring(cleanEpUrl.lastIndexOf('/') + 1);
 
           return (
-            <AnimeCard key={id + idx} anime={anime} id={id} idx={idx} epId={epId} />
+            <div key={id + idx} className="snap-start flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]">
+              <AnimeCard anime={anime} id={id} idx={idx} epId={epId} showRank={showRank} rankIndex={idx + 1} />
+            </div>
           );
         })}
       </div>
-    </section>
+    </div>
   );
 }

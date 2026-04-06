@@ -3,7 +3,7 @@ import { AnimeGrid } from "@/components/AnimeGrid";
 import { TopSeriesGrid } from "@/components/TopSeriesGrid";
 import { ContinueWatching } from "@/components/ContinueWatching";
 
-export const dynamic = 'force-dynamic'; // Prevent aggressive caching during dev/production so updates are visible instantly
+export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
 
 export default async function Home() {
@@ -26,22 +26,37 @@ export default async function Home() {
     debugError = `Fetch failed: ${error.message} | ${error.stack}`;
   }
 
-  // Pisahkan anime pertama untuk dijadikan Hero Banner
   const heroAnime = latestEpisodes.length > 0 ? latestEpisodes[0] : null;
   const gridAnimes = latestEpisodes.length > 1 ? latestEpisodes.slice(1) : [];
+  
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Ohayou';
+    if (hour < 18) return 'Konnichiwa';
+    return 'Konbanwa';
+  };
 
   return (
-    <main className="min-h-screen bg-black pb-24 text-white overflow-hidden">
+    <main className="min-h-screen bg-[#000000] pb-32 text-white overflow-hidden overflow-y-auto hide-scrollbar">
       {debugError && (
-        <div className="bg-red-500/20 border border-red-500 text-red-500 p-4 m-4 rounded">
+        <div className="bg-[#FF453A]/20 border border-[#FF453A] text-[#FF453A] p-4 m-4 rounded-[16px] text-sm">
           <h2 className="font-bold">Backend Connection Error:</h2>
           <pre className="text-xs whitespace-pre-wrap">{debugError}</pre>
         </div>
       )}
-      {heroAnime && <HeroCarousel anime={heroAnime} />}
 
-      
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 flex flex-col gap-12">
+      <div className="px-5 md:px-8 mb-6 mt-12 flex justify-between items-end animate-fade-in">
+        <div>
+          <p className="text-[#8E8E93] text-[13px] font-bold tracking-[0.15em] uppercase mb-1">{getGreeting()}, User</p>
+          <h1 className="text-[28px] md:text-[34px] font-black text-white leading-[1.1] tracking-tight">Temukan anime<br/>favorit barumu.</h1>
+        </div>
+      </div>
+
+      <div className="mb-10">
+        {heroAnime && <HeroCarousel anime={heroAnime} />}
+      </div>
+
+      <div className="flex flex-col">
         <ContinueWatching />
         <AnimeGrid animes={gridAnimes} title="Rilis Episode Terbaru" />
         <TopSeriesGrid animes={popularSeries} title="Seri Anime Terpopuler" />
