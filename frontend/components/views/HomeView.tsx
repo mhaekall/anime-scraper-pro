@@ -37,7 +37,16 @@ const fetchAniList = (url: string) => fetch(url, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
   body: JSON.stringify({ query: HOME_QUERY, variables: { season: 'SPRING', seasonYear: 2025 } })
-}).then(res => res.json());
+}).then(res => {
+  if (!res.ok) {
+    if (res.status === 429) {
+      console.warn("AniList API Rate Limit (429) - using cached or empty data");
+      return { error: true, status: 429 };
+    }
+    throw new Error(`AniList Error: ${res.status}`);
+  }
+  return res.json();
+});
 
 export function HomeView() {
   const { data: oploverzData, error, isLoading } = useSWR('/api/home', fetcher, {

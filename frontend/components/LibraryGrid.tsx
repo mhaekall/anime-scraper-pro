@@ -33,13 +33,19 @@ const fetchAniList = async (query: string, variables = {}) => {
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ query, variables }),
     });
-    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+    if (!response.ok) {
+      console.warn(`AniList API Error: HTTP ${response.status}`);
+      return { error: true, status: response.status };
+    }
     const json = await response.json();
-    if (json.errors) throw new Error(json.errors[0].message);
+    if (json.errors) {
+      console.warn("AniList API GraphQL Error:", json.errors[0].message);
+      return { error: true, status: 400 };
+    }
     return json.data;
   } catch (error) {
-    console.error("AniList API Error:", error);
-    return null;
+    console.error("AniList API Network Error:", error);
+    return { error: true, status: 500 };
   }
 };
 
@@ -48,12 +54,13 @@ interface LibraryGridProps {
 }
 
 export function LibraryGrid({ animes }: LibraryGridProps) {
-  const { settings, searchHistory, addSearchHistory, clearSearchHistory } = useThemeContext();
+  const { settings, searchHistory, addSearchHistory, clearSearchHistory, addToast } = useThemeContext();
   const [query, setQuery] = useState('');
   const dq = useDebounce(query, 800); // 800ms debounce for API
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('');
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const GENRES = ['Action', 'Romance', 'Fantasy', 'Sci-Fi', 'Comedy', 'Drama', 'Horror', 'Sports', 'Mecha', 'Slice of Life', 'Mystery', 'Psychological'];
 
@@ -61,15 +68,26 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
     const fetchSearch = async () => {
       if (dq.length < 2 && !activeFilter) { 
         setResults([]); 
+        setApiError(null);
         return; 
       }
       setLoading(true);
+      setApiError(null);
       const vars: any = { page: 1, perPage: 24 };
       if (dq) vars.search = dq;
       if (activeFilter) vars.genres = [activeFilter];
       
       const data = await fetchAniList(SEARCH_ADVANCED, vars);
-      if (data && data.Page) {
+      
+      if (data?.error) {
+        setResults([]);
+        if (data.status === 429) {
+          setApiError("Terlalu banyak permintaan (Rate Limit). Mohon tunggu sebentar.");
+          addToast("Server AniList kelebihan beban. Tunggu 1 menit.", "error");
+        } else {
+          setApiError("Gagal mengambil data dari AniList.");
+        }
+      } else if (data && data.Page) {
         const mapped = data.Page.media.map((m: any) => ({
           title: m.title.english || m.title.romaji || m.title.native,
           img: m.coverImage.extraLarge || m.coverImage.large,
@@ -93,7 +111,7 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
       if (dq && data?.Page?.media?.length > 0) addSearchHistory(dq);
     };
     fetchSearch();
-  }, [dq, activeFilter, addSearchHistory]);
+  }, [dq, activeFilter, addSearchHistory, addToast]);
 
   return (
     <div className="h-full overflow-y-auto hide-scrollbar pb-32">
@@ -132,6 +150,12 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
               {Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="w-full aspect-[2/3] bg-[#1C1C1E] rounded-[16px] animate-pulse border border-white/5" />
               ))}
+            </div>
+          ) : apiError ? (
+            <div className="flex flex-col items-center justify-center pt-20 text-center animate-fade-in">
+              <Icons.Info />
+              <h3 className="text-[#FF453A] font-black text-[20px] mt-4 mb-2">Terjadi Kesalahan</h3>
+              <p className="text-[#8E8E93] text-[14px]">{apiError}</p>
             </div>
           ) : results.length > 0 ? (
             <div className="animate-fade-in">
