@@ -1,23 +1,95 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimeCard } from "./AnimeCard";
 import { Icons } from "./Icons";
 import { useThemeContext } from "./ThemeProvider";
 
-interface LibraryGridProps {
-  animes: any[];
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
 }
 
-export function LibraryGrid({ animes }: LibraryGridProps) {
+const SEARCH_ADVANCED = `
+  query ($search: String, $page: Int, $perPage: Int, $genres: [String], $year: Int, $sort: [MediaSort]) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { total currentPage lastPage hasNextPage }
+      media(search: $search, type: ANIME, genre_in: $genres, seasonYear: $year, sort: $sort) {
+        id title { romaji english native } coverImage { extraLarge large color } bannerImage
+        episodes averageScore genres status format seasonYear duration
+      }
+    }
+  }
+`;
+
+const fetchAniList = async (query: string, variables = {}) => {
+  try {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ query, variables }),
+    });
+    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+    const json = await response.json();
+    if (json.errors) throw new Error(json.errors[0].message);
+    return json.data;
+  } catch (error) {
+    console.error("AniList API Error:", error);
+    return null;
+  }
+};
+
+export function LibraryGrid() {
   const { settings, searchHistory, addSearchHistory, clearSearchHistory } = useThemeContext();
-  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState('');
+  const dq = useDebounce(query, 800); // 800ms debounce for API
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('');
 
-  if (!animes || animes.length === 0) return null;
+  const GENRES = ['Action', 'Romance', 'Fantasy', 'Sci-Fi', 'Comedy', 'Drama', 'Horror', 'Sports', 'Mecha', 'Slice of Life', 'Mystery', 'Psychological'];
 
-  const filtered = animes.filter(a => 
-    a.title.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    const fetchSearch = async () => {
+      if (dq.length < 2 && !activeFilter) { 
+        setResults([]); 
+        return; 
+      }
+      setLoading(true);
+      const vars: any = { page: 1, perPage: 24 };
+      if (dq) vars.search = dq;
+      if (activeFilter) vars.genres = [activeFilter];
+      
+      const data = await fetchAniList(SEARCH_ADVANCED, vars);
+      if (data && data.Page) {
+        const mapped = data.Page.media.map((m: any) => ({
+          title: m.title.english || m.title.romaji || m.title.native,
+          img: m.coverImage.extraLarge || m.coverImage.large,
+          banner: m.bannerImage,
+          score: m.averageScore,
+          color: m.coverImage.color,
+          episodes: m.episodes,
+          status: m.status,
+          format: m.format,
+          genres: m.genres,
+          duration: m.duration,
+          seasonYear: m.seasonYear,
+          url: `/search?q=${encodeURIComponent(m.title.english || m.title.romaji)}` // Pseudo-URL
+        }));
+        setResults(mapped);
+      } else {
+        setResults([]);
+      }
+      
+      setLoading(false);
+      if (dq && data?.Page?.media?.length > 0) addSearchHistory(dq);
+    };
+    fetchSearch();
+  }, [dq, activeFilter, addSearchHistory]);
 
   return (
     <div className="h-full overflow-y-auto hide-scrollbar pb-32">
@@ -29,24 +101,39 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E93] group-focus-within:text-[var(--accent)] transition-colors" style={{ '--accent': settings.accentColor } as any}><Icons.Search /></div>
           <input 
             type="text" 
-            value={search} 
-            onChange={e => setSearch(e.target.value)}
-            onBlur={() => { if(search) addSearchHistory(search); }}
+            value={query} 
+            onChange={e => setQuery(e.target.value)}
             className="w-full bg-[#1C1C1E] text-white rounded-[20px] py-4 pl-12 pr-12 outline-none text-[16px] placeholder-[#48484A] border border-white/10 focus:border-[var(--accent)] transition-colors shadow-inner" 
             style={{ '--accent': settings.accentColor } as any}
-            placeholder="Cari judul anime..." 
+            placeholder="Cari judul anime, genre, atau studio..." 
           />
-          {search && <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#2C2C2E] rounded-full flex items-center justify-center text-[#8E8E93] hover:text-white"><Icons.Close /></button>}
+          {query && <button onClick={() => setQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#2C2C2E] rounded-full flex items-center justify-center text-[#8E8E93] hover:text-white"><Icons.Close /></button>}
         </div>
+
+        {/* Genre Filters (Horizontal Scroll) */}
+        {!query && (
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar mt-5 pb-1 -mx-5 px-5 md:mx-0 md:px-0">
+            <button onClick={() => setActiveFilter('')} className={`px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-all ${!activeFilter ? 'bg-white text-black' : 'bg-[#1C1C1E] text-[#8E8E93] border border-white/10 hover:bg-[#2C2C2E]'}`}>Semua</button>
+            {GENRES.map(g => (
+              <button key={g} onClick={() => setActiveFilter(g)} className={`px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-all ${activeFilter === g ? 'bg-[var(--accent)] text-white' : 'bg-[#1C1C1E] text-[#8E8E93] border border-white/10 hover:bg-[#2C2C2E]'}`} style={{ '--accent': settings.accentColor } as any}>{g}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="px-5 md:px-8 pt-6">
-        {search ? (
-          filtered.length > 0 ? (
+        {query || activeFilter ? (
+          loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="w-full aspect-[2/3] bg-[#1C1C1E] rounded-[16px] animate-pulse border border-white/5" />
+              ))}
+            </div>
+          ) : results.length > 0 ? (
             <div className="animate-fade-in">
-              <p className="text-[#8E8E93] text-[13px] font-medium mb-4">Menemukan {filtered.length} hasil</p>
+              <p className="text-[#8E8E93] text-[13px] font-medium mb-4">Menemukan {results.length} hasil</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5" style={{ WebkitTapHighlightColor: "transparent" }}>
-                {filtered.map((anime: any, idx: number) => {
+                {results.map((anime: any, idx: number) => {
                   const cleanUrl = (anime.url || '').replace(/\/$/, '');
                   const id = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
                   return <AnimeCard key={id + idx} anime={anime} id={id} idx={idx} />;
@@ -57,7 +144,7 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
             <div className="flex flex-col items-center justify-center pt-20 text-center animate-fade-in">
               <Icons.Search />
               <h3 className="text-white font-black text-[20px] mt-4 mb-2">Tidak Ditemukan</h3>
-              <p className="text-[#8E8E93] text-[14px]">Coba gunakan kata kunci lain.</p>
+              <p className="text-[#8E8E93] text-[14px]">Coba gunakan kata kunci atau filter lain.</p>
             </div>
           )
         ) : (
@@ -71,7 +158,7 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {searchHistory.map((term, i) => (
-                    <button key={i} onClick={() => setSearch(term)} className="flex items-center gap-2 px-4 py-2 bg-[#1C1C1E] rounded-[12px] border border-white/5 text-[#D1D1D6] text-[13px] hover:bg-[#2C2C2E] transition-colors">
+                    <button key={i} onClick={() => setQuery(term)} className="flex items-center gap-2 px-4 py-2 bg-[#1C1C1E] rounded-[12px] border border-white/5 text-[#D1D1D6] text-[13px] hover:bg-[#2C2C2E] transition-colors">
                       <Icons.Clock /> {term}
                     </button>
                   ))}
@@ -89,22 +176,12 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
                 { t: "Romansa Bikin Baper", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/114535-1L6oW3Xp2aFm.jpg", color: "#FF375F" }
               ].map((c, i) => (
                 <div key={i} className="h-[120px] rounded-[20px] relative overflow-hidden group cursor-pointer border border-white/10">
-                  <img src={c.img} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="" />
+                  <img src={c.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={c.t} loading="lazy" />
                   <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-colors" />
-                  <div className="absolute inset-y-0 left-0 w-1/2 opacity-60" style={{ background: `linear-gradient(to right, ${c.color}, transparent)` }} />
+                  <div className="absolute inset-y-0 left-0 w-1/2 opacity-60 mix-blend-overlay pointer-events-none" style={{ background: `linear-gradient(to right, ${c.color}, transparent)` }} />
                   <h3 className="absolute bottom-4 left-5 right-5 text-white font-black text-[18px] leading-tight drop-shadow-md z-10">{c.t}</h3>
                 </div>
               ))}
-            </div>
-            
-            {/* Show some random animes if not searching */}
-            <h2 className="text-[18px] font-black text-white mb-4">Mungkin Anda Suka</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5">
-                {animes.slice(0, 12).map((anime: any, idx: number) => {
-                  const cleanUrl = (anime.url || '').replace(/\/$/, '');
-                  const id = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
-                  return <AnimeCard key={id + idx} anime={anime} id={id} idx={idx} />;
-                })}
             </div>
           </div>
         )}
