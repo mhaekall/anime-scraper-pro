@@ -12,7 +12,12 @@ export default async function AnimeDetail({ params }: { params: Promise<{ id: st
   try {
     const url = `https://o.oploverz.ltd/series/${id}/`;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://jonyyyyyyyu-anime-scraper-api.hf.space";
-    const res = await fetch(`${API_URL}/api/series-detail?url=${encodeURIComponent(url)}`);
+    const res = await fetch(`${API_URL}/api/series-detail?url=${encodeURIComponent(url)}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+      }
+    });
     if (res.ok) {
       const data = await res.json();
       detail = data.data;
