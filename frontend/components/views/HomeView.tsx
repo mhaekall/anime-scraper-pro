@@ -15,14 +15,43 @@ const fetcher = (url: string) => {
   });
 };
 
+const ANILIST_URL = 'https://graphql.anilist.co';
+const HOME_QUERY = `
+  query ($season: MediaSeason, $seasonYear: Int) {
+    trending: Page(page: 1, perPage: 15) {
+      media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english native } coverImage { extraLarge large color } bannerImage description episodes averageScore genres status seasonYear season format duration }
+    }
+    season: Page(page: 1, perPage: 12) {
+      media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: POPULARITY_DESC) { id title { romaji english native } coverImage { extraLarge large color } bannerImage description episodes averageScore genres status seasonYear season format duration }
+    }
+    popular: Page(page: 1, perPage: 12) {
+      media(type: ANIME, sort: POPULARITY_DESC) { id title { romaji english native } coverImage { extraLarge large color } bannerImage description episodes averageScore genres status seasonYear season format duration }
+    }
+    upcoming: Page(page: 1, perPage: 12) {
+      media(type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC) { id title { romaji english native } coverImage { extraLarge large color } bannerImage description episodes averageScore genres status seasonYear season format duration }
+    }
+  }
+`;
+
+const fetchAniList = (url: string) => fetch(url, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+  body: JSON.stringify({ query: HOME_QUERY, variables: { season: 'SPRING', seasonYear: 2025 } })
+}).then(res => res.json());
+
 export function HomeView() {
-  const { data, error, isLoading } = useSWR('/api/home', fetcher, {
+  const { data: oploverzData, error, isLoading } = useSWR('/api/home', fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });
 
-  const latestEpisodes = data?.data?.latest_episodes || [];
-  const popularSeries = data?.data?.popular_series || [];
+  const { data: anilistData } = useSWR(ANILIST_URL, fetchAniList, {
+    revalidateOnFocus: false,
+    dedupingInterval: 300000,
+  });
+
+  const latestEpisodes = oploverzData?.data?.latest_episodes || [];
+  const popularSeries = oploverzData?.data?.popular_series || [];
   const debugError = error ? `Fetch failed: ${error.message}` : null;
 
   const heroAnimes = latestEpisodes.slice(0, 6);
@@ -34,6 +63,23 @@ export function HomeView() {
     if (hour < 18) return 'Konnichiwa';
     return 'Konbanwa';
   };
+
+  // Convert AniList objects to compatible format for AnimeGrid
+  const mapAniList = (media: any[]) => {
+    if (!media) return [];
+    return media.map(m => ({
+      title: m.title.english || m.title.romaji,
+      img: m.coverImage.extraLarge || m.coverImage.large,
+      score: m.averageScore,
+      color: m.coverImage.color,
+      url: `/search?q=${encodeURIComponent(m.title.english || m.title.romaji)}` // Pseudo-URL for dummy click
+    }));
+  };
+
+  const trending = mapAniList(anilistData?.data?.trending?.media);
+  const season = mapAniList(anilistData?.data?.season?.media);
+  const upcoming = mapAniList(anilistData?.data?.upcoming?.media);
+  const popular = mapAniList(anilistData?.data?.popular?.media);
 
   if (isLoading) {
     return (
@@ -64,10 +110,17 @@ export function HomeView() {
         {heroAnimes.length > 0 && <HeroCarousel animes={heroAnimes} />}
       </div>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-2">
         <ContinueWatching />
+        
+        {season.length > 0 && <AnimeGrid animes={season} title="Populer Musim Ini" />}
+        {trending.length > 6 && <AnimeGrid animes={trending.slice(6)} title="Sedang Trending" showRank />}
+        
         <AnimeGrid animes={gridAnimes} title="Rilis Episode Terbaru" />
-        <TopSeriesGrid animes={popularSeries} title="Seri Anime Terpopuler" />
+        <TopSeriesGrid animes={popularSeries} title="Seri Anime Terpopuler (Oploverz)" />
+        
+        {upcoming.length > 0 && <AnimeGrid animes={upcoming} title="Rilis Mendatang" />}
+        {popular.length > 0 && <AnimeGrid animes={popular} title="Top Sepanjang Masa" />}
       </div>
     </div>
   );
