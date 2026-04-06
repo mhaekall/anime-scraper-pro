@@ -11,7 +11,7 @@ export function BottomNav() {
   const TABS = [
     { id: "home", label: "Beranda", path: "/", Icon: Icons.Home },
     { id: "explore", label: "Eksplor", path: "/explore", Icon: Icons.Explore },
-    { id: "watchlist", label: "Koleksi", path: "/profile", Icon: Icons.Bookmark }, // Should map to profile for now or watchlist if it exists
+    { id: "watchlist", label: "Koleksi", path: "/collection", Icon: Icons.Bookmark },
     { id: "profile", label: "Profil", path: "/profile", Icon: Icons.Profile }
   ];
 

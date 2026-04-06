@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { Icons } from "@/components/Icons";
 import { useThemeContext } from "@/components/ThemeProvider";
 import { useWatchHistory } from "@/hooks/useWatchHistory";
+import { SettingsModal } from "@/components/SettingsModal";
 
 export default function ProfileClient() {
   const { data: session, isPending } = authClient.useSession();
@@ -92,6 +93,7 @@ export default function ProfileClient() {
         )}
       </div>
 
+      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
     </div>
   );
 }

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
 import { useWatchHistory } from "@/hooks/useWatchHistory";
+import { Icons } from "./Icons";
+import { useThemeContext } from "./ThemeProvider";
 
 interface Source {
   resolved: string;
@@ -23,6 +25,8 @@ const QUALITY_RANK: Record<string, number> = {
   "1080p": 4, "720p": 3, "480p": 2, "360p": 1, "Auto": 0
 };
 
+const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
+
 function fmt(s: number) {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
@@ -30,12 +34,13 @@ function fmt(s: number) {
 }
 
 export function Player({ title, poster, sources, animeSlug, episodeNum }: PlayerProps) {
-  const { updateProgress, getProgress } = useWatchHistory();
+  const { updateProgress } = useWatchHistory();
+  const { settings } = useThemeContext();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const seekIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sort sources by quality
   const sorted = [...sources]
@@ -57,6 +62,7 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
   const [fullscreen, setFullscreen] = useState(false);
   const [buffered, setBuffered] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [speed, setSpeed] = useState(1);
 
   // Load video source
   const loadSource = useCallback((src: Source, seekTo?: number) => {
@@ -86,7 +92,7 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setLoading(false);
         if (seekTo) video.currentTime = seekTo;
-        video.play().then(() => setPlaying(true)).catch(() => {});
+        if (settings.autoPlayNext) video.play().then(() => setPlaying(true)).catch(() => {});
       });
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
@@ -99,7 +105,7 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
       video.addEventListener('loadedmetadata', () => {
         setLoading(false);
         if (seekTo) video.currentTime = seekTo;
-        video.play().then(() => setPlaying(true)).catch(() => {});
+        if (settings.autoPlayNext) video.play().then(() => setPlaying(true)).catch(() => {});
       }, { once: true });
     } else {
       // Direct MP4
@@ -107,11 +113,11 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
       video.addEventListener('canplay', () => {
         setLoading(false);
         if (seekTo) video.currentTime = seekTo;
-        video.play().then(() => setPlaying(true)).catch(() => {});
+        if (settings.autoPlayNext) video.play().then(() => setPlaying(true)).catch(() => {});
       }, { once: true });
       video.load();
     }
-  }, []);
+  }, [settings.autoPlayNext]);
 
   // Initial load
   useEffect(() => {
@@ -186,6 +192,8 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
 
     return () => {
       clearInterval(interval);
+      // Final save on unmount
+      if (progress > 5) updateProgress(progressData);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [progress, duration, animeSlug, episodeNum, title, poster, current, updateProgress]);
@@ -202,7 +210,8 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
   }, [playing]);
 
   // Toggle play/pause
-  const togglePlay = useCallback(() => {
+  const togglePlay = useCallback((e?: any) => {
+    e?.stopPropagation();
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -213,12 +222,29 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
     showCtrl();
   }, [showCtrl]);
 
-  // Seek
-  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  // Skip time
+  const skip = useCallback((amount: number, e?: any) => {
+    e?.stopPropagation();
     const video = videoRef.current;
     if (!video || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
+    const np = clamp(video.currentTime + amount, 0, duration);
+    video.currentTime = np;
+    setProgress(np);
+    showCtrl();
+  }, [duration, showCtrl]);
+
+  // Progress Bar Seek
+  const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    const video = videoRef.current;
+    if (!video || !duration || !barRef.current) return;
+    const rect = barRef.current.getBoundingClientRect();
+    let clientX = 0;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+    }
+    const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
     video.currentTime = ratio * duration;
     setProgress(ratio * duration);
   }, [duration]);
@@ -242,7 +268,8 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
   }, [loadSource]);
 
   // Fullscreen
-  const toggleFullscreen = useCallback(() => {
+  const toggleFullscreen = useCallback((e?: any) => {
+    e?.stopPropagation();
     const el = containerRef.current;
     if (!el) return;
     if (!document.fullscreenElement) {
@@ -254,31 +281,21 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
     }
   }, []);
 
-  // Keyboard
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-      const video = videoRef.current;
-      if (!video) return;
-      switch(e.key) {
-        case ' ':
-        case 'k': e.preventDefault(); togglePlay(); break;
-        case 'ArrowRight': video.currentTime = Math.min(video.currentTime + 10, duration); break;
-        case 'ArrowLeft': video.currentTime = Math.max(video.currentTime - 10, 0); break;
-        case 'ArrowUp': video.volume = Math.min(video.volume + 0.1, 1); setVolume(video.volume); break;
-        case 'ArrowDown': video.volume = Math.max(video.volume - 0.1, 0); setVolume(video.volume); break;
-        case 'f': toggleFullscreen(); break;
-        case 'm': setMuted(m => { if (video) video.muted = !m; return !m; }); break;
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [togglePlay, toggleFullscreen, duration]);
+  // Change Speed
+  const toggleSpeed = useCallback((e: any) => {
+    e?.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+    const nextSpeed = speed === 1 ? 1.5 : speed === 1.5 ? 2 : 1;
+    video.playbackRate = nextSpeed;
+    setSpeed(nextSpeed);
+  }, [speed]);
 
   if (!current && sources.length === 0) {
     return (
-      <div className="w-full aspect-video bg-zinc-900 rounded-2xl flex items-center justify-center">
-        <p className="text-zinc-500 text-sm">Tidak ada sumber video tersedia</p>
+      <div className="w-full aspect-video bg-[#1C1C1E] rounded-[24px] flex flex-col items-center justify-center border border-white/5">
+        <Icons.Play cls="w-12 h-12 text-[#8E8E93] mb-2 opacity-50" />
+        <p className="text-[#8E8E93] font-bold text-sm">Sumber video tidak tersedia</p>
       </div>
     );
   }
@@ -287,7 +304,7 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
   const iframeSrc = sources.find(s => s.type === 'iframe');
   if (!current && iframeSrc) {
     return (
-      <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden">
+      <div className="w-full aspect-video bg-black rounded-[24px] overflow-hidden border border-white/5 shadow-2xl">
         <iframe
           src={iframeSrc.resolved}
           className="w-full h-full border-none"
@@ -304,11 +321,10 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden select-none group"
+      className="relative w-full aspect-video bg-black md:rounded-[24px] overflow-hidden select-none group border border-white/5 shadow-2xl"
       onMouseMove={showCtrl}
       onMouseLeave={() => playing && setShowControls(false)}
-      onClick={togglePlay}
-      style={{ cursor: showControls ? 'default' : 'none' }}
+      onClick={() => setShowControls(p => !p)}
     >
       {/* VIDEO */}
       <video
@@ -325,18 +341,19 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
       {/* LOADING SPINNER */}
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
-          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin shadow-lg" />
         </div>
       )}
 
       {/* ERROR */}
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3">
-          <p className="text-white/70 text-sm">{error}</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-4 backdrop-blur-md">
+          <Icons.Info />
+          <p className="text-white/70 text-[15px] font-bold">{error}</p>
           {sorted.length > 1 && (
             <button
               onClick={e => { e.stopPropagation(); const next = sorted.find(s => s !== current); if (next) switchQuality(next); }}
-              className="px-4 py-2 bg-white text-black text-sm font-bold rounded-full"
+              className="px-6 py-3 bg-white text-black text-[14px] font-bold rounded-full active:scale-95 transition-transform"
             >
               Coba Server Lain
             </button>
@@ -344,183 +361,118 @@ export function Player({ title, poster, sources, animeSlug, episodeNum }: Player
         </div>
       )}
 
-      {/* PAUSE ICON FLASH */}
+      {/* FLASH PAUSE/PLAY (Center) */}
       {!playing && !loading && !error && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
-            <svg className="w-7 h-7 text-white ml-1" viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="5 3 19 12 5 21 5 3"/>
-            </svg>
+          <div className="w-20 h-20 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] animate-fade-in">
+            <Icons.Play cls="w-10 h-10 ml-1" />
           </div>
         </div>
       )}
 
+      {/* DOUBLE TAP ZONES (Mobile) */}
+      <div className="absolute inset-y-0 left-0 w-1/3 z-10" onDoubleClick={(e) => skip(-10, e)} />
+      <div className="absolute inset-y-0 right-0 w-1/3 z-10" onDoubleClick={(e) => skip(10, e)} />
+
       {/* CONTROLS OVERLAY */}
       <div
-        className={`absolute inset-0 flex flex-col justify-end transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
-        onClick={e => e.stopPropagation()}
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 40%)' }}
+        className={`absolute inset-0 flex flex-col justify-end transition-opacity duration-300 z-20 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'}`}
       >
-        {/* PROGRESS BAR */}
-        <div className="px-4 pb-2">
-          <div
-            className="relative h-1 hover:h-1.5 transition-all cursor-pointer rounded-full bg-white/25 group/prog"
-            onClick={seek}
-          >
-            {/* Buffered */}
-            <div
-              className="absolute top-0 left-0 h-full bg-white/30 rounded-full"
-              style={{ width: `${bufPct}%` }}
-            />
-            {/* Progress */}
-            <div
-              className="absolute top-0 left-0 h-full bg-blue-500 rounded-full"
-              style={{ width: `${pct}%` }}
-            >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover/prog:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-black/60 pointer-events-none" />
+
+        {/* TOP BAR */}
+        <div className="flex items-start justify-between p-4 md:p-6 relative z-30 pointer-events-auto">
+          <div className="flex-1 min-w-0 pr-4">
+            <h2 className="text-white font-bold text-[16px] md:text-[20px] truncate drop-shadow-md">{title}</h2>
+            {current && <p className="text-[#8E8E93] text-[12px] font-medium mt-1">Server: {current.provider}</p>}
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button onClick={toggleSpeed} className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full text-white text-[12px] font-bold border border-white/10 hover:bg-white/20 active:scale-95 transition-all">
+              {speed}x
+            </button>
+            
+            <div className="relative pointer-events-auto">
+              <button onClick={(e) => { e.stopPropagation(); setShowQuality(q => !q); }} className="px-3 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center gap-1.5 text-white text-[12px] font-bold border border-white/10 hover:bg-white/20 active:scale-95 transition-all">
+                {current?.quality || 'Auto'}
+              </button>
+              
+              {showQuality && (
+                <div className="absolute top-full right-0 mt-2 bg-[#1C1C1E]/95 backdrop-blur-xl border border-white/10 rounded-[16px] overflow-hidden shadow-2xl min-w-[140px] animate-fade-in pointer-events-auto">
+                  <div className="px-4 py-2 border-b border-[#2C2C2E] text-[10px] text-[#8E8E93] font-bold uppercase tracking-wider">Kualitas</div>
+                  {sorted.map(s => (
+                    <button
+                      key={s.quality + s.provider}
+                      onClick={(e) => { e.stopPropagation(); switchQuality(s); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-[13px] font-bold transition-colors text-white hover:bg-[#2C2C2E]"
+                    >
+                      {s.quality}
+                      {current?.quality === s.quality && current?.provider === s.provider && <Icons.Check cls="w-4 h-4 text-[var(--accent)]" style={{ '--accent': settings.accentColor } as any} />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
+        <div className="flex-1 pointer-events-none" />
+
         {/* BOTTOM CONTROLS */}
-        <div className="flex items-center gap-3 px-4 pb-3">
-          {/* Play/Pause */}
-          <button
-            onClick={togglePlay}
-            className="text-white hover:scale-110 transition-transform"
-          >
-            {playing ? (
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="4" width="4" height="16" rx="1"/>
-                <rect x="14" y="4" width="4" height="16" rx="1"/>
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3"/>
-              </svg>
-            )}
-          </button>
-
-          {/* Skip buttons */}
-          <button
-            onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }}
-            className="text-white hover:scale-110 transition-transform"
-            title="-10s"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-              <path d="M3 3v5h5"/>
-              <text x="9.5" y="14" fontSize="7" fill="currentColor" stroke="none">10</text>
-            </svg>
-          </button>
-          <button
-            onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }}
-            className="text-white hover:scale-110 transition-transform"
-            title="+10s"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-              <path d="M21 3v5h-5"/>
-              <text x="9.5" y="14" fontSize="7" fill="currentColor" stroke="none">10</text>
-            </svg>
-          </button>
-
-          {/* Volume */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => { setMuted(m => { if (videoRef.current) videoRef.current.muted = !m; return !m; }); }}
-              className="text-white"
+        <div className="pb-4 md:pb-6 relative z-30 pointer-events-auto" onClick={e => e.stopPropagation()}>
+          
+          {/* Progress Bar (Draggable) */}
+          <div className="px-4 md:px-8 mb-4">
+            <div 
+              ref={barRef}
+              className="relative h-1.5 md:h-2 hover:h-2.5 transition-all cursor-pointer rounded-full bg-white/20 group/prog"
+              onMouseDown={handleSeek}
+              onTouchStart={handleSeek}
             >
-              {muted || volume === 0 ? (
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="m11 5-6 4H1v6h4l6 4V5Z"/>
-                  <line x1="22" x2="16" y1="9" y2="15" stroke="white" strokeWidth="2"/>
-                  <line x1="16" x2="22" y1="9" y2="15" stroke="white" strokeWidth="2"/>
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M11 5 5 9H1v6h4l6 4V5ZM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" stroke="white" strokeWidth="2" fill="none"/>
-                  <path d="m11 5-6 4H1v6h4l6 4V5Z"/>
-                </svg>
-              )}
-            </button>
-            <input
-              type="range" min="0" max="1" step="0.05"
-              value={muted ? 0 : volume}
-              onChange={changeVolume}
-              className="w-16 h-1 accent-blue-500 cursor-pointer"
-            />
+              {/* Buffered */}
+              <div className="absolute top-0 left-0 h-full bg-white/30 rounded-full transition-all" style={{ width: `${bufPct}%` }} />
+              {/* Progress */}
+              <div className="absolute top-0 left-0 h-full rounded-full transition-all duration-100" style={{ width: `${pct}%`, backgroundColor: settings.accentColor }} />
+              {/* Thumb */}
+              <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 bg-white rounded-full shadow-[0_0_10px_rgba(0,0,0,0.8)] opacity-0 group-hover/prog:opacity-100 transition-opacity" style={{ left: `calc(${pct}% - 8px)` }} />
+            </div>
           </div>
 
-          {/* Time */}
-          <span className="text-white text-xs font-medium ml-1 tabular-nums">
-            {fmt(progress)} / {fmt(duration)}
-          </span>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Quality Selector */}
-          <div className="relative">
-            <button
-              onClick={() => setShowQuality(q => !q)}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-bold text-white bg-white/10 hover:bg-white/20 transition-colors"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
-              </svg>
-              {current?.quality || 'Auto'}
-            </button>
-
-            {showQuality && (
-              <div className="absolute bottom-full right-0 mb-2 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl min-w-[140px]">
-                <div className="px-3 py-2 border-b border-white/5 text-xs text-zinc-400 font-bold uppercase tracking-wider">
-                  Kualitas
+          <div className="flex items-center justify-between px-4 md:px-8">
+            {/* Left Controls */}
+            <div className="flex items-center gap-4 md:gap-6">
+              <button onClick={togglePlay} className="text-white active:scale-90 transition-transform">
+                {playing ? <Icons.Pause cls="w-7 h-7" /> : <Icons.Play cls="w-7 h-7" />}
+              </button>
+              
+              {/* Volume (Desktop mainly) */}
+              <div className="hidden md:flex items-center gap-3 group/vol">
+                <button onClick={() => { setMuted(m => { if (videoRef.current) videoRef.current.muted = !m; return !m; }); }} className="text-white active:scale-90">
+                  {muted || volume === 0 ? <Icons.VolumeMute /> : <Icons.VolumeUp />}
+                </button>
+                <div className="w-0 group-hover/vol:w-20 overflow-hidden transition-all duration-300">
+                  <input type="range" min="0" max="1" step="0.05" value={muted ? 0 : volume} onChange={changeVolume} className="w-full h-1 cursor-pointer accent-white" />
                 </div>
-                {sorted.map(s => (
-                  <button
-                    key={s.quality + s.provider}
-                    onClick={() => switchQuality(s)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 text-sm transition-colors ${
-                      current?.quality === s.quality && current?.provider === s.provider
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'text-white/80 hover:bg-white/5'
-                    }`}
-                  >
-                    <span className="font-semibold">{s.quality}</span>
-                    {current?.quality === s.quality && (
-                      <svg className="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20 6 9 17l-5-5"/>
-                      </svg>
-                    )}
-                  </button>
-                ))}
               </div>
-            )}
-          </div>
 
-          {/* Fullscreen */}
-          <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
-            {fullscreen ? (
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-              </svg>
-            )}
-          </button>
+              {/* Time */}
+              <div className="text-white font-bold text-[13px] tabular-nums tracking-wide">
+                {fmt(progress)} <span className="text-[#8E8E93] font-medium mx-1">/</span> {fmt(duration)}
+              </div>
+            </div>
+
+            {/* Right Controls */}
+            <div className="flex items-center gap-4 md:gap-6">
+              <button onClick={(e) => skip(-10, e)} className="text-white active:scale-90 transition-transform hidden sm:block"><Icons.SkipBack /></button>
+              <button onClick={(e) => skip(10, e)} className="text-white active:scale-90 transition-transform hidden sm:block"><Icons.SkipForward /></button>
+              
+              <button onClick={toggleFullscreen} className="text-white active:scale-90 transition-transform ml-2">
+                <Icons.Maximize />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* SERVER INFO */}
-      {showControls && current && (
-        <div className="absolute top-3 right-3 px-2 py-1 bg-black/50 backdrop-blur-sm rounded text-xs text-white/60 pointer-events-none">
-          {current.provider}
-        </div>
-      )}
     </div>
   );
 }
