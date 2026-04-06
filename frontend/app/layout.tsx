@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { BottomNav } from "@/components/BottomNav";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
@@ -21,7 +20,6 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-black text-white">
         <ThemeProvider>
           {children}
-          <BottomNav />
         </ThemeProvider>
       </body>
     </html>
