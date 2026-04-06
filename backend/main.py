@@ -581,15 +581,29 @@ async def get_series_detail(url: str = Query(..., description="Target URL of the
         desc = desc_meta.get('content') if desc_meta else ""
         
         # Oploverz hides episode list in Svelte payload
-        matches = re.findall(r'episodeNumber:"([^"]+)"', r.text)
-        
         episodes = []
         seen = set()
-        for ep_num in matches:
-            if ep_num not in seen:
-                seen.add(ep_num)
-                full_url = f"{url.rstrip('/')}/episode/{ep_num}"
-                episodes.append({'title': f'Episode {ep_num}', 'url': full_url})
+        payload_match = re.search(r'kit\.start\(app,\s*element,\s*(\{.*?\})\);', r.text, re.DOTALL)
+        if payload_match:
+            payload = payload_match.group(1)
+            matches = re.findall(r'episodeNumber:"([^"]+)"', payload)
+            
+            for ep_num in matches:
+                if ep_num not in seen:
+                    seen.add(ep_num)
+                    full_url = f"{url.rstrip('/')}/episode/{ep_num}"
+                    try:
+                        parsed_num = float(ep_num)
+                    except ValueError:
+                        parsed_num = 0.0
+                    episodes.append({
+                        'title': f'Episode {ep_num}', 
+                        'url': full_url,
+                        'number': parsed_num
+                    })
+            
+            # Sort episodes descending (latest first)
+            episodes.sort(key=lambda x: x['number'], reverse=True)
                 
         # Enhance with AniList data to override Oploverz SEO spam
         anilist_data = await fetch_anilist_info(slug_title)
