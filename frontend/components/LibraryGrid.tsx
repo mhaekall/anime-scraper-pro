@@ -114,7 +114,7 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
   }, [dq, activeFilter, addSearchHistory, addToast]);
 
   return (
-    <div className="h-full overflow-y-auto hide-scrollbar pb-32">
+    <div className="w-full pb-32">
       <div className="sticky top-0 z-20 bg-[#000000]/90 backdrop-blur-xl pt-12 px-5 md:px-8 pb-4 border-b border-white/5">
         <h1 className="text-[32px] md:text-[40px] font-black text-white tracking-tight mb-5">Eksplorasi</h1>
         
@@ -133,14 +133,12 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
         </div>
 
         {/* Genre Filters (Horizontal Scroll) */}
-        {!query && (
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar mt-5 pb-1 -mx-5 px-5 md:mx-0 md:px-0">
-            <button onClick={() => setActiveFilter('')} className={`px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-all ${!activeFilter ? 'bg-white text-black' : 'bg-[#1C1C1E] text-[#8E8E93] border border-white/10 hover:bg-[#2C2C2E]'}`}>Semua</button>
-            {GENRES.map(g => (
-              <button key={g} onClick={() => setActiveFilter(g)} className={`px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-all ${activeFilter === g ? 'bg-[var(--accent)] text-white' : 'bg-[#1C1C1E] text-[#8E8E93] border border-white/10 hover:bg-[#2C2C2E]'}`} style={{ '--accent': settings.accentColor } as any}>{g}</button>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar mt-5 pb-1 -mx-5 px-5 md:mx-0 md:px-0">
+          <button onClick={() => setActiveFilter('')} className={`px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-all ${!activeFilter ? 'bg-white text-black' : 'bg-[#1C1C1E] text-[#8E8E93] border border-white/10 hover:bg-[#2C2C2E]'}`}>Semua</button>
+          {GENRES.map(g => (
+            <button key={g} onClick={() => setActiveFilter(g)} className={`px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-all ${activeFilter === g ? 'bg-[var(--accent)] text-white' : 'bg-[#1C1C1E] text-[#8E8E93] border border-white/10 hover:bg-[#2C2C2E]'}`} style={{ '--accent': settings.accentColor } as any}>{g}</button>
+          ))}
+        </div>
       </div>
 
       <div className="px-5 md:px-8 pt-6">
@@ -193,24 +191,6 @@ export function LibraryGrid({ animes }: LibraryGridProps) {
                 </div>
               </div>
             )}
-
-            {/* Curated Collections (Visuals) */}
-            <h2 className="text-[18px] font-black text-white mb-4">Koleksi Pilihan</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              {[
-                { t: "Pemenang Anime Awards 2024", q: "Frieren", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-nNgE6mD0r6vM.jpg", color: "#FFD60A" },
-                { t: "Masterpiece Studio MAPPA", q: "Jujutsu Kaisen", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/145064-1S0e047W4Tus.jpg", color: "#FF453A" },
-                { t: "Isekai Reinkarnasi Overpower", q: "Tensei shitara Slime", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/108465-RgsMpKMZQaSm.jpg", color: "#BF5AF2" },
-                { t: "Romansa Bikin Baper", q: "Kaguya-sama", img: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/114535-1L6oW3Xp2aFm.jpg", color: "#FF375F" }
-              ].map((c, i) => (
-                <div key={i} onClick={() => setQuery(c.q)} className="h-[120px] rounded-[20px] relative overflow-hidden group cursor-pointer border border-white/10 bg-[#1C1C1E]">
-                  <img src={c.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 z-0" alt={c.t} loading="lazy" />
-                  <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-colors z-10" />
-                  <div className="absolute inset-y-0 left-0 w-3/4 opacity-80 mix-blend-overlay pointer-events-none z-10" style={{ background: `linear-gradient(to right, ${c.color}, transparent)` }} />
-                  <h3 className="absolute bottom-4 left-5 right-5 text-white font-black text-[18px] leading-tight drop-shadow-md z-20">{c.t}</h3>
-                </div>
-              ))}
-            </div>
 
             {/* Show some random animes if not searching */}
             {animes && animes.length > 0 && (
