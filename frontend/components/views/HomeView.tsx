@@ -19,7 +19,7 @@ const ANILIST_URL = 'https://graphql.anilist.co';
 const HOME_QUERY = `
   query ($season: MediaSeason, $seasonYear: Int) {
     trending: Page(page: 1, perPage: 15) {
-      media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english native } coverImage { extraLarge large color } bannerImage description episodes averageScore genres status seasonYear season format duration }
+      media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english native } coverImage { extraLarge large color } bannerImage description episodes averageScore genres status seasonYear season format duration nextAiringEpisode { airingAt timeUntilAiring episode } }
     }
     season: Page(page: 1, perPage: 12) {
       media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: POPULARITY_DESC) { id title { romaji english native } coverImage { extraLarge large color } bannerImage description episodes averageScore genres status seasonYear season format duration }
@@ -63,7 +63,6 @@ export function HomeView() {
   const popularSeries = oploverzData?.data?.popular_series || [];
   const debugError = error ? `Fetch failed: ${error.message}` : null;
 
-  const heroAnimes = latestEpisodes.slice(0, 6);
   const gridAnimes = latestEpisodes.slice(6);
 
   const getGreeting = () => {
@@ -77,11 +76,13 @@ export function HomeView() {
   const mapAniList = (media: any[]) => {
     if (!media) return [];
     return media.map(m => ({
+      id: m.id,
       title: m.title.english || m.title.romaji,
       img: m.coverImage.extraLarge || m.coverImage.large,
       score: m.averageScore,
       color: m.coverImage.color,
-      url: `/search?q=${encodeURIComponent(m.title.english || m.title.romaji)}` // Pseudo-URL for dummy click
+      nextAiringEpisode: m.nextAiringEpisode,
+      url: `/anime/${m.id}`
     }));
   };
 
@@ -89,6 +90,8 @@ export function HomeView() {
   const season = mapAniList(anilistData?.data?.season?.media);
   const upcoming = mapAniList(anilistData?.data?.upcoming?.media);
   const popular = mapAniList(anilistData?.data?.popular?.media);
+
+  const heroAnimes = trending.length > 0 ? trending.slice(0, 6) : latestEpisodes.slice(0, 6);
 
   if (isLoading) {
     return (

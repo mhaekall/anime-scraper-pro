@@ -1,0 +1,72 @@
+import json
+import time
+import asyncio
+from services.config import UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+from services.clients import client
+
+async def upstash_get(key: str):
+    try:
+        res = await client.get(f"{UPSTASH_REDIS_REST_URL}/get/{key}", headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"})
+        data = res.json()
+        if data.get('result'):
+            return json.loads(data['result'])
+    except Exception as e:
+        print(f"[Upstash] Get error: {e}")
+    return None
+
+async def upstash_set(key: str, value: dict, ex: int = 3600):
+    try:
+        payload = json.dumps(value)
+        res = await client.post(f"{UPSTASH_REDIS_REST_URL}/set/{key}?EX={ex}", headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}, data=payload)
+        return res.json().get('result') == 'OK'
+    except Exception as e:
+        print(f"[Upstash] Set error: {e}")
+    return False
+
+def upstash_del(key: str):
+    return client.post(f"{UPSTASH_REDIS_REST_URL}/del/{key}", headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"})
+
+async def swr_cache_get(key: str, fetch_fn, ttl: int = 3600, swr: int = 86400):
+    cached = await upstash_get(key)
+    now = int(time.time())
+    
+    if cached and isinstance(cached, dict) and 'stale_at' in cached:
+        stale_at = cached.get('stale_at', 0)
+        expires_at = cached.get('expires_at', 0)
+        
+        if now < stale_at:
+            return cached['data']
+        
+        if now < expires_at:
+            asyncio.create_task(swr_cache_refresh(key, fetch_fn, ttl, swr))
+            return cached['data']
+    elif cached and not isinstance(cached, dict):
+        return cached
+    elif cached and 'data' not in cached:
+        return cached
+
+    data = await fetch_fn()
+    if data:
+        payload = {
+            'data': data,
+            'stale_at': now + ttl,
+            'expires_at': now + swr,
+            'created_at': now
+        }
+        await upstash_set(key, payload, ex=swr)
+    return data
+
+async def swr_cache_refresh(key: str, fetch_fn, ttl: int, swr: int):
+    try:
+        data = await fetch_fn()
+        if data:
+            now = int(time.time())
+            payload = {
+                'data': data,
+                'stale_at': now + ttl,
+                'expires_at': now + swr,
+                'created_at': now
+            }
+            await upstash_set(key, payload, ex=swr)
+    except Exception as e:
+        print(f"[SWR] Background refresh error for {key}: {e}")

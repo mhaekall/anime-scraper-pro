@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Icons } from "@/components/Icons";
 import { useThemeContext } from "@/components/ThemeProvider";
 import { EpisodeList } from "@/components/EpisodeList";
+import { RecommendationsGrid } from "@/components/RecommendationsGrid";
 
 interface AnimeDetailClientProps {
   detail: any;
@@ -18,6 +19,7 @@ export default function AnimeDetailClient({ detail, id }: AnimeDetailClientProps
   const [activeTab, setActiveTab] = useState('overview');
 
   const episodes = detail?.episodes || [];
+  const recommendations = detail?.recommendations || [];
   const seriesTitle = detail?.title || "Detail Anime";
   const poster = detail?.poster || "";
   const banner = detail?.banner || poster;
@@ -29,6 +31,7 @@ export default function AnimeDetailClient({ detail, id }: AnimeDetailClientProps
   const season = detail?.season;
   const seasonYear = detail?.seasonYear;
   const studios = detail?.studios || [];
+  const nativeTitle = detail?.nativeTitle;
 
   const isSaved = !!watchlist.find(w => w.id === id);
   const c = settings.accentColor;
@@ -58,7 +61,12 @@ export default function AnimeDetailClient({ detail, id }: AnimeDetailClientProps
           </div>
           
           <div className="pt-2 md:pt-12 flex-1 min-w-0">
-            <h1 className="text-[28px] md:text-[42px] font-black text-white leading-[1.1] mb-4 text-balance drop-shadow-lg">{seriesTitle}</h1>
+            <h1 className="text-[28px] md:text-[42px] font-black text-white leading-[1.1] mb-1 text-balance drop-shadow-lg">{seriesTitle}</h1>
+            {nativeTitle ? (
+              <h2 className="text-[14px] md:text-[18px] text-[#8E8E93] mb-4 font-light tracking-wide">{nativeTitle}</h2>
+            ) : (
+              <div className="mb-4" />
+            )}
             
             <div className="flex items-center gap-3 text-[12px] md:text-[14px] font-semibold flex-wrap mb-6">
               {score && <span className="text-[#30D158] flex items-center gap-1"><Icons.Star filled cls="w-4 h-4" /> {(score / 10).toFixed(1)}</span>}
@@ -132,7 +140,7 @@ export default function AnimeDetailClient({ detail, id }: AnimeDetailClientProps
                 </div>
                 <div className="bg-[#1C1C1E] rounded-[16px] p-4 border border-white/5">
                   <p className="text-[#8E8E93] text-[11px] uppercase tracking-wider mb-1">Studio</p>
-                  <p className="text-white font-bold capitalize line-clamp-1">{studios.length > 0 ? studios[0] : '-'}</p>
+                  <p className="text-white font-bold capitalize line-clamp-1" title={studios.join(', ')}>{studios.length > 0 ? studios.join(', ') : '-'}</p>
                 </div>
                 <div className="bg-[#1C1C1E] rounded-[16px] p-4 border border-white/5">
                   <p className="text-[#8E8E93] text-[11px] uppercase tracking-wider mb-1">Musim</p>
@@ -143,6 +151,8 @@ export default function AnimeDetailClient({ detail, id }: AnimeDetailClientProps
                   <p className="text-[#0A84FF] font-bold">{score ? `${score} / 10` : '-'}</p>
                 </div>
               </div>
+              
+              <RecommendationsGrid recommendations={recommendations} />
             </div>
           )}
 

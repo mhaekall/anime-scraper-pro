@@ -57,6 +57,17 @@ export function HeroCarousel({ animes }: HeroCarouselProps) {
           const cover = anime.img || anime.poster || anime.coverImage?.extraLarge || anime.coverImage?.large || anime.bannerImage;
           const score = anime.score || anime.averageScore;
           const c = anime.color || anime.coverImage?.color || settings.accentColor;
+          
+          const nextAiring = anime.nextAiringEpisode || anime.nextAiring;
+          let airingText = "";
+          if (nextAiring && nextAiring.airingAt) {
+            const diff = nextAiring.airingAt * 1000 - Date.now();
+            if (diff > 0) {
+              const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+              const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+              airingText = `Eps ${nextAiring.episode}: ${days > 0 ? `${days}d ` : ''}${hours}h`;
+            }
+          }
 
           return (
             <div key={id + i} className="min-w-full snap-center relative h-[420px] md:h-[500px] lg:h-[600px] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-2xl border border-white/5 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500">
@@ -77,6 +88,11 @@ export function HeroCarousel({ animes }: HeroCarouselProps) {
                   {score && (
                     <span className="px-3 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] md:text-[12px] font-bold rounded-sm border border-white/20">
                       {(score > 10 ? (score / 10).toFixed(1) : score)}/10
+                    </span>
+                  )}
+                  {airingText && (
+                    <span className="px-3 py-1 bg-[#0A84FF]/80 backdrop-blur-md text-white text-[10px] md:text-[12px] font-bold rounded-sm border border-[#0A84FF]/20 shadow-[0_0_15px_rgba(10,132,255,0.4)]">
+                      {airingText}
                     </span>
                   )}
                 </div>

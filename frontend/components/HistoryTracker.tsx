@@ -5,7 +5,7 @@ import { useEffect } from "react";
 export function HistoryTracker({ id, epId, title, poster }: { id: string, epId: string, title: string, poster: string }) {
   useEffect(() => {
     try {
-      const historyStr = localStorage.getItem("anime_watch_history");
+      const historyStr = localStorage.getItem("anime_watch_history_v2");
       let history: any[] = historyStr ? JSON.parse(historyStr) : [];
 
       // Remove the exact same episode if it exists so we can bump it to the top
@@ -24,7 +24,7 @@ export function HistoryTracker({ id, epId, title, poster }: { id: string, epId: 
         history = history.slice(0, 10);
       }
 
-      localStorage.setItem("anime_watch_history", JSON.stringify(history));
+      localStorage.setItem("anime_watch_history_v2", JSON.stringify(history));
     } catch (e) {
       console.error("Failed to save history", e);
     }
