@@ -54,7 +54,7 @@ export function HomeView() {
     dedupingInterval: 60000,
   });
 
-  const { data: anilistData } = useSWR(ANILIST_URL, fetchAniList, {
+  const { data: anilistData } = useSWR('/api/anilist', fetchAniList, {
     revalidateOnFocus: false,
     dedupingInterval: 300000,
   });

@@ -57,7 +57,7 @@ export function AnimeCard({ anime, id, idx, epId, showRank = false, rankIndex = 
     let isMounted = true;
     const fetchImg = async () => {
       try {
-        const res = await fetch('https://graphql.anilist.co', {
+        const res = await fetch('/api/anilist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: GET_ANIME_COVER, variables: { search: cleanTitle } })
