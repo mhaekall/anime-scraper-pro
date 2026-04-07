@@ -54,7 +54,7 @@ export function HeroCarousel({ animes }: HeroCarouselProps) {
           const epId = cleanEpUrl.substring(cleanEpUrl.lastIndexOf('/') + 1);
 
           // Gunakan cover pertama (poster/img), jangan banner
-          const cover = anime.img || anime.poster || anime.coverImage?.extraLarge || anime.coverImage?.large || anime.bannerImage;
+          const cover = anime.img || anime.poster || anime.coverImage?.extraLarge || anime.coverImage?.large || anime.bannerImage || null;
           const score = anime.score || anime.averageScore;
           const c = anime.color || anime.coverImage?.color || settings.accentColor;
           

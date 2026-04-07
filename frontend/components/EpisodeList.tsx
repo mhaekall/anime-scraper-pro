@@ -67,7 +67,7 @@ export function EpisodeList({ episodes, animeId, coverImage }: EpisodeListProps)
                   
                   {/* Thumbnail / Cover */}
                   <div className="w-[120px] md:w-[140px] aspect-video rounded-[10px] bg-[#2C2C2E] relative overflow-hidden flex-shrink-0 border border-white/5">
-                    {coverImage && <img src={coverImage} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" alt="" />}
+                    {coverImage && coverImage !== "" && <img src={coverImage} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" alt="" />}
                     
                     {/* Status Overlays */}
                     {isCompleted && (

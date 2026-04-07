@@ -46,7 +46,7 @@ export function ContinueWatching() {
           return (
             <Link key={`${item.animeSlug}-${item.episode}-${idx}`} href={`/watch/${item.animeSlug}/${item.episode}`} className="min-w-[240px] md:min-w-[280px] snap-center cursor-pointer group animate-fade-in block" style={{ WebkitTapHighlightColor: "transparent" }}>
               <div className="w-full aspect-video rounded-[16px] bg-[#1C1C1E] relative overflow-hidden mb-3 border border-white/5 group-hover:border-white/20 transition-colors shadow-lg">
-                {item.animeCover ? (
+                {item.animeCover && item.animeCover !== "" ? (
                   <img src={item.animeCover} className="w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-500" alt={item.animeTitle} />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-[#2C2C2E]">

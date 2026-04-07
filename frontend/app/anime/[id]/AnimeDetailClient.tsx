@@ -21,7 +21,7 @@ export default function AnimeDetailClient({ detail, id }: AnimeDetailClientProps
   const episodes = detail?.episodes || [];
   const recommendations = detail?.recommendations || [];
   const seriesTitle = detail?.title || "Detail Anime";
-  const poster = detail?.poster || "";
+  const poster = detail?.poster || null;
   const banner = detail?.banner || poster;
   const synopsis = detail?.synopsis || "";
   const score = detail?.score;

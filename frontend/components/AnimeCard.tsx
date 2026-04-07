@@ -50,7 +50,7 @@ export function AnimeCard({ anime, id, idx, epId, showRank = false, rankIndex = 
     if (!isVisible) return;
     
     if (anime.img) {
-      setImgData({ url: anime.img, color: anime.color || null });
+      setImgData({ url: anime.img || null, color: anime.color || null });
       return;
     }
 
