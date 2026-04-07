@@ -188,6 +188,7 @@ async def sync_anime_episodes(anilist_id: int) -> dict:
         try:
             detail = await provider.get_anime_detail(series_url)
             raw_episodes = detail.get("episodes", [])
+            print(f"[Pipeline Debug] Fetched {len(raw_episodes)} episodes from {series_url}")
 
             sem = asyncio.Semaphore(5)
             count = 0

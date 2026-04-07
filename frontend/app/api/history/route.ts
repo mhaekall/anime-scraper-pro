@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { eq, and, desc } from "drizzle-orm";
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 export async function POST(req: Request) {
     try {
