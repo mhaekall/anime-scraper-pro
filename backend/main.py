@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from db.connection import database
 from services.background import background_scrape_job
-from routes import home, anime, stream, catalog   # ← add catalog
+from routes import home, anime, stream, catalog, home_v2   # ← add catalog, home_v2
 
 import os
 
@@ -113,6 +113,7 @@ app.include_router(stream.router,  prefix="/api",    tags=["Stream"])
 
 # v2 routes — use these for all new frontend code
 app.include_router(catalog.router, prefix="/api",    tags=["Catalog v2"])
+app.include_router(home_v2.router, prefix="/api",    tags=["Home v2"])
 
 
 @app.get("/healthz", tags=["System"])

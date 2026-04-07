@@ -106,7 +106,7 @@ function mapAnilistMedia(media: any[]): any[] {
 // ── component ──────────────────────────────────────────────────────────────────
 
 export function HomeView() {
-  const { data: homeData, error, isLoading } = useSWR("/api/home", apiFetcher, {
+  const { data: homeV2Data, error, isLoading } = useSWR("/api/v2/home", apiFetcher, {
     revalidateOnFocus:  false,
     dedupingInterval:   60_000,
   });
@@ -116,20 +116,21 @@ export function HomeView() {
     dedupingInterval:   300_000,
   });
 
-  const latestEpisodes = homeData?.data?.latest_episodes ?? [];
+  // Data from our own verified DB (datacenter)
+  const heroAnimes     = homeV2Data?.data?.hero    ?? [];
+  const latestEpisodes = homeV2Data?.data?.latest  ?? [];
+  const popularInDB    = homeV2Data?.data?.popular ?? [];
+
   const debugError     = error ? `Backend error: ${error.message}` : null;
 
+  // Fallback data from AniList (for sections that don't need episodes yet)
   const trending = mapAnilistMedia(anilistData?.data?.trending?.media);
   const season   = mapAnilistMedia(anilistData?.data?.season?.media);
   const upcoming = mapAnilistMedia(anilistData?.data?.upcoming?.media);
   const popular  = mapAnilistMedia(anilistData?.data?.popular?.media);
 
-  const heroAnimes = trending.length > 0 ? trending.slice(0, 6) : latestEpisodes.slice(0, 6);
-
-  // "Latest Episodes" from oploverz — these already have episode URLs,
-  // use them as-is.  The URL still points to the oploverz slug path which
-  // the watch page handles via the v1 backward-compat path.
-  const gridAnimes = latestEpisodes.slice(6);
+  // Latest Episodes in Grid — use verified data from DB
+  const gridAnimes = latestEpisodes;
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -176,7 +177,7 @@ export function HomeView() {
         {trending.length > 6 && <AnimeGrid animes={trending.slice(6)}   title="Sedang Trending" showRank />}
         {gridAnimes.length > 0 && <AnimeGrid animes={gridAnimes}        title="Rilis Episode Terbaru" />}
         {upcoming.length > 0 && <AnimeGrid animes={upcoming}            title="Rilis Mendatang" />}
-        {popular.length > 0  && <AnimeGrid animes={popular}             title="Top Sepanjang Masa" />}
+        {popularInDB.length > 0 && <AnimeGrid animes={popularInDB}      title="Top Sepanjang Masa" />}
       </div>
     </div>
   );
