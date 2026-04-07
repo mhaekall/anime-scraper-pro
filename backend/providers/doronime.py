@@ -68,6 +68,31 @@ class DoronimeProvider:
             print(f"[Doronime] Latest updates error: {e}")
             return []
 
+    async def get_anime_detail(self, anime_url: str) -> dict:
+        """
+        Placeholder for fetching anime details in Doronime.
+        It must return a dict with an 'episodes' list.
+        """
+        try:
+            res = await self.client.get(anime_url)
+            soup = BeautifulSoup(res.text, 'lxml')
+            episodes = []
+            
+            # Simple fallback for standard wp episode lists
+            # Find links containing 'episode'
+            for a in soup.find_all('a', href=True):
+                href = a['href']
+                if '/episode/' in href and a.text.strip():
+                    title = a.text.strip()
+                    episodes.append({
+                        'title': title,
+                        'url': href
+                    })
+            return {"episodes": episodes}
+        except Exception as e:
+            print(f"[Doronime] get_anime_detail error: {e}")
+            return {"episodes": []}
+
     async def get_episode_sources(self, episode_url: str) -> dict:
         """Extract Google Drive, Acefile, and Mega links from the episode page"""
         try:

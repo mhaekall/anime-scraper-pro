@@ -30,6 +30,75 @@ class OploverzProvider:
             transport=SSRFSafeTransport(),
         )
 
+    async def get_anime_detail(self, series_url: str) -> dict:
+        try:
+            r = await self.client.get(series_url, follow_redirects=True)
+            soup = BeautifulSoup(r.text, 'lxml')
+            
+            poster_meta = soup.find('meta', property="og:image")
+            poster = poster_meta.get('content') if poster_meta else None
+            
+            desc_meta = soup.find('meta', property="og:description")
+            desc = desc_meta.get('content') if desc_meta else ""
+            
+            episodes = []
+            seen = set()
+            
+            # Method 1: SvelteKit payload
+            payload_match = re.search(r'kit\.start\(app,\s*element,\s*(\{.*?\})\);', r.text, re.DOTALL)
+            if payload_match:
+                payload = payload_match.group(1)
+                matches = re.findall(r'episodeNumber:"([^"]+)"', payload)
+                for ep_num in matches:
+                    if ep_num not in seen:
+                        seen.add(ep_num)
+                        full_url = f"{series_url.rstrip('/')}/episode/{ep_num}"
+                        try:
+                            parsed_num = float(ep_num)
+                        except ValueError:
+                            parsed_num = 0.0
+                        episodes.append({
+                            'title': f'Episode {ep_num}', 
+                            'url': full_url,
+                            'number': parsed_num
+                        })
+            
+            # Method 2: Anchor tags (SvelteKit SSR)
+            if not episodes:
+                for a in soup.find_all('a', href=True):
+                    href = a['href']
+                    if '/episode/' in href:
+                        ep_match = re.search(r'/episode/([\d\.]+)', href)
+                        if ep_match:
+                            ep_num = ep_match.group(1)
+                            if ep_num not in seen:
+                                seen.add(ep_num)
+                                # make absolute
+                                if href.startswith('/'):
+                                    full_url = f"{BASE_URL}{href}"
+                                else:
+                                    full_url = href
+                                try:
+                                    parsed_num = float(ep_num)
+                                except ValueError:
+                                    parsed_num = 0.0
+                                episodes.append({
+                                    'title': f'Episode {ep_num}', 
+                                    'url': full_url,
+                                    'number': parsed_num
+                                })
+            
+            episodes.sort(key=lambda x: x['number'], reverse=True)
+                
+            return {
+                'poster': poster,
+                'synopsis': desc,
+                'episodes': episodes
+            }
+        except Exception as e:
+            print(f"[Oploverz] get_anime_detail error: {e}")
+            return {"episodes": []}
+
     async def get_episode_sources(self, episode_url: str) -> dict:
         try:
             r = await self.client.get(episode_url)
