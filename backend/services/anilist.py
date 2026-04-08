@@ -1,5 +1,6 @@
 import re
 import asyncio
+import difflib
 from cachetools import TTLCache
 from services.clients import client
 
@@ -107,7 +108,25 @@ async def fetch_anilist_info(title: str):
                 anilist_cache[cache_key] = None
                 return None
                 
-            media = media_list[0]
+            best_media = None
+            highest_score = 0.0
+            
+            for m in media_list:
+                titles = [m['title'].get('romaji'), m['title'].get('english'), m['title'].get('native')]
+                valid_titles = [t.lower() for t in titles if t]
+                if not valid_titles:
+                    continue
+                score = max(difflib.SequenceMatcher(None, search_query.lower(), t).ratio() for t in valid_titles)
+                if score > highest_score:
+                    highest_score = score
+                    best_media = m
+                    
+            if highest_score < 0.7:
+                print(f"[AniList] Rejecting match for '{search_query}', highest similarity score is {highest_score:.2f} (< 0.7)")
+                anilist_cache[cache_key] = None
+                return None
+                
+            media = best_media
             
             if target_season:
                 for m in media_list:

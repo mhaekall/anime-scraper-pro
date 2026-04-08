@@ -1,0 +1,321 @@
+"""
+backend/services/reconciler.py
+================================
+Autonomous Anime Reconciliation System
+Agent 4 - Lead Architect Implementation
+
+First Principles:
+  1. AniList ID  = single source of truth
+  2. Providers   = Supply Nodes (untrusted, may collide)
+  3. Gemini API  = Semantic arbiter when difflib score < 0.7
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import re
+import time
+from dataclasses import dataclass, field
+from difflib import SequenceMatcher
+from typing import Optional
+
+import httpx
+
+from db.connection import database
+from services.anilist import fetch_anilist_info
+from utils.ssrf_guard import SSRFSafeTransport
+
+import os
+
+# ─────────────────────────────────────────────
+# Config
+# ─────────────────────────────────────────────
+GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "AIzaSyADWr4n39-67jFOG4Lbwv9mBGo2zcOhVQM") # Default for demo
+GEMINI_MODEL    = "gemini-2.0-flash" # Ready for gemini-3-flash in future
+GEMINI_ENDPOINT = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    f"{GEMINI_MODEL}:generateContent"
+    f"?key={GEMINI_API_KEY}"
+)
+DIFFLIB_THRESHOLD = 0.70   # Below this → ask Gemini
+GEMINI_TIMEOUT    = 8.0    # seconds — keep it snappy on Termux
+
+
+# ─────────────────────────────────────────────
+# Data Models
+# ─────────────────────────────────────────────
+@dataclass
+class ProviderCandidate:
+    provider_id:   str          # "oploverz" | "otakudesu" | "samehadaku"
+    provider_slug: str          # URL slug
+    raw_title:     str          # Title as seen on provider
+    anilist_id:    Optional[int] = None
+    confidence:    float = 0.0
+    matched_via:   str = "none" # "difflib" | "gemini" | "exact"
+
+
+@dataclass
+class ReconciliationResult:
+    canonical_anilist_id: int
+    canonical_title:      str
+    anilist_metadata:     Optional[dict] = None # Include full data here
+    providers:            list[ProviderCandidate] = field(default_factory=list)
+    conflicts_resolved:   int = 0
+    migrated_records:     int = 0
+
+
+# ─────────────────────────────────────────────
+# Gemini Semantic Matcher  (lazy singleton)
+# ─────────────────────────────────────────────
+class GeminiMatcher:
+    _client: Optional[httpx.AsyncClient] = None
+
+    @classmethod
+    def _get_client(cls) -> httpx.AsyncClient:
+        if cls._client is None or cls._client.is_closed:
+            cls._client = httpx.AsyncClient(
+                transport=SSRFSafeTransport(),
+                timeout=GEMINI_TIMEOUT,
+                verify=False,
+            )
+        return cls._client
+
+    @classmethod
+    async def is_same_anime(
+        cls,
+        provider_title: str,
+        anilist_candidates: list[str],
+    ) -> tuple[bool, str]:
+        """
+        Ask Gemini whether `provider_title` matches any of `anilist_candidates`.
+        Returns (matched: bool, best_match_title: str).
+        """
+        prompt = (
+            "You are an anime title matcher. "
+            "Reply ONLY with a JSON object — no markdown, no explanation.\n\n"
+            f"Provider title: \"{provider_title}\"\n"
+            f"AniList candidates: {json.dumps(anilist_candidates)}\n\n"
+            "Return: {\"matched\": true/false, \"best_match\": \"<title or empty>\"}"
+        )
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"maxOutputTokens": 80, "temperature": 0},
+        }
+        try:
+            r = await cls._get_client().post(GEMINI_ENDPOINT, json=payload)
+            raw = r.json()
+            text = (
+                raw.get("candidates", [{}])[0]
+                   .get("content", {})
+                   .get("parts", [{}])[0]
+                   .get("text", "{}")
+            )
+            # Strip possible markdown fences
+            text = re.sub(r"```json|```", "", text).strip()
+            data = json.loads(text)
+            return bool(data.get("matched")), data.get("best_match", "")
+        except Exception as e:
+            print(f"[Gemini] Matching error: {e}")
+            return False, ""
+
+    @classmethod
+    async def close(cls):
+        if cls._client and not cls._client.is_closed:
+            await cls._client.aclose()
+
+
+# ─────────────────────────────────────────────
+# Core Reconciler
+# ─────────────────────────────────────────────
+class AnimeReconciler:
+    """
+    Detects Mapping Collisions and performs atomic Self-Healing.
+    """
+
+    @staticmethod
+    def _difflib_score(a: str, b: str) -> float:
+        return SequenceMatcher(
+            None,
+            _normalize(a),
+            _normalize(b),
+        ).ratio()
+
+    @staticmethod
+    async def _get_existing_mapping(
+        provider_id: str, provider_slug: str
+    ) -> Optional[dict]:
+        row = await database.fetch_one(
+            """
+            SELECT m."anilistId", meta."cleanTitle", meta."nativeTitle"
+            FROM anime_mappings m
+            JOIN anime_metadata meta ON m."anilistId" = meta."anilistId"
+            WHERE m."providerId" = :pid AND m."providerSlug" = :slug
+            """,
+            {"pid": provider_id, "slug": provider_slug},
+        )
+        return dict(row) if row else None
+
+    @staticmethod
+    async def _get_anilist_alt_titles(anilist_id: int) -> list[str]:
+        row = await database.fetch_one(
+            'SELECT "cleanTitle", "nativeTitle" FROM anime_metadata WHERE "anilistId" = :id',
+            {"id": anilist_id},
+        )
+        if not row:
+            return []
+        return [t for t in [row["cleanTitle"], row["nativeTitle"]] if t]
+
+    @staticmethod
+    async def _migrate_history(old_id: int, new_id: int) -> int:
+        tables = [
+            ("user_bookmarks", "anilistId"),
+            ("watch_history",  "anilistId"),
+        ]
+        migrated = 0
+        for table, col in tables:
+            try:
+                result = await database.execute(
+                    f"""
+                    UPDATE {table}
+                    SET "{col}" = :new_id
+                    WHERE "{col}" = :old_id
+                      AND NOT EXISTS (
+                          SELECT 1 FROM {table} t2
+                          WHERE t2."{col}" = :new_id
+                            AND t2."userId" = {table}."userId"
+                      )
+                    """,
+                    {"new_id": new_id, "old_id": old_id},
+                )
+                migrated += result or 0
+            except Exception as e:
+                pass
+        return migrated
+
+    async def reconcile(
+        self,
+        provider_id:   str,
+        provider_slug: str,
+        raw_title:     str,
+    ) -> Optional[ReconciliationResult]:
+        candidate = ProviderCandidate(
+            provider_id=provider_id,
+            provider_slug=provider_slug,
+            raw_title=raw_title,
+        )
+
+        anilist_data = await fetch_anilist_info(raw_title)
+        if not anilist_data:
+            return None
+
+        new_id    = anilist_data["anilistId"]
+        new_title = anilist_data["cleanTitle"] or anilist_data.get("nativeTitle", "")
+
+        existing = await self._get_existing_mapping(provider_id, provider_slug)
+        conflicts_resolved = 0
+        migrated           = 0
+
+        if existing:
+            old_id    = existing["anilistId"]
+            old_title = existing["cleanTitle"] or ""
+
+            if old_id == new_id:
+                candidate.anilist_id  = new_id
+                candidate.confidence  = 1.0
+                candidate.matched_via = "exact"
+            else:
+                score = self._difflib_score(raw_title, new_title)
+                matched_via = "difflib"
+
+                if score < DIFFLIB_THRESHOLD:
+                    alt_titles = await self._get_anilist_alt_titles(old_id)
+                    alt_titles.append(new_title)
+                    gemini_match, best = await GeminiMatcher.is_same_anime(
+                        raw_title, alt_titles
+                    )
+                    matched_via = "gemini"
+
+                    if gemini_match and best:
+                        if _normalize(best) == _normalize(old_title):
+                            new_id    = old_id
+                            new_title = old_title
+                        score = 0.9
+                    else:
+                        candidate.anilist_id  = old_id
+                        candidate.confidence  = score
+                        candidate.matched_via = "gemini_uncertain"
+                        return ReconciliationResult(
+                            canonical_anilist_id=old_id,
+                            canonical_title=old_title,
+                            providers=[candidate],
+                        )
+
+                if old_id != new_id:
+                    migrated = await self._migrate_history(old_id, new_id)
+                    conflicts_resolved = 1
+
+                candidate.anilist_id  = new_id
+                candidate.confidence  = score
+                candidate.matched_via = matched_via
+
+            return ReconciliationResult(
+                canonical_anilist_id=new_id,
+                canonical_title=new_title,
+                anilist_metadata=anilist_data,
+                providers=[candidate],
+                conflicts_resolved=conflicts_resolved,
+                migrated_records=migrated,
+            )
+        else:
+            score       = self._difflib_score(raw_title, new_title)
+            matched_via = "difflib"
+
+            if score < DIFFLIB_THRESHOLD:
+                alt = [new_title]
+                if anilist_data.get("nativeTitle"):
+                    alt.append(anilist_data["nativeTitle"])
+                gemini_match, _ = await GeminiMatcher.is_same_anime(raw_title, alt)
+                matched_via     = "gemini"
+                if not gemini_match:
+                    return None
+                score = 0.85
+
+            candidate.anilist_id  = new_id
+            candidate.confidence  = score
+            candidate.matched_via = matched_via
+
+            return ReconciliationResult(
+            canonical_anilist_id=new_id,
+            canonical_title=new_title,
+            anilist_metadata=anilist_data, # Data is now attached here
+            providers=[candidate],
+            conflicts_resolved=conflicts_resolved,
+            migrated_records=migrated,
+            )
+    async def reconcile_batch(
+        self,
+        items: list[dict],
+        concurrency: int = 3,
+    ) -> list[ReconciliationResult]:
+        sem = asyncio.Semaphore(concurrency)
+
+        async def bounded(item):
+            async with sem:
+                await asyncio.sleep(0.3)
+                return await self.reconcile(**item)
+
+        results = await asyncio.gather(
+            *(bounded(i) for i in items), return_exceptions=True
+        )
+        valid = [r for r in results if isinstance(r, ReconciliationResult)]
+        return valid
+
+
+def _normalize(title: str) -> str:
+    t = str(title).lower()
+    t = re.sub(r"\b(the|a|an)\b", "", t)
+    t = re.sub(r"[^a-z0-9\s]", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+reconciler = AnimeReconciler()

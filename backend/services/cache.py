@@ -14,11 +14,16 @@ async def upstash_get(key: str):
         print(f"[Upstash] Get error: {e}")
     return None
 
-async def upstash_set(key: str, value: dict, ex: int = 3600):
+async def upstash_set(key: str, value: dict, ex: int = 3600, nx: bool = False):
     try:
         payload = json.dumps(value)
-        res = await client.post(f"{UPSTASH_REDIS_REST_URL}/set/{key}?EX={ex}", headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}, data=payload)
-        return res.json().get('result') == 'OK'
+        url = f"{UPSTASH_REDIS_REST_URL}/set/{key}?EX={ex}"
+        if nx:
+            url += "&NX=true"
+        res = await client.post(url, headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}, data=payload)
+        # Upstash returns 'OK' for normal SET, and for NX it returns 'OK' if set, or null if not set.
+        result = res.json().get('result')
+        return result == 'OK'
     except Exception as e:
         print(f"[Upstash] Set error: {e}")
     return False

@@ -267,21 +267,26 @@ async def resolve_episode_sources(episode_url: str, provider_id: str) -> dict:
             raw_url = src.get("url") or src.get("resolved", "")
             if not raw_url:
                 return None
+            
             async with sem:
                 resolved = await extractor.extract_raw_video(raw_url)
 
             # Accept as-is if it looks like a direct video already
-            if not resolved or resolved == raw_url:
-                if any(raw_url.split("?")[0].endswith(ext) for ext in (".m3u8", ".mp4", ".webm")):
-                    resolved = raw_url
-                else:
-                    return None  # Could not resolve — skip
+            is_direct = any(resolved.split("?")[0].endswith(ext) for ext in (".m3u8", ".mp4", ".webm"))
+            
+            if not is_direct:
+                # If extraction failed to get a direct video link, keep it as an iframe
+                # provided it's a known embed domain
+                video_type = "iframe"
+                final_url = raw_url
+            else:
+                video_type = "hls" if ".m3u8" in resolved else "mp4"
+                final_url = resolved
 
-            video_type = "hls" if ".m3u8" in resolved else "mp4"
             return {
                 "provider": src.get("provider") or src.get("domain") or provider_id,
                 "quality":  src.get("quality", "Auto"),
-                "url":      resolved,
+                "url":      final_url,
                 "type":     video_type,
                 "source":   provider_id,
             }

@@ -92,9 +92,11 @@ def validate_scrape_url(url: str) -> None:
 class SSRFSafeTransport(httpx.AsyncHTTPTransport):
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         url_str = str(request.url)
+        # print(f"[SSRF DEBUG] Validating: {url_str}")
         try:
             validate_scrape_url(url_str)
         except SSRFError as e:
+            print(f"[SSRF ERROR] blocked '{url_str}': {e}")
             raise httpx.HTTPError(f"SSRF protection blocked request: {e}")
         
         return await super().handle_async_request(request)

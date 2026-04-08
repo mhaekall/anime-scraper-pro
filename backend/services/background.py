@@ -68,7 +68,12 @@ async def background_scrape_job():
                         
                         if anilist_data and anilist_data.get('hdImage'):
                             provider_slug = item['url'].strip('/').split('/')[-1]
-                            asyncio.create_task(upsert_anime_db(anilist_data, 'oploverz', provider_slug))
+                            # This handles mapping AND initial metadata
+                            await upsert_anime_db(anilist_data, 'oploverz', provider_slug)
+                            
+                            # NEW: Trigger full episode sync so the 'episodes' table is populated
+                            print(f"[Cron] Syncing episodes for {item['title']} (ID: {anilist_data['anilistId']})...")
+                            asyncio.create_task(sync_anime_episodes(anilist_data['anilistId']))
                             
                             return {
                                 'title': item['title'],

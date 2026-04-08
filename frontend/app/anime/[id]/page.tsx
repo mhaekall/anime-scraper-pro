@@ -1,10 +1,7 @@
 /**
  * /anime/[id]/page.tsx
  *
- * [id] = AniList numeric ID (e.g. "21") OR legacy oploverz slug ("one-piece")
- *
- * For numeric IDs → calls /api/v2/anime/{id}  (new pipeline)
- * For slug IDs    → calls /api/series-detail   (legacy, backward compat)
+ * [id] = AniList numeric ID (e.g. "21")
  *
  * The v2 endpoint triggers a background episode sync if the episode list is
  * empty, so the next page load will have episodes.
@@ -24,76 +21,54 @@ export default async function AnimeDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const isNumericId = /^\d+$/.test(id);
 
   let detail: any   = null;
   let fetchError: string | null = null;
 
-  if (isNumericId) {
-    // ── v2 path ─────────────────────────────────────────────────────────────
-    try {
-      const res = await fetch(`${API_URL}/api/v2/anime/${id}`, {
-        headers: { "Cache-Control": "no-cache" },
-      });
-      if (res.ok) {
-        const json = await res.json();
-        const anime = json.data;
+  try {
+    const res = await fetch(`${API_URL}/api/v2/anime/${id}`);
+    if (res.ok) {
+      const json = await res.json();
+      const anime = json.data;
 
-        // Normalize v2 shape → same shape AnimeDetailClient expects
-        detail = {
-          title:          anime.cleanTitle ?? anime.nativeTitle,
-          cleanTitle:     anime.cleanTitle,
-          nativeTitle:    anime.nativeTitle,
-          poster:         anime.coverImage,
-          banner:         anime.bannerImage,
-          synopsis:       anime.synopsis,
-          score:          anime.score,
-          genres:         anime.genres  ?? [],
-          studios:        anime.studios ?? [],
-          status:         anime.status,
-          totalEpisodes:  anime.totalEpisodes,
-          season:         anime.season,
-          seasonYear:     anime.year,
-          recommendations: anime.recommendations ?? [],
-          nextAiringEpisode: anime.nextAiringEpisode,
-          color:          null,  // not stored in v2 meta yet
-          // Map episode list to the shape AnimeDetailClient + EpisodeList expects:
-          // {title, url, number}
-          // url = canonical watch route using anilistId + episode number
-          episodes: (anime.episodes ?? []).map((e: any) => ({
-            title:  `Episode ${e.episodeNumber}`,
-            url:    `/watch/${id}/${e.episodeNumber}`,
-            number: e.episodeNumber,
-          })),
-        };
+      // Normalize v2 shape → same shape AnimeDetailClient expects
+      detail = {
+        title:          anime.cleanTitle ?? anime.nativeTitle,
+        cleanTitle:     anime.cleanTitle,
+        nativeTitle:    anime.nativeTitle,
+        poster:         anime.coverImage,
+        banner:         anime.bannerImage,
+        synopsis:       anime.synopsis,
+        score:          anime.score,
+        genres:         anime.genres  ?? [],
+        studios:        anime.studios ?? [],
+        status:         anime.status,
+        totalEpisodes:  anime.totalEpisodes,
+        season:         anime.season,
+        seasonYear:     anime.year,
+        recommendations: anime.recommendations ?? [],
+        nextAiringEpisode: anime.nextAiringEpisode,
+        color:          null,  // not stored in v2 meta yet
+        // Map episode list to the shape AnimeDetailClient + EpisodeList expects:
+        // {title, url, number}
+        // url = canonical watch route using anilistId + episode number
+        episodes: (anime.episodes ?? []).map((e: any) => ({
+          title:  `Episode ${e.episodeNumber}`,
+          url:    `/watch/${id}/${e.episodeNumber}`,
+          number: e.episodeNumber,
+          provider: e.providerId || "oploverz",
+        })),
+      };
 
-        if (json.syncing) {
-          // Episodes are being fetched — surface a friendly note
-          detail._syncing = true;
-        }
-      } else {
-        fetchError = `HTTP ${res.status}`;
+      if (json.syncing) {
+        // Episodes are being fetched — surface a friendly note
+        detail._syncing = true;
       }
-    } catch (e: any) {
-      fetchError = e.message ?? String(e);
+    } else {
+      fetchError = `HTTP ${res.status}`;
     }
-  } else {
-    // ── legacy v1 path (oploverz slug) ──────────────────────────────────────
-    try {
-      const url = `https://o.oploverz.ltd/series/${id}`;
-      const res = await fetch(
-        `${API_URL}/api/series-detail?url=${encodeURIComponent(url)}`,
-        { headers: { "Cache-Control": "no-cache" } }
-      );
-      if (res.ok) {
-        const json = await res.json();
-        detail = json.data;
-      } else {
-        fetchError = `HTTP ${res.status}`;
-      }
-    } catch (e: any) {
-      fetchError = e.message ?? String(e);
-    }
+  } catch (e: any) {
+    fetchError = e.message ?? String(e);
   }
 
   if (fetchError || !detail) {

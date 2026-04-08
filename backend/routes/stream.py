@@ -14,6 +14,18 @@ from services.providers import oploverz_provider, otakudesu_provider, samehadaku
 
 router = APIRouter()
 
+@router.options('/v1/stream')
+async def stream_video_options():
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Range, Content-Type, Authorization",
+            "Access-Control-Max-Age": "86400",
+        }
+    )
+
 @router.get('/v1/stream')
 async def stream_video(url: str, request: Request):
     try:

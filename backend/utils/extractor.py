@@ -24,8 +24,22 @@ class UniversalExtractor:
 
     async def extract_raw_video(self, embed_url: str) -> str:
         url = embed_url
+        
+        # Handle if the input is actually an iframe HTML string (like what wajik-anime-api generateSrcFromIframeTag does)
+        if '<iframe' in url.lower():
+            iframe_match = re.search(r'<iframe[^>]+src="([^"]+)"', url, re.IGNORECASE)
+            if iframe_match:
+                url = iframe_match.group(1)
+                
         try:
-            if 'desustream' in url or 'desudrives' in url:
+            if 'kuramadrive' in url or 'kuramanime' in url:
+                # wajik-anime-api extracts kuramanime from #player source
+                # Try fetching the embed url and getting the source
+                res = await self.client.get(url)
+                match = re.search(r'<source[^>]+src="([^"]+)"', res.text, re.IGNORECASE)
+                if match:
+                    return match.group(1)
+            elif 'desustream' in url or 'desudrives' in url:
                 fetch_url = f"{url}&mode=json" if '?' in url else f"{url}?mode=json"
                 res = await self.client.get(fetch_url)
                 data = res.json()
@@ -40,14 +54,30 @@ class UniversalExtractor:
                 hash_id = url.split('#')[-1]
                 if not hash_id: return url
                 api_url = f"https://oplo2.4meplayer.pro/api/source/{hash_id}"
-                res = await self.client.post(api_url, data={'r': '', 'd': 'oplo2.4meplayer.pro'})
-                data = res.json()
-                if data.get('success') and data.get('data'):
-                    sources = data['data']
-                    for s in sources:
-                        if '720' in str(s.get('label', '')):
-                            return s.get('file', url)
-                    return sources[0].get('file', url) if sources else url
+                try:
+                    res = await self.client.post(api_url, data={'r': '', 'd': 'oplo2.4meplayer.pro'})
+                    data = res.json()
+                    if data.get('success') and data.get('data'):
+                        sources = data['data']
+                        for s in sources:
+                            if '720' in str(s.get('label', '')):
+                                return s.get('file', url)
+                        return sources[0].get('file', url) if sources else url
+                except Exception:
+                    pass
+                
+                # Fallback: scrape the iframe HTML directly for video sources if API fails
+                try:
+                    res_html = await self.client.get(url)
+                    match = re.search(r'sources:\s*\[\s*{\s*(?:file|src):\s*[\'"]([^\'"]+)[\'"]', res_html.text)
+                    if match:
+                        return match.group(1)
+                    match2 = re.search(r'(?:file|src):\s*[\'"](https?://[^\'"]+\.(?:m3u8|mp4)[^\'"]*)[\'"]', res_html.text)
+                    if match2:
+                        return match2.group(1)
+                except Exception as e:
+                    print(f"[Extractor] 4meplayer fallback error: {e}")
+                return url
             elif 'streamtape' in url:
                 res = await self.client.get(url)
                 html = res.text

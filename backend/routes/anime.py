@@ -8,6 +8,7 @@ from services.config import BASE_URL
 from services.clients import scraping_client
 from services.cache import swr_cache_get
 from services.anilist import fetch_anilist_info
+from services.reconciler import reconciler
 from services.db import upsert_anime_db
 from utils.ssrf_guard import validate_scrape_url, SSRFError
 from utils.helpers import extract_domain, determine_quality
@@ -86,10 +87,13 @@ async def get_series_detail(url: str = Query(..., description="Target URL of the
                     })
             episodes.sort(key=lambda x: x['number'], reverse=True)
                 
-        anilist_data = await fetch_anilist_info(slug_title)
+        provider_slug = url.strip('/').split('/')[-1]
+        recon_res = await reconciler.reconcile("oploverz", provider_slug, slug_title)
         
+        anilist_data = recon_res.anilist_metadata if recon_res else None
         if anilist_data:
-            provider_slug = url.strip('/').split('/')[-1]
+            anilist_data["anilistId"] = recon_res.canonical_anilist_id
+            anilist_data["cleanTitle"] = recon_res.canonical_title
             asyncio.create_task(upsert_anime_db(anilist_data, "oploverz", provider_slug))
 
         fallback_desc = "Tidak ada sinopsis resmi yang tersedia untuk seri anime ini."
@@ -97,6 +101,7 @@ async def get_series_detail(url: str = Query(..., description="Target URL of the
             fallback_desc = desc
             
         return {
+            'anilistId': anilist_data['anilistId'] if anilist_data else None,
             'title': slug_title,
             'cleanTitle': anilist_data['cleanTitle'] if anilist_data else None,
             'nativeTitle': anilist_data['nativeTitle'] if anilist_data else None,
@@ -193,23 +198,29 @@ async def scrape_episode(url: str = Query(..., description="Episode URL to scrap
         payload_match = re.search(r'kit\.start\(app,\s*element,\s*(\{.*?\})\);', html, re.DOTALL)
         if payload_match:
             payload = payload_match.group(1)
-            stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', payload)
             
-            down_match = re.search(r'downloadUrl:\s*(\[\{format.*?)\]\}\]\}', payload, re.DOTALL)
-            if down_match:
-                down_str = down_match.group(1) + ']}]'
-                fmt_blocks = re.finditer(r'format:\"([^\"]+)\",resolutions:\[(.*?)\]\}\]', down_str, re.DOTALL)
-                for fmt in fmt_blocks:
-                    f_type = fmt.group(1)
-                    res_str = fmt.group(2)
-                    quals = re.finditer(r'quality:\"([^\"]+)\",download_links:\[(.*?)\]\}', res_str, re.DOTALL)
-                    for q in quals:
-                        q_type = q.group(1)
-                        links_str = q.group(2)
-                        links = []
-                        for link in re.finditer(r'host:\"([^\"]+)\",url:\"([^\"]+)\"', links_str):
-                            links.append({'host': link.group(1), 'url': link.group(2)})
-                        downloads.append({'format': f_type, 'quality': q_type, 'links': links})
+            ep_match = re.search(r'episode:\{(.*?)streamUrl:(\[.*?\])', payload, re.DOTALL)
+            if ep_match:
+                streams_str = ep_match.group(2)
+                stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', streams_str)
+                
+                down_match = re.search(r'downloadUrl:\s*(\[.*?\]),streamUrl:', payload, re.DOTALL)
+                if down_match:
+                    down_str = down_match.group(1)
+                    fmt_blocks = re.finditer(r'format:\"([^\"]+)\",resolutions:\[(.*?)\]\}\]', down_str, re.DOTALL)
+                    for fmt in fmt_blocks:
+                        f_type = fmt.group(1)
+                        res_str = fmt.group(2)
+                        quals = re.finditer(r'quality:\"([^\"]+)\",download_links:\[(.*?)\]\}', res_str, re.DOTALL)
+                        for q in quals:
+                            q_type = q.group(1)
+                            links_str = q.group(2)
+                            links = []
+                            for link in re.finditer(r'host:\"([^\"]+)\",url:\"([^\"]+)\"', links_str):
+                                links.append({'host': link.group(1), 'url': link.group(2)})
+                            downloads.append({'format': f_type, 'quality': q_type, 'links': links})
+            else:
+                stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', payload)
         else:
             stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', html)
         
@@ -297,9 +308,13 @@ async def get_multi_source(title: str = Query(..., description="Anime clean titl
                         return {'sources': []}
                     series_url = first_result.get('href')
                     
-                    anilist_data = await fetch_anilist_info(title)
+                    provider_slug = series_url.strip('/').split('/')[-1]
+                    recon_res = await reconciler.reconcile("otakudesu", provider_slug, title)
+                    anilist_data = recon_res.anilist_metadata if recon_res else None
                     if anilist_data:
-                        asyncio.create_task(upsert_anime_db(anilist_data, "otakudesu", series_url.strip('/').split('/')[-1]))
+                        anilist_data["anilistId"] = recon_res.canonical_anilist_id
+                        anilist_data["cleanTitle"] = recon_res.canonical_title
+                        asyncio.create_task(upsert_anime_db(anilist_data, "otakudesu", provider_slug))
                 
                 if not series_url: return {'sources': []}
 
@@ -391,9 +406,12 @@ async def bulk_scrape(provider: str = Query('otakudesu', description="otakudesu 
         for item in items:
             try:
                 title = item['title']
-                anilist_data = await fetch_anilist_info(title)
+                prov_slug = item['url'].strip('/').split('/')[-1]
+                recon_res = await reconciler.reconcile(prov_name, prov_slug, title)
+                anilist_data = recon_res.anilist_metadata if recon_res else None
                 if anilist_data:
-                    prov_slug = item['url'].strip('/').split('/')[-1]
+                    anilist_data["anilistId"] = recon_res.canonical_anilist_id
+                    anilist_data["cleanTitle"] = recon_res.canonical_title
                     await upsert_anime_db(anilist_data, prov_name, prov_slug)
                 await asyncio.sleep(2)
             except Exception as e:
