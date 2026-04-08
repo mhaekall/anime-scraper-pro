@@ -18,6 +18,13 @@ from db.connection import database
 
 router = APIRouter()
 
+async def verify_admin_key(x_admin_key: str = Header(None)):
+    expected_key = os.getenv("ADMIN_API_KEY")
+    if not expected_key:
+        raise HTTPException(status_code=500, detail="ADMIN_API_KEY not configured")
+    if not x_admin_key or x_admin_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 @router.get('/series')
 async def get_series():
     async def fetch_series():
@@ -394,7 +401,7 @@ async def get_multi_source(title: str = Query(..., description="Anime clean titl
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get('/admin/bulk-scrape')
+@router.get('/admin/bulk-scrape', dependencies=[Depends(verify_admin_key)])
 async def bulk_scrape(provider: str = Query('otakudesu', description="otakudesu or samehadaku")):
     async def run_scrape(prov_name):
         if prov_name == 'otakudesu':
@@ -413,14 +420,6 @@ async def bulk_scrape(provider: str = Query('otakudesu', description="otakudesu 
                 if anilist_data:
                     anilist_data["anilistId"] = recon_res.canonical_anilist_id
                     anilist_data["cleanTitle"] = recon_res.canonical_title
-                    await upsert_anime_db(anilist_data, prov_name, prov_slug)
-                await asyncio.sleep(2)
-            except Exception as e:
-                print(f"Bulk scrape error for {title}: {e}")
-
-    asyncio.create_task(run_scrape(provider))
-    return {"message": f"Bulk scrape started for {provider}"}
-le"] = recon_res.canonical_title
                     await upsert_anime_db(anilist_data, prov_name, prov_slug)
                 await asyncio.sleep(2)
             except Exception as e:
