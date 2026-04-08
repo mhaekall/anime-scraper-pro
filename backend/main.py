@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from db.connection import database
 from services.background import background_scrape_job
-from routes import home, anime, stream, catalog, home_v2, stream_v2
+from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook
 
 import os
 
