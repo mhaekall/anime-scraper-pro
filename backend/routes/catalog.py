@@ -308,6 +308,3 @@ async def _fetch_and_save_anilist(anilist_id: int) -> Optional[dict]:
     except Exception as e:
         print(f"[Catalog] _fetch_and_save_anilist error for {anilist_id}: {e}")
         return None
-eturn None
-nilist error for {anilist_id}: {e}")
-        return None
