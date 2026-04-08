@@ -1,11 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from db.connection import database
 import json
 
 router = APIRouter()
 
 @router.get("/v2/home")
-async def get_home_v2():
+async def get_home_v2(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     """
     Return homepage data exclusively from our database (datacenter).
     Ensures we only show anime that actually exist in our DB and have episodes.

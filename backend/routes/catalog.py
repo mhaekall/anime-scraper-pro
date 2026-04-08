@@ -28,7 +28,7 @@ GET  /api/v2/anime/{anilist_id}/episodes
 
 import asyncio
 from typing import Optional, List, Dict
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Response
 
 from db.connection import database
 from services.pipeline import (
@@ -111,7 +111,13 @@ async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks):
 # ── GET /api/v2/anime/{anilist_id}/episodes/{ep_num}/stream ────────────────────
 
 @router.get("/v2/anime/{anilist_id}/episodes/{ep_num}/stream")
-async def get_episode_stream_v2(anilist_id: int, ep_num: str, refresh: bool = Query(False)):
+async def get_episode_stream_v2(
+    anilist_id: int, 
+    ep_num: str, 
+    response: Response, 
+    refresh: bool = Query(False)
+):
+    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     """
     Return resolved video sources for one episode.
 
@@ -175,9 +181,11 @@ async def trigger_sync_v2(anilist_id: int, background_tasks: BackgroundTasks):
 
 @router.get("/v2/search")
 async def search_v2(
+    response: Response,
     q: str = Query(..., min_length=2, description="Search query"),
     background_tasks: BackgroundTasks = None,
 ):
+    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     """
     Search AniList and return results enriched with local DB status.
 

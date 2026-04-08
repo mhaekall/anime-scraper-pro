@@ -14,5 +14,5 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-database = databases.Database(DATABASE_URL)
+database = databases.Database(DATABASE_URL, min_size=1, max_size=5)
 metadata = sqlalchemy.MetaData()

@@ -1,12 +1,13 @@
 import asyncio
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from services.cache import upstash_get
 from services.background import background_scrape_job
 
 router = APIRouter()
 
 @router.get('/home')
-async def get_home():
+async def get_home(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     try:
         cached = await upstash_get("home_data")
         if cached:

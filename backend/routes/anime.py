@@ -3,7 +3,7 @@ import re
 import asyncio
 import os
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, HTTPException, Query, Header, Depends
+from fastapi import APIRouter, HTTPException, Query, Header, Depends, Response
 
 from services.config import BASE_URL
 from services.clients import scraping_client
@@ -59,7 +59,8 @@ async def get_series():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get('/series-detail')
-async def get_series_detail(url: str = Query(..., description="Target URL of the series")):
+async def get_series_detail(response: Response, url: str = Query(..., description="Target URL of the series")):
+    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     parts = url.strip('/').split('/')
     slug_title = parts[-1].replace('-', ' ').title() if len(parts) > 0 else "Unknown"
     cache_key = f"series_detail:{slug_title}"
