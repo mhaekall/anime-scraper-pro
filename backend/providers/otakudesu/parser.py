@@ -1,0 +1,86 @@
+import re
+from bs4 import BeautifulSoup
+from providers.base_parser import BaseParser, AnimeDetail, EpisodeSource
+
+class OtakudesuParser(BaseParser):
+    def parse_episode_list(self, html: str, base_url: str) -> AnimeDetail:
+        soup = BeautifulSoup(html, 'lxml')
+        episodes = []
+        for li in soup.select('div.episodelist ul li'):
+            a = li.select_one('a')
+            if a:
+                title = a.get_text(strip=True)
+                m = re.search(r'(?:episode|eps?)[.\s]*(\d+(?:[.,]\d+)?)', title, re.IGNORECASE)
+                ep_num = float(m.group(1).replace(",", ".")) if m else 0.0
+                episodes.append({
+                    'number': ep_num,
+                    'title': title,
+                    'url': a.get('href'),
+                    'thumbnail': None
+                })
+        
+        synopsis = soup.select_one('div.sinopc')
+        
+        return {
+            'episodes': sorted(episodes, key=lambda x: x["number"]),
+            'poster': None,
+            'synopsis': synopsis.get_text(strip=True) if synopsis else ''
+        }
+
+    def parse_episode_sources(self, html: str) -> list[EpisodeSource]:
+        soup = BeautifulSoup(html, 'lxml')
+        sources = []
+        for iframe in soup.find_all('iframe'):
+            src = iframe.get('src', '')
+            if src and 'http' in src:
+                if any(ads in src for ads in ['googlesyndication', 'doubleclick', 'ads']):
+                    continue
+                sources.append({
+                    'provider': self._detect_provider(src),
+                    'quality': 'Auto',
+                    'url': src,
+                    'type': 'iframe'
+                })
+        return sources
+
+    def extract_mirrors(self, html: str) -> list[dict]:
+        soup = BeautifulSoup(html, 'lxml')
+        mirrors = []
+        for a in soup.select('.mirrorstream ul li a[data-content]'):
+            data_content = a.get('data-content')
+            if not data_content: continue
+            
+            quality_label = 'Auto'
+            li_parent = a.find_parent('li')
+            if li_parent:
+                prev_li = li_parent.find_previous_sibling('li')
+                if prev_li:
+                    quality_label = prev_li.get_text(strip=True)
+                    
+            provider_label = a.get_text(strip=True)
+            mirrors.append({
+                'data_content': data_content,
+                'quality': self._detect_quality(quality_label),
+                'provider': self._detect_provider(provider_label) if self._detect_provider(provider_label) != 'Unknown' else provider_label
+            })
+        return mirrors
+        
+    def extract_iframe_src(self, iframe_html: str) -> str | None:
+        match = re.search(r'<iframe[^>]+src="([^"]+)"', iframe_html, re.IGNORECASE)
+        return match.group(1) if match else None
+
+    def _detect_quality(self, text: str) -> str:
+        text = text.lower()
+        if '1080' in text: return '1080p'
+        if '720' in text: return '720p'
+        if '480' in text: return '480p'
+        if '360' in text: return '360p'
+        return 'Auto'
+
+    def _detect_provider(self, url: str) -> str:
+        if 'desudrives' in url.lower() or 'desustream' in url.lower(): return 'DesuDrives'
+        if 'mp4upload' in url.lower(): return 'Mp4upload'
+        if 'streamtape' in url.lower(): return 'Streamtape'
+        if 'doodstream' in url.lower() or 'dood' in url.lower(): return 'Doodstream'
+        if '4meplayer' in url.lower(): return '4mePlayer'
+        return 'Unknown'

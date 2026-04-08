@@ -75,3 +75,16 @@ async def swr_cache_refresh(key: str, fetch_fn, ttl: int, swr: int):
             await upstash_set(key, payload, ex=swr)
     except Exception as e:
         print(f"[SWR] Background refresh error for {key}: {e}")
+
+import hashlib
+
+def _slug_hash(provider_id: str, slug: str) -> str:
+    return hashlib.sha256(f"{provider_id}:{slug}".encode()).hexdigest()[:16]
+
+async def get_reconciler_cache(provider_id: str, slug: str) -> dict | None:
+    key = f"recon:{provider_id}:{_slug_hash(provider_id, slug)}"
+    return await upstash_get(key)
+
+async def set_reconciler_cache(provider_id: str, slug: str, result: dict) -> None:
+    key = f"recon:{provider_id}:{_slug_hash(provider_id, slug)}"
+    await upstash_set(key, result, ex=604800)

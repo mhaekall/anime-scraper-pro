@@ -49,3 +49,26 @@ async def upsert_anime_db(anilist_data, provider_id: str, provider_slug: str):
         })
     except Exception as e:
         print(f"[DB Upsert Error] {e}")
+
+async def upsert_mapping_atomic(
+    anilist_id: int,
+    provider_id: str,
+    provider_slug: str,
+    clean_title: str,
+    cover_image: str,
+) -> None:
+    await database.execute(
+        """
+        SELECT upsert_mapping_atomic(
+            :anilist_id, :provider_id, :provider_slug,
+            :clean_title, :cover_image
+        )
+        """,
+        values={
+            "anilist_id":    anilist_id,
+            "provider_id":   provider_id,
+            "provider_slug": provider_slug,
+            "clean_title":   clean_title,
+            "cover_image":   cover_image,
+        },
+    )

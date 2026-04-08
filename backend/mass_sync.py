@@ -9,8 +9,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db.connection import database
 from services.pipeline import sync_anime_episodes
 from services.anilist import fetch_anilist_info
-from services.db import upsert_anime_db
+from services.db import upsert_mapping_atomic
 from services.clients import scraping_client
+from services.transport import ProviderTransport
+from services.cache import get_reconciler_cache, set_reconciler_cache
 from services.reconciler import reconciler
 from bs4 import BeautifulSoup
 
@@ -28,7 +30,8 @@ async def mass_sync():
     for target in targets:
         try:
             print(f"Scraping {target['id']} homepage...")
-            res = await scraping_client.get(target['url'])
+            client = ProviderTransport.get_client()
+            res = await client.get(target['url'])
             soup = BeautifulSoup(res.text, 'lxml')
             
             if target['id'] == 'oploverz':
@@ -75,7 +78,9 @@ async def mass_sync():
                                 found_animes.append((title, 'otakudesu', slug))
 
         except Exception as e:
+            import traceback
             print(f"Error scraping {target['id']}: {e}")
+            traceback.print_exc()
 
     # Deduplicate by slug
     unique_map = {}
@@ -90,13 +95,15 @@ async def mass_sync():
 
     reconcile_items = []
     for (prov, slug), title in unique_map.items():
-        reconcile_items.append({
-            "provider_id": prov,
-            "provider_slug": slug,
-            "raw_title": title
-        })
+        cached = await get_reconciler_cache(prov, slug)
+        if not cached:
+            reconcile_items.append({
+                "provider_id": prov,
+                "provider_slug": slug,
+                "raw_title": title
+            })
 
-    print(f"Found {len(reconcile_items)} unique mappings. Starting Reconciler processing...")
+    print(f"Found {len(reconcile_items)} uncached mappings. Starting Reconciler processing...")
     
     results = await reconciler.reconcile_batch(reconcile_items, concurrency=5)
     
@@ -115,13 +122,30 @@ async def mass_sync():
                 prov = candidate.provider_id
                 slug = candidate.provider_slug
                 
+                # Cache the result
+                await set_reconciler_cache(prov, slug, {
+                    "anilist_id": aid,
+                    "confidence": candidate.confidence,
+                    "matched_via": candidate.matched_via
+                })
+                
                 # Cleanup old numeric slugs
                 if not slug.isdigit():
                     await database.execute(
                         'DELETE FROM anime_mappings WHERE "anilistId" = :aid AND "providerId" = :pid AND "providerSlug" ~ \'^[0-9]+$\'',
                         values={"aid": aid, "pid": prov}
                     )
-                await upsert_anime_db(anilist_data, prov, slug)
+                
+                clean_title = anilist_data.get("cleanTitle") or anilist_data.get("nativeTitle", "")
+                cover_image = anilist_data.get("hdImage") or anilist_data.get("coverImage", "")
+                
+                await upsert_mapping_atomic(
+                    anilist_id=aid,
+                    provider_id=prov,
+                    provider_slug=slug,
+                    clean_title=clean_title,
+                    cover_image=cover_image
+                )
                 
                 if aid not in synced_aids:
                     print(f"[{count+1}] -> Synced Mapping & Triggering episodes for {res.canonical_title} (ID: {aid})...")
