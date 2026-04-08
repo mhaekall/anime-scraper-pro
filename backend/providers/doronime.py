@@ -19,7 +19,7 @@ HEADERS = {
 class DoronimeProvider:
     def __init__(self):
         self.client = httpx.AsyncClient(
-            verify=False,
+            verify=True,
             headers=HEADERS,
             timeout=30.0,
             follow_redirects=True,

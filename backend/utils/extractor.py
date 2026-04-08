@@ -16,7 +16,7 @@ class UniversalExtractor:
     def __init__(self):
         self.client = httpx.AsyncClient(
             transport=SSRFSafeTransport(),
-            verify=False,
+            verify=True,
             headers=HEADERS,
             timeout=15.0,
             follow_redirects=True

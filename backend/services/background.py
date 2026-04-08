@@ -7,7 +7,8 @@ from services.config import BASE_URL
 from services.clients import scraping_client
 from services.cache import upstash_get, upstash_set, upstash_del
 from services.anilist import fetch_anilist_info
-from services.db import upsert_anime_db
+from services.db import upsert_mapping_atomic
+from services.pipeline import sync_anime_episodes
 
 async def background_scrape_job():
     consecutive_failures = 0
@@ -131,6 +132,19 @@ async def background_scrape_job():
                 }
                 
                 await upstash_set("home_data", payload, ex=86400)
+                print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis.")
+                consecutive_failures = 0
+                
+        except TimeoutError:
+            print("[Cron] Another instance is running, skipping")
+        except Exception as e:
+            consecutive_failures += 1
+            print(f"[Cron] Aggregator Error: {e}")
+            await asyncio.sleep(60)
+            continue
+            
+        await asyncio.sleep(3600)
+t upstash_set("home_data", payload, ex=86400)
                 print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis.")
                 consecutive_failures = 0
                 

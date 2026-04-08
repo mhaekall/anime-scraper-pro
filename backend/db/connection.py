@@ -1,8 +1,13 @@
 import os
 import databases
 import sqlalchemy
+from dotenv import load_dotenv
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_0Kb4mhkYXIOd@ep-red-star-a19jjtnh.ap-southeast-1.aws.neon.tech/neondb?sslmode=require")
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set")
 
 # Replace postgresql:// with postgresql+asyncpg:// if needed for async, 
 # databases library does this automatically for postgresql, but explicitly using postgresql+asyncpg is sometimes safer.

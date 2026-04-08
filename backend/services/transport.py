@@ -10,7 +10,7 @@ class ProviderTransport:
         if cls._client is None or cls._client.is_closed:
             cls._client = httpx.AsyncClient(
                 transport=SSRFSafeTransport(),
-                verify=False,
+                verify=True,
                 timeout=15.0,
                 follow_redirects=True,
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},

@@ -28,10 +28,16 @@ from utils.ssrf_guard import SSRFSafeTransport
 
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # ─────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────
-GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "AIzaSyADWr4n39-67jFOG4Lbwv9mBGo2zcOhVQM") # Default for demo
+GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    print("[WARNING] GEMINI_API_KEY is not set.")
 GEMINI_MODEL    = "gemini-2.0-flash" # Ready for gemini-3-flash in future
 GEMINI_ENDPOINT = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -77,7 +83,7 @@ class GeminiMatcher:
             cls._client = httpx.AsyncClient(
                 transport=SSRFSafeTransport(),
                 timeout=GEMINI_TIMEOUT,
-                verify=False,
+                verify=True,
             )
         return cls._client
 
