@@ -39,3 +39,14 @@
 2. **Agen 4 (Lead):** 
    - Konfigurasikan **GitHub Actions CI** sederhana untuk `pytest` dan *linting* (Ruff).
    - Tambahkan `robots.txt` dengan *noindex* di *Frontend* agar Google tidak mengindeks *endpoint proxy stream* kita dan diblokir oleh *provider*.
+
+## 5. Blueprint Phase 0/1/2 Execution (Provider Refactoring & Samehadaku Fixes)
+**Eksekusi Agen 4 (Lead Assistant):**
+- **Samehadaku AJAX Resolver (P0):** Resolved missing iframes by handling `ajax://` links in `get_episode_sources`, extracting `data-post`/`data-nume`/`data-type`, and sending an authenticated POST request to `/wp-admin/admin-ajax.php`.
+- **Doronime Integration (P0/P1):** Fully refactored `doronime.py` from a standalone script into `backend/providers/doronime/` using the strict `BaseParser` + `ProviderTransport` pattern. Added Doronime to `PROVIDERS` and URL `bases` in `pipeline.py`.
+- **Dead Code Cleanup (P2):** Eliminated unused abstract classes (`base.py`) to reduce cognitive load and enforce standardisation under `BaseParser`.
+
+**Tugas Sesi Berikutnya (Big Tech Next Steps):**
+- Implement Serverless Task Fan-Out using Upstash QStash to distribute heavy mass-sync operations and avoid compute timeouts.
+- Implement aggressive Circuit Breaker mechanisms combined with exponential backoff on IP bans (HTTP 403/429).
+- Transition database connections to Neon Connection Pooling to save free-tier resources under heavy load.
