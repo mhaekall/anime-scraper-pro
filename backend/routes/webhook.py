@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from qstash import Receiver
 from services.config import QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY
 from services.pipeline import sync_anime_episodes
+from db.connection import database
 
 router = APIRouter()
 
@@ -14,15 +15,8 @@ if QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY:
         next_signing_key=QSTASH_NEXT_SIGNING_KEY,
     )
 
-@router.post("/webhook/sync")
-async def sync_webhook(request: Request):
-    """
-    QStash Webhook endpoint for asynchronously syncing anime episodes.
-    Requires valid Upstash-Signature header.
-    """
+async def _verify_qstash(request: Request):
     if not receiver:
-        # If QStash isn't configured, optionally accept or reject.
-        # For security, we should reject if we expect signatures.
         raise HTTPException(status_code=500, detail="QStash keys not configured on server")
 
     body = await request.body()
@@ -32,7 +26,6 @@ async def sync_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Missing Upstash-Signature header")
 
     try:
-        # Verify the signature
         receiver.verify(
             body=body.decode("utf-8"),
             signature=signature,
@@ -41,6 +34,15 @@ async def sync_webhook(request: Request):
     except Exception as e:
         print(f"[QStash] Invalid Signature: {e}")
         raise HTTPException(status_code=401, detail="Invalid signature")
+    
+    return body
+
+@router.post("/webhook/sync")
+async def sync_webhook(request: Request):
+    """
+    QStash Webhook endpoint for asynchronously syncing anime episodes.
+    """
+    body = await _verify_qstash(request)
 
     # Process payload
     try:
@@ -55,4 +57,23 @@ async def sync_webhook(request: Request):
         return Response(status_code=200, content="Sync Completed")
     except Exception as e:
         print(f"[Webhook] Error processing payload: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/webhook/cleanup")
+async def cleanup_webhook(request: Request):
+    """
+    Cron endpoint via QStash to clean up expired video caches 
+    and save the 0.5GB Neon DB limit.
+    """
+    await _verify_qstash(request)
+    
+    try:
+        # Delete expired video cache entries
+        query = 'DELETE FROM video_cache WHERE "expiresAt" < NOW()'
+        await database.execute(query)
+        print("[Webhook] Cleaned up expired video_cache entries")
+        
+        return Response(status_code=200, content="Cleanup Completed")
+    except Exception as e:
+        print(f"[Webhook] Error running cleanup: {e}")
         raise HTTPException(status_code=500, detail=str(e))
