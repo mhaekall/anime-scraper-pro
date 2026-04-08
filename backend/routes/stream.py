@@ -71,7 +71,7 @@ async def stream_video(url: str, request: Request):
     return await _proxy_video_with_head(url, headers, range_header)
 
 async def _proxy_hls(url: str, headers: dict):
-    async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+    async with httpx.AsyncClient(verify=True, timeout=10.0) as client:
         resp = await client.get(url, headers=headers, follow_redirects=True)
         content = resp.text
         base_url = "/".join(url.split('/')[:-1])
@@ -93,7 +93,7 @@ async def _proxy_hls(url: str, headers: dict):
 
 async def _proxy_video_direct(url: str, headers: dict):
     async def generate():
-        async with httpx.AsyncClient(verify=False, timeout=60.0) as client:
+        async with httpx.AsyncClient(verify=True, timeout=60.0) as client:
             try:
                 async with client.stream("GET", url, headers=headers, follow_redirects=True) as resp:
                     # Forward status from the GET response itself
@@ -110,7 +110,7 @@ async def _proxy_video_direct(url: str, headers: dict):
 
 async def _proxy_video_with_head(url: str, headers: dict, range_header: str | None):
     async def generate():
-        async with httpx.AsyncClient(verify=False, timeout=60.0) as client:
+        async with httpx.AsyncClient(verify=True, timeout=60.0) as client:
             try:
                 async with client.stream("GET", url, headers=headers, follow_redirects=True) as resp:
                     async for chunk in resp.aiter_bytes(chunk_size=128 * 1024):
@@ -118,7 +118,7 @@ async def _proxy_video_with_head(url: str, headers: dict, range_header: str | No
             except Exception as e:
                 print(f"[Stream Proxy] Streaming error: {e}")
 
-    async with httpx.AsyncClient(verify=False, timeout=10.0) as head_client:
+    async with httpx.AsyncClient(verify=True, timeout=10.0) as head_client:
         try:
             head_resp = await head_client.head(url, headers=headers, follow_redirects=True)
             if head_resp.status_code == 403:
@@ -148,7 +148,7 @@ async def debug_stream(url: str):
     expire = qs.get('expire', ['N/A'])[0]
     
     headers = VIDEO_PROXY_HEADERS.copy()
-    async with httpx.AsyncClient(verify=False, timeout=5.0) as client:
+    async with httpx.AsyncClient(verify=True, timeout=5.0) as client:
         try:
             h = await client.head(url, headers=headers, follow_redirects=True)
             head_status = h.status_code

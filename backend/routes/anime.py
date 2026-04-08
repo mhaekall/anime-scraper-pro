@@ -1,8 +1,9 @@
 import urllib.parse
 import re
 import asyncio
+import os
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Header, Depends
 
 from services.config import BASE_URL
 from services.clients import scraping_client
@@ -412,6 +413,14 @@ async def bulk_scrape(provider: str = Query('otakudesu', description="otakudesu 
                 if anilist_data:
                     anilist_data["anilistId"] = recon_res.canonical_anilist_id
                     anilist_data["cleanTitle"] = recon_res.canonical_title
+                    await upsert_anime_db(anilist_data, prov_name, prov_slug)
+                await asyncio.sleep(2)
+            except Exception as e:
+                print(f"Bulk scrape error for {title}: {e}")
+
+    asyncio.create_task(run_scrape(provider))
+    return {"message": f"Bulk scrape started for {provider}"}
+le"] = recon_res.canonical_title
                     await upsert_anime_db(anilist_data, prov_name, prov_slug)
                 await asyncio.sleep(2)
             except Exception as e:

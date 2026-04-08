@@ -148,8 +148,11 @@ async def get_sources_v2(
     for variant in _title_variants(title):
         try:
             async with asyncio.timeout(10.0):
-                mappings = await reconciler.reconcile(provider_id="otakudesu", provider_slug="", raw_title=variant)
-                if mappings: break
+                recon_result = await reconciler.reconcile(provider_id="otakudesu", provider_slug="", raw_title=variant)
+                if recon_result and recon_result.providers:
+                    for p in recon_result.providers:
+                        mappings[p.provider_id] = p.provider_slug
+                    break
         except: continue
 
     scrape_tasks = []
