@@ -80,7 +80,7 @@ def build_provider_series_url(provider_id: str, provider_slug: str) -> str:
     bases = {
         "oploverz":  "https://o.oploverz.ltd/series/{slug}/",
         "otakudesu": "https://otakudesu.cloud/anime/{slug}/",
-        "samehadaku": "https://v2.samehadaku.how/{slug}/",
+        "samehadaku": "https://v2.samehadaku.how/anime/{slug}/",
     }
     template = bases.get(provider_id, "")
     return template.format(slug=provider_slug) if template else ""
