@@ -29,26 +29,26 @@ class DistributedLock:
         start_time = time.time()
         
         while True:
-            existing = await self.get(self.key)
-            if existing is None:
-                success = await self.set(
-                    self.key,
-                    {"owner": owner_id, "acquired_at": time.time()},
-                    ex=self.ttl
-                )
-                if success:
-                    self._owner_id = owner_id
-                    print(f"[Lock] Acquired '{self.key}'")
-                    return True
-            else:
-                acquired_at = existing.get("acquired_at", 0)
-                if time.time() - acquired_at > self.ttl:
-                    await self.delete(self.key)
-                    continue
+            # Try to acquire the lock atomically using SET NX EX
+            success = await self.set(
+                self.key,
+                {"owner": owner_id, "acquired_at": time.time()},
+                ex=self.ttl,
+                nx=True
+            )
             
+            if success:
+                self._owner_id = owner_id
+                print(f"[Lock] Acquired '{self.key}'")
+                return True
+            
+            # If we failed to acquire, check if we've waited too long
             elapsed = time.time() - start_time
-            if elapsed >= self.max_wait: return False
+            if elapsed >= self.max_wait:
+                print(f"[Lock] Timeout waiting for '{self.key}'")
+                return False
             
+            # Wait before retrying
             await asyncio.sleep(self.retry_interval)
     
     async def release(self) -> bool:

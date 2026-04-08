@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from db.connection import database
 from services.background import background_scrape_job
-from routes import home, anime, stream, catalog, home_v2   # ← add catalog, home_v2
+from routes import home, anime, stream, catalog, home_v2, stream_v2
 
 import os
 
@@ -45,6 +45,8 @@ async def run_migrations():
         """,
         'CREATE INDEX IF NOT EXISTS idx_video_cache_url     ON video_cache ("episodeUrl")',
         'CREATE INDEX IF NOT EXISTS idx_video_cache_expires ON video_cache ("expiresAt")',
+        'CREATE INDEX IF NOT EXISTS idx_user_bookmarks_anilist_id ON user_bookmarks ("anilistId")',
+        'CREATE INDEX IF NOT EXISTS idx_watch_history_anilist_id ON watch_history ("anilistId")',
     ]
 
     for stmt in statements:
@@ -102,7 +104,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[ALLOWED_ORIGIN, "http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -114,6 +116,7 @@ app.include_router(stream.router,  prefix="/api",    tags=["Stream"])
 # v2 routes — use these for all new frontend code
 app.include_router(catalog.router, prefix="/api",    tags=["Catalog v2"])
 app.include_router(home_v2.router, prefix="/api",    tags=["Home v2"])
+app.include_router(stream_v2.router, prefix="/api/v2", tags=["v2"])
 
 
 @app.get("/healthz", tags=["System"])

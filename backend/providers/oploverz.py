@@ -48,11 +48,19 @@ class OploverzProvider:
             payload_match = re.search(r'kit\.start\(app,\s*element,\s*(\{.*?\})\);', r.text, re.DOTALL)
             if payload_match:
                 payload = payload_match.group(1)
-                matches = re.findall(r'episodeNumber:"([^"]+)"', payload)
-                for ep_num in matches:
+                
+                # Try slug first, then episodeNumber
+                matches = re.findall(r'slug:"([^"]+)".*?episodeNumber:"([^"]+)"', payload)
+                if not matches:
+                    # Try episodeNumber first, then slug
+                    matches_rev = re.findall(r'episodeNumber:"([^"]+)".*?slug:"([^"]+)"', payload)
+                    matches = [(s, e) for e, s in matches_rev]
+                
+                for slug, ep_num in matches:
                     if ep_num not in seen:
                         seen.add(ep_num)
-                        full_url = f"{series_url.rstrip('/')}/episode/{ep_num}"
+                        # Construct exact URL using the slug from the payload
+                        full_url = f"{BASE_URL}/series/{slug}/episode/{ep_num}"
                         try:
                             parsed_num = float(ep_num)
                         except ValueError:
@@ -118,26 +126,33 @@ class OploverzProvider:
             payload_match = re.search(r'kit\.start\(app,\s*element,\s*(\{.*?\})\);', html, re.DOTALL)
             if payload_match:
                 payload = payload_match.group(1)
-                stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', payload)
                 
-                # Extract Downloads
-                down_match = re.search(r'downloadUrl:\s*(\[\{format.*?)\]\}\]\}', payload, re.DOTALL)
-                if down_match:
-                    down_str = down_match.group(1) + ']}]'
-                    fmt_blocks = re.finditer(r'format:\"([^\"]+)\",resolutions:\[(.*?)\]\}\]', down_str, re.DOTALL)
-                    for fmt in fmt_blocks:
-                        f_type = fmt.group(1)
-                        res_str = fmt.group(2)
-                        quals = re.finditer(r'quality:\"([^\"]+)\",download_links:\[(.*?)\]\}', res_str, re.DOTALL)
-                        
-                        for q in quals:
-                            q_type = q.group(1)
-                            links_str = q.group(2)
-                            links = []
-                            for link in re.finditer(r'host:\"([^\"]+)\",url:\"([^\"]+)\"', links_str):
-                                links.append({'host': link.group(1), 'url': link.group(2)})
+                # Isolate the current episode's object to prevent grabbing other episodes' streams
+                ep_match = re.search(r'episode:\{(.*?)streamUrl:(\[.*?\])', payload, re.DOTALL)
+                if ep_match:
+                    ep_data = ep_match.group(1)
+                    streams_str = ep_match.group(2)
+                    stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', streams_str)
+                    
+                    down_match = re.search(r'downloadUrl:\s*(\[.*?\]),streamUrl:', payload, re.DOTALL)
+                    if down_match:
+                        down_str = down_match.group(1)
+                        fmt_blocks = re.finditer(r'format:\"([^\"]+)\",resolutions:\[(.*?)\]\}\]', down_str, re.DOTALL)
+                        for fmt in fmt_blocks:
+                            f_type = fmt.group(1)
+                            res_str = fmt.group(2)
+                            quals = re.finditer(r'quality:\"([^\"]+)\",download_links:\[(.*?)\]\}', res_str, re.DOTALL)
                             
-                            downloads.append({'format': f_type, 'quality': q_type, 'links': links})
+                            for q in quals:
+                                q_type = q.group(1)
+                                links_str = q.group(2)
+                                links = []
+                                for link in re.finditer(r'host:\"([^\"]+)\",url:\"([^\"]+)\"', links_str):
+                                    links.append({'host': link.group(1), 'url': link.group(2)})
+                                
+                                downloads.append({'format': f_type, 'quality': q_type, 'links': links})
+                else:
+                    stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', payload)
             else:
                 stream_matches = re.findall(r'\{source:"([^"]+)",url:"(https?://[^"]+)"\}', html)
             

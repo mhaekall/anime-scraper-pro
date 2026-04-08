@@ -9,6 +9,7 @@ import { useWatchHistory } from "@/hooks/useWatchHistory";
 interface Episode {
   title: string;
   url: string;
+  provider?: string;
 }
 
 interface EpisodeListProps {
@@ -32,22 +33,23 @@ export function EpisodeList({ episodes, animeId, coverImage }: EpisodeListProps)
     );
   }
 
+  const providers = Array.from(new Set(episodes.map(e => e.provider || "oploverz")));
   const displayEpisodes = isReversed ? [...episodes].reverse() : episodes;
   const currentView = displayEpisodes.slice(0, visibleCount);
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       <div className="flex justify-between items-center px-1">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-white font-bold text-[18px]">{episodes.length} Episode</h3>
-          <span className="text-[#8E8E93] text-[13px] font-medium bg-[#1C1C1E] px-2 py-1 rounded-md border border-white/5">Oploverz</span>
+
         </div>
         <button 
           onClick={() => setIsReversed(!isReversed)}
           className="flex items-center gap-2 px-3 py-1.5 bg-[#1C1C1E] border border-white/10 hover:bg-[#2C2C2E] rounded-[10px] text-[12px] font-bold text-white transition-colors active:scale-95"
         >
           <Icons.ArrowDownUp />
-          {isReversed ? "Lama - Baru" : "Baru - Lama"}
+          {isReversed ? "Urutkan: Baru - Lama" : "Urutkan: Lama - Baru"}
         </button>
       </div>
 

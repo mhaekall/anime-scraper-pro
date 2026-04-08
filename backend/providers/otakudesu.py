@@ -33,7 +33,7 @@ AJAX_HEADERS = {
     'Sec-Fetch-Site': 'same-origin',
 }
 
-BASE = 'https://otakudesu.cloud'
+BASE = 'https://otakudesu.best'
 
 class OtakudesuProvider:
     def __init__(self):
@@ -150,92 +150,85 @@ class OtakudesuProvider:
             html = r.text
             soup = BeautifulSoup(html, 'lxml')
             
-            # STEP 2: Extract nonce
-            # Otakudesu menyimpan nonce dalam beberapa tempat:
+            # Wajik-anime-api logic: extract nonce and server actions from script
+            import base64
+            import json
             
-            nonce = None
-            post_id = None
-            
-            # Method A: cari di script tag dengan pattern 'nonce'
-            for script in soup.find_all('script'):
-                text = script.get_text()
-                
-                # Pattern 1: var nonce = "xxxxx"
-                n = re.search(r'var\s+nonce\s*=\s*["\']([a-f0-9]+)["\']', text)
-                if n:
-                    nonce = n.group(1)
-                
-                # Pattern 2: nonce:"xxxxx" dalam object JS
-                n2 = re.search(r'nonce["\']?\s*:\s*["\']([a-f0-9]+)["\']', text)
-                if n2 and not nonce:
-                    nonce = n2.group(1)
-                
-                # Extract post ID
-                p = re.search(r'["\']postid["\']?\s*:\s*["\']?(\d+)', text)
-                if p:
-                    post_id = p.group(1)
-                    
-                # Pattern 3: dalam wp_ajax atau localized script
-                n3 = re.search(r'"nonce"\s*:\s*"([a-f0-9]+)"', text)
-                if n3 and not nonce:
-                    nonce = n3.group(1)
-            
-            # Method B: cari di data attribute HTML
-            if not nonce:
-                el = soup.select_one('[data-nonce]')
-                if el:
-                    nonce = el.get('data-nonce')
-            
-            # Method C: cari post ID dari URL atau meta
-            if not post_id:
-                canonical = soup.select_one('link[rel="canonical"]')
-                if canonical:
-                    # Extract dari URL pattern
-                    pid = re.search(r'\?p=(\d+)', canonical.get('href', ''))
-                    if pid:
-                        post_id = pid.group(1)
-            
-            if not nonce:
-                print(f"[Otakudesu] Nonce not found for {episode_url}")
-                # Fallback: coba extract iframe langsung dari HTML
-                return self._extract_iframes_direct(soup)
-            
-            # STEP 3: POST ke AJAX endpoint
-            # Otakudesu menggunakan action '2a79a4440f' (atau 'aa1208d27f')
-            # Ini adalah hashed action name yang kadang berubah
-            ajax_actions = ['2a79a4440f', 'aa1208d27f', 'oploverz_get_video']
+            credentials = list(dict.fromkeys(re.findall(r'action:"([^"]+)"', html)))
             
             sources = []
-            for action in ajax_actions:
-                try:
-                    payload = {
-                        'action': action,
-                        'nonce': nonce,
-                    }
-                    if post_id:
-                        payload['post'] = post_id
-                    
-                    ajax_r = await self.client.post(
-                        f"{BASE}/wp-admin/admin-ajax.php",
-                        data=payload,
-                        headers={
-                            **AJAX_HEADERS,
-                            'Referer': episode_url,
-                            'Origin': BASE,
-                        }
-                    )
-                    
-                    if ajax_r.status_code == 200:
-                        data = ajax_r.json()
-                        if data:
-                            sources = self._parse_ajax_response(data)
-                            if sources:
-                                break
-                except Exception:
-                    continue
             
+            if len(credentials) >= 2:
+                action_server = credentials[0]
+                action_nonce = credentials[1]
+                
+                # Fetch nonce
+                nonce_payload = {'action': action_nonce}
+                nonce_req = await self.client.post(
+                    f"{BASE}/wp-admin/admin-ajax.php",
+                    data=nonce_payload,
+                    headers={
+                        **AJAX_HEADERS,
+                        'Referer': episode_url,
+                        'Origin': BASE,
+                    }
+                )
+                
+                if nonce_req.status_code == 200:
+                    nonce_data = nonce_req.json()
+                    nonce = nonce_data.get('data', '')
+
+                    # Fetch server
+                    for a in soup.select('.mirrorstream ul li a[data-content]'):
+                        try:
+                            data_content = a.get('data-content')
+                            if not data_content: continue
+                            
+                            decoded = json.loads(base64.b64decode(data_content).decode('utf-8'))
+                            decoded['nonce'] = nonce
+                            decoded['action'] = action_server
+                            
+                            server_req = await self.client.post(
+                                f"{BASE}/wp-admin/admin-ajax.php",
+                                data=decoded,
+                                headers={
+                                    **AJAX_HEADERS,
+                                    'Referer': episode_url,
+                                    'Origin': BASE,
+                                }
+                            )
+                            
+                            if server_req.status_code == 200:
+                                server_data = server_req.json()
+                                iframe_html = base64.b64decode(server_data.get('data', '')).decode('utf-8')
+                                iframe_match = re.search(r'<iframe[^>]+src="([^"]+)"', iframe_html, re.IGNORECASE)
+                                
+                                if iframe_match:
+                                    src = iframe_match.group(1)
+                                    
+                                    quality_label = 'Auto'
+                                    li_parent = a.find_parent('li')
+                                    if li_parent:
+                                        prev_li = li_parent.find_previous_sibling('li')
+                                        if prev_li:
+                                            quality_label = prev_li.get_text(strip=True)
+                                            
+                                    provider_label = a.get_text(strip=True)
+                                    quality = self._detect_quality(quality_label)
+                                    
+                                    sources.append({
+                                        'resolved': src,
+                                        'quality': quality,
+                                        'provider': self._detect_provider(provider_label) if self._detect_provider(provider_label) != 'Unknown' else provider_label,
+                                        'type': 'iframe',
+                                        'source': 'otakudesu'
+                                    })
+                        except Exception as e:
+                            print(f"[Otakudesu] Error processing mirror: {e}")
+                            continue
+
             if not sources:
-                # Fallback ke scrape langsung
+                # Fallback ke scrape langsung jika API gagal
                 sources = self._extract_iframes_direct(soup)
             
             return sources

@@ -127,16 +127,33 @@ class SamehadakuProvider:
                     
             # Samehadaku specific video extract mechanism (if iframe is not directly exposed)
             # They sometimes put base64 or weird div data in .player-area
+            import base64
+            
             for div in soup.select('.player-area [data-src]'):
                 src = div.get('data-src')
                 if src:
-                    sources.append({
-                        'resolved': src,
-                        'quality': 'Auto',
-                        'provider': self._detect_provider(src),
-                        'type': 'iframe',
-                        'source': 'samehadaku'
-                    })
+                    # Cek apakah src adalah base64 string
+                    if not src.startswith('http'):
+                        try:
+                            # Coba decode base64
+                            decoded = base64.b64decode(src).decode('utf-8')
+                            # Cari iframe dalam decoded HTML
+                            iframe_match = re.search(r'<iframe[^>]+src="([^"]+)"', decoded, re.IGNORECASE)
+                            if iframe_match:
+                                src = iframe_match.group(1)
+                            elif decoded.startswith('http'):
+                                src = decoded
+                        except Exception:
+                            pass
+                    
+                    if src.startswith('http'):
+                        sources.append({
+                            'resolved': src,
+                            'quality': 'Auto',
+                            'provider': self._detect_provider(src),
+                            'type': 'iframe',
+                            'source': 'samehadaku'
+                        })
             
             return sources
         except Exception as e:

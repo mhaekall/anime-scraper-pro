@@ -115,6 +115,10 @@ export function VideoPlayer({
   // Show iframe player if no direct sources or all direct sources errored
   const [useIframe,    setUseIframe]    = useState(directSources.length === 0 && iframeSources.length > 0);
 
+  useEffect(() => {
+    setUseIframe(directSources.length === 0 && iframeSources.length > 0);
+  }, [directSources.length, iframeSources.length]);
+
   // ── load a source ────────────────────────────────────────────────────────────
 
   const loadSource = useCallback((src: VideoSource, seekTo?: number) => {
@@ -375,8 +379,8 @@ export function VideoPlayer({
         <iframe
           src={iSrc.url}
           className="w-full h-full border-none"
-          // sandbox: scripts + same-origin allowed, but NO popups, NO navigation
-          sandbox="allow-scripts allow-same-origin"
+          // sandbox: scripts + same-origin allowed, plus forms and presentation for 3rd party players
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-popups allow-popups-to-escape-sandbox"
           allow="autoplay; fullscreen"
           referrerPolicy="no-referrer"
           title={title}

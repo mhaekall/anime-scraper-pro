@@ -30,9 +30,9 @@ async def upsert_anime_db(anilist_data, provider_id: str, provider_slug: str):
             'synopsis': anilist_data.get('description', ''),
             'score': anilist_data.get('score'),
             'status': anilist_data.get('status', ''),
-            'totalEpisodes': anilist_data.get('episodes'),
+            'totalEpisodes': anilist_data.get('totalEpisodes'),
             'season': anilist_data.get('season', ''),
-            'year': anilist_data.get('seasonYear')
+            'year': anilist_data.get('year')
         })
         
         query_map = """

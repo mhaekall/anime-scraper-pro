@@ -46,12 +46,18 @@ export function HeroCarousel({ animes }: HeroCarouselProps) {
         style={{ WebkitOverflowScrolling: "touch" }}
       >
         {heroes.map((anime, i) => {
-          // Attempt to grab ID and Ep ID from URL
-          const cleanUrl = (anime.url || '').replace(/\/$/, '');
-          const id = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
+          // Robust ID detection
+          const id = anime.anilistId || anime.id || (anime.url ? anime.url.split('/').filter(Boolean).pop() : null);
 
-          const cleanEpUrl = (anime.episodeUrl || '').replace(/\/$/, '');
-          const epId = cleanEpUrl.substring(cleanEpUrl.lastIndexOf('/') + 1);
+          // Get episode ID or default to 1
+          let epId = "1";
+          if (anime.episodeUrl) {
+            epId = anime.episodeUrl.split('/').filter(Boolean).pop();
+          } else if (anime.episodeNumber) {
+            epId = String(anime.episodeNumber);
+          }
+
+          if (!id) return null;
 
           // Gunakan cover pertama (poster/img), jangan banner
           const cover = anime.img || anime.poster || anime.coverImage?.extraLarge || anime.coverImage?.large || anime.bannerImage || null;
