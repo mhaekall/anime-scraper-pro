@@ -1,0 +1,113 @@
+import re
+from bs4 import BeautifulSoup
+from providers.base_parser import BaseParser, AnimeDetail, EpisodeSource
+
+class SamehadakuParser(BaseParser):
+    def parse_episode_list(self, html: str, base_url: str) -> AnimeDetail:
+        soup = BeautifulSoup(html, 'lxml')
+        episodes = []
+        
+        # Latest episodes on homepage or episode list in series page
+        # In series page, it's inside .lstepsiode.listeps
+        list_items = soup.select('.lstepsiode.listeps ul li')
+        for li in list_items:
+            # Episode number is usually in .epsright .eps a
+            # Or in .epsleft .lchx a
+            a_tag = li.select_one('.epsleft .lchx a')
+            if not a_tag:
+                a_tag = li.select_one('.epsright .eps a')
+                
+            if a_tag:
+                title = a_tag.get_text(strip=True)
+                url = a_tag.get('href')
+                
+                # Extract number
+                # e.g. "One Piece Episode 1156" -> 1156
+                m = re.search(r'(?:episode|eps?)[.\s]*(\d+(?:[.,]\d+)?)', title, re.IGNORECASE)
+                ep_num = float(m.group(1).replace(",", ".")) if m else 0.0
+                
+                # If ep_num is still 0, try to get it from .epsright .eps
+                if ep_num == 0:
+                    eps_div = li.select_one('.epsright .eps')
+                    if eps_div:
+                        try:
+                            ep_num = float(eps_div.get_text(strip=True))
+                        except:
+                            pass
+
+                episodes.append({
+                    'number': ep_num,
+                    'title': title,
+                    'url': url,
+                    'thumbnail': None
+                })
+        
+        synopsis = soup.select_one('.entry-content.entry-content-single')
+        
+        return {
+            'episodes': sorted(episodes, key=lambda x: x["number"]),
+            'poster': None,
+            'synopsis': synopsis.get_text(strip=True) if synopsis else ''
+        }
+
+    def parse_episode_sources(self, html: str) -> list[EpisodeSource]:
+        soup = BeautifulSoup(html, 'lxml')
+        sources = []
+        
+        # 1. Look for AJAX player options
+        # <div class="east_player_option" data-post="48794" data-nume="1" data-type="schtml">
+        for opt in soup.select('.east_player_option'):
+            label = opt.select_one('span')
+            label_text = label.get_text(strip=True) if label else 'Unknown'
+            
+            # Since we can't easily do AJAX yet without the correct action,
+            # we store these as special sources that might need secondary resolving
+            sources.append({
+                'provider': self._detect_provider(label_text),
+                'quality': self._detect_quality(label_text),
+                'url': f"ajax://{opt.get('data-post')}/{opt.get('data-nume')}/{opt.get('data-type')}",
+                'type': 'iframe'
+            })
+            
+        # 2. Look for download links as fallback/direct sources
+        for container in soup.select('.download-eps'):
+            quality_tag = container.find('b')
+            quality_label = quality_tag.get_text(strip=True) if quality_tag else 'Auto'
+            
+            for li in container.select('ul li'):
+                # Format: <strong>Quality</strong> <span><a href="...">Source</a></span>
+                q_strong = li.select_one('strong')
+                if q_strong:
+                    quality_label = q_strong.get_text(strip=True)
+                
+                for a in li.select('span a'):
+                    src_name = a.get_text(strip=True)
+                    url = a.get('href')
+                    
+                    if url and 'http' in url:
+                        sources.append({
+                            'provider': f"{src_name} (DL)",
+                            'quality': self._detect_quality(quality_label),
+                            'url': url,
+                            'type': 'iframe' # Will be resolved by UniversalExtractor
+                        })
+                        
+        return sources
+
+    def _detect_quality(self, text: str) -> str:
+        text = text.lower()
+        if '1080' in text: return '1080p'
+        if '720' in text: return '720p'
+        if '480' in text: return '480p'
+        if '360' in text: return '360p'
+        return 'Auto'
+
+    def _detect_provider(self, text: str) -> str:
+        text = text.lower()
+        if 'blogspot' in text: return 'Blogspot'
+        if 'wibufile' in text: return 'Wibufile'
+        if 'mega' in text: return 'Mega'
+        if 'pucuk' in text: return 'Pucuk'
+        if 'gofile' in text: return 'Gofile'
+        if 'kraken' in text: return 'Kraken'
+        return text.title()

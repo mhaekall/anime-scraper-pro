@@ -22,7 +22,8 @@ async def mass_sync():
 
     targets = [
         {'id': 'oploverz', 'url': 'https://o.oploverz.ltd/'},
-        {'id': 'otakudesu', 'url': 'https://otakudesu.cloud/'}
+        {'id': 'otakudesu', 'url': 'https://otakudesu.cloud/'},
+        {'id': 'samehadaku', 'url': 'https://v2.samehadaku.how/'}
     ]
 
     found_animes = []
@@ -31,42 +32,42 @@ async def mass_sync():
         try:
             print(f"Scraping {target['id']} homepage...")
             client = ProviderTransport.get_client()
-            res = await client.get(target['url'])
+            
+            # Custom headers for samehadaku
+            headers = {}
+            if target['id'] == 'samehadaku':
+                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"}
+            
+            res = await client.get(target['url'], headers=headers)
             soup = BeautifulSoup(res.text, 'lxml')
             
             if target['id'] == 'oploverz':
+                # ... existing oploverz logic ...
                 for a in soup.find_all('a', href=re.compile(r'/series/')):
                     href = a.get('href', '').strip('/')
                     parts = href.split('/')
                     if len(parts) >= 2 and parts[0] == 'series':
                         slug = parts[1]
                         if slug == 'episode': continue
-                        
                         title_text = ""
-                        # Prioritize <h3> or strong text
                         h3 = a.find('h3')
                         if h3: title_text = h3.text.strip()
-                        
                         if not title_text:
                             img = a.find('img')
                             if img:
                                 alt = img.get('alt', '')
                                 if 'Tonton Sekarang' not in alt and 'Banner' not in alt:
                                     title_text = alt
-                        
                         if not title_text:
                             title_text = a.get('title') or a.text.strip()
-                        
-                        # Final filter for garbage titles
                         if any(x in title_text for x in ['Tonton Sekarang', 'Oploverz', 'Klik di sini']):
                             title_text = slug.replace('-', ' ').title()
-
                         title_text = title_text.split('Episode')[0].strip()
                         if title_text and slug:
                             found_animes.append((title_text, 'oploverz', slug))
             
             elif target['id'] == 'otakudesu':
-                # Similar logic for otakudesu
+                # ... existing otakudesu logic ...
                 for div in soup.select('.venz ul li'):
                     a = div.find('a')
                     if a:
@@ -76,6 +77,18 @@ async def mass_sync():
                             slug = url.strip('/').split('/')[-1]
                             if slug and title:
                                 found_animes.append((title, 'otakudesu', slug))
+
+            elif target['id'] == 'samehadaku':
+                # Samehadaku logic
+                for li in soup.select('.post-show ul li'):
+                    a = li.select_one('.entry-title a')
+                    if a:
+                        title = a.text.strip()
+                        url = a.get('href', '')
+                        if '/anime/' in url:
+                            slug = url.strip('/').split('/')[-1]
+                            if slug and title:
+                                found_animes.append((title, 'samehadaku', slug))
 
         except Exception as e:
             import traceback
