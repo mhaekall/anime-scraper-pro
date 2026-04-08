@@ -47,6 +47,35 @@ async def run_migrations():
         'CREATE INDEX IF NOT EXISTS idx_video_cache_expires ON video_cache ("expiresAt")',
         'CREATE INDEX IF NOT EXISTS idx_user_bookmarks_anilist_id ON user_bookmarks ("anilistId")',
         'CREATE INDEX IF NOT EXISTS idx_watch_history_anilist_id ON watch_history ("anilistId")',
+        """
+        ALTER TABLE anime_metadata 
+          ADD COLUMN IF NOT EXISTS "lockVersion" INTEGER NOT NULL DEFAULT 0
+        """,
+        """
+        CREATE OR REPLACE FUNCTION upsert_mapping_atomic(
+          p_anilist_id    INTEGER,
+          p_provider_id   TEXT,
+          p_provider_slug TEXT,
+          p_clean_title   TEXT,
+          p_cover_image   TEXT
+        ) RETURNS VOID AS $$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(p_anilist_id);
+          
+          INSERT INTO anime_metadata ("anilistId", "cleanTitle", "coverImage", "updatedAt")
+          VALUES (p_anilist_id, p_clean_title, p_cover_image, NOW())
+          ON CONFLICT ("anilistId") DO UPDATE SET
+            "cleanTitle" = EXCLUDED."cleanTitle",
+            "updatedAt"  = NOW();
+
+          INSERT INTO anime_mappings ("anilistId", "providerId", "providerSlug", "updatedAt")
+          VALUES (p_anilist_id, p_provider_id, p_provider_slug, NOW())
+          ON CONFLICT ("providerId", "providerSlug") DO UPDATE SET
+            "anilistId" = EXCLUDED."anilistId",
+            "updatedAt" = NOW();
+        END;
+        $$ LANGUAGE plpgsql;
+        """,
     ]
 
     for stmt in statements:

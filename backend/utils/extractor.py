@@ -42,9 +42,15 @@ class UniversalExtractor:
             elif 'desustream' in url or 'desudrives' in url:
                 fetch_url = f"{url}&mode=json" if '?' in url else f"{url}?mode=json"
                 res = await self.client.get(fetch_url)
-                data = res.json()
-                if data.get('ok') and data.get('video'):
-                    return await self.extract_raw_video(data['video'].replace('&amp;', '&'))
+                try:
+                    data = res.json()
+                    if data.get('ok') and data.get('video'):
+                        return await self.extract_raw_video(data['video'].replace('&amp;', '&'))
+                except Exception:
+                    # It might return HTML instead of JSON
+                    match = re.search(r'<source[^>]+src=["\']([^"\']+)["\']', res.text, re.IGNORECASE)
+                    if match:
+                        return match.group(1).replace('&amp;', '&')
             elif 'blogger.com' in url:
                 res = await self.client.get(url)
                 match = re.search(r'"play_url":"([^"]+)"', res.text)

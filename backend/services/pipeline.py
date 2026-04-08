@@ -272,7 +272,12 @@ async def resolve_episode_sources(episode_url: str, provider_id: str) -> dict:
                 resolved = await extractor.extract_raw_video(raw_url)
 
             # Accept as-is if it looks like a direct video already
-            is_direct = any(resolved.split("?")[0].endswith(ext) for ext in (".m3u8", ".mp4", ".webm"))
+            is_direct = (
+                any(resolved.split("?")[0].endswith(ext) for ext in (".m3u8", ".mp4", ".webm"))
+                or "googlevideo.com/videoplayback" in resolved
+                or ".mp4" in resolved
+                or ".m3u8" in resolved
+            )
             
             if not is_direct:
                 # If extraction failed to get a direct video link, keep it as an iframe
@@ -308,6 +313,8 @@ async def resolve_episode_sources(episode_url: str, provider_id: str) -> dict:
         return payload
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"[Pipeline] resolve_episode_sources error for {episode_url}: {e}")
         return {"sources": [], "downloads": []}
 
