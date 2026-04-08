@@ -26,10 +26,15 @@ async def background_scrape_job():
                 url1 = 'https://o.oploverz.ltd/'
                 url2 = 'https://o.oploverz.ltd/page/2/'
                 
-                r1, r2 = await asyncio.gather(
-                    scraping_client.get(url1),
-                    scraping_client.get(url2)
-                )
+                try:
+                    r1, r2 = await asyncio.gather(
+                        scraping_client.get(url1),
+                        scraping_client.get(url2)
+                    )
+                except Exception as e:
+                    print(f"[Cron] Fetch error: {e}")
+                    await asyncio.sleep(60)
+                    continue
 
                 items = []
                 seen_titles = set()
@@ -67,21 +72,30 @@ async def background_scrape_job():
 
                         anilist_data = await fetch_anilist_info(item['title'])
                         
-                        if anilist_data and anilist_data.get('hdImage'):
+                        if anilist_data:
                             provider_slug = item['url'].strip('/').split('/')[-1]
-                            # This handles mapping AND initial metadata
-                            await upsert_anime_db(anilist_data, 'oploverz', provider_slug)
                             
-                            # NEW: Trigger full episode sync so the 'episodes' table is populated
+                            clean_title = anilist_data.get("cleanTitle") or anilist_data.get("nativeTitle", "")
+                            cover_image = anilist_data.get("hdImage") or anilist_data.get("coverImage", "")
+                            
+                            # Atomic mapping resolution
+                            await upsert_mapping_atomic(
+                                anilist_id=anilist_data['anilistId'],
+                                provider_id='oploverz',
+                                provider_slug=provider_slug,
+                                clean_title=clean_title,
+                                cover_image=cover_image
+                            )
+                            
                             print(f"[Cron] Syncing episodes for {item['title']} (ID: {anilist_data['anilistId']})...")
                             asyncio.create_task(sync_anime_episodes(anilist_data['anilistId']))
                             
                             return {
                                 'title': item['title'],
                                 'url': item['url'],
-                                'img': anilist_data['hdImage'],
-                                'banner': anilist_data['banner'],
-                                'score': anilist_data['score'],
+                                'img': cover_image,
+                                'banner': anilist_data.get('banner'),
+                                'score': anilist_data.get('score'),
                                 'popularity': anilist_data.get('popularity', 0),
                                 'anilistId': anilist_data['anilistId'],
                                 'type': 'latest'
@@ -132,19 +146,6 @@ async def background_scrape_job():
                 }
                 
                 await upstash_set("home_data", payload, ex=86400)
-                print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis.")
-                consecutive_failures = 0
-                
-        except TimeoutError:
-            print("[Cron] Another instance is running, skipping")
-        except Exception as e:
-            consecutive_failures += 1
-            print(f"[Cron] Aggregator Error: {e}")
-            await asyncio.sleep(60)
-            continue
-            
-        await asyncio.sleep(3600)
-t upstash_set("home_data", payload, ex=86400)
                 print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis.")
                 consecutive_failures = 0
                 
