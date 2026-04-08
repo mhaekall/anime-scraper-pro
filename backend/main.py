@@ -146,6 +146,7 @@ app.include_router(stream.router,  prefix="/api",    tags=["Stream"])
 app.include_router(catalog.router, prefix="/api",    tags=["Catalog v2"])
 app.include_router(home_v2.router, prefix="/api",    tags=["Home v2"])
 app.include_router(stream_v2.router, prefix="/api/v2", tags=["v2"])
+app.include_router(webhook.router, prefix="/api/v2", tags=["Webhook"])
 
 
 @app.get("/healthz", tags=["System"])
