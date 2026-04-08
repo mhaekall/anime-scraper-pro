@@ -1,22 +1,21 @@
-# Session Snapshot: Agentic Architecture Setup
-**Date:** Tuesday, April 7, 2026
+# Session Snapshot: Multi-Provider Architecture & Otakudesu Integration
+**Date:** Wednesday, April 8, 2026
 **Lead Architect:** Gemini (Agent 4)
 
 ## 1. Project Status
-- **Current State:** Transitioning from raw scrapers to a unified "Datacenter" model.
-- **Infrastructure:** Using Upstash (Redis/Postgres) and Cloudflare.
-- **New Structure:** Established `.agents/` directory for multi-agent orchestration.
+- **Current State:** Successfully migrated to a "Scraper vs Parser" 3-layer architecture (Transport, Parser, Provider Facade) inspired by `wajik-anime-api`.
+- **Infrastructure:** Deployed new backend to Hugging Face Spaces.
+- **Database:** Total Unique Animes: 39, Total Episodes: 3376. Oploverz (2903 eps) and Otakudesu (473 eps) are active. Samehadaku is temporarily disabled due to WAF/403.
 
 ## 2. Key Accomplishments
-- **Atomic Distributed Lock:** Fixed TOCTOU race condition in `backend/utils/distributed_lock.py` using atomic `SET NX EX`.
-- **Cache Service Update:** Enhanced `backend/services/cache.py` to support `nx=True` operations.
-- **Architecture Audit:** Confirmed that `9 file update/` and `tmp_hf/` are not in the workspace, reducing context noise.
-- **Zero-Cost Strategy:** Validated with Claude the use of Hugging Face Spaces + UptimeRobot for $0 backend hosting.
+- **Base Parser & Transport:** Implemented `BaseParser` contract and `SSRFSafeTransport` singleton to isolate network logic from DOM parsing.
+- **Otakudesu Refactor:** Successfully decoupled Otakudesu's AJAX-heavy network orchestration from its DOM parsing logic (`providers/otakudesu/provider.py` & `parser.py`).
+- **Atomic Upsert:** Solved race conditions during `mass_sync.py` by implementing PostgreSQL `pg_advisory_xact_lock` via `upsert_mapping_atomic` function.
+- **Reconciler Cache:** Implemented Upstash Redis cache (TTL 7 days) for reconciler results to save Gemini API quotas and speed up mass sync.
+- **Extractor Patch:** Updated `UniversalExtractor` to fallback to `<source src="...">` regex when Desustream (Otakudesu) returns HTML instead of JSON due to Cloudflare Edge. Updated `is_direct` logic to properly classify `googlevideo.com/videoplayback` as a direct `mp4` source.
+- **HF Space Deployment:** Synchronized the new backend codebase to the `hf-space` repository and triggered a rebuild on Hugging Face.
 
-## 3. Next Mission (For Agent 1 & 3)
-- **Agent 3 (Datacenter):** Implement `difflib` similarity check in `backend/services/anilist.py` to prevent mapping collisions.
-- **Agent 1 (Backend):** Setup UptimeRobot integration or script to keep Hugging Face Spaces awake.
-- **Orchestration:** Run `backend/mass_sync.py` to populate the "Datacenter" with high-quality metadata.
-\n- **Agent 1 Update:** Successfully created UptimeRobot monitor (ID: 802784184) pointing to https://jonyyyyyyyu-anime-scraper-api.hf.space/healthz to prevent Hugging Face Space from sleeping.
-\n- **Agent 1 Update (Backend):** Updated backend/routes/anime.py to use `reconciler` before `upsert_anime_db`. Added missing indices for `user_bookmarks("anilistId")` and `watch_history("anilistId")` in `backend/main.py` migrations to ensure `reconciler` history migrations run fast.
-\n- **Agent 1 Update (Backend):** Registered `stream_v2.router` with prefix `/api/v2` in `backend/main.py`.
+## 3. Next Mission (For Agent 1 & Agent 4)
+- **CRITICAL BUG (Video Playback):** The newly added Otakudesu anime (e.g., Wandance Ep 1) successfully extracts a direct `googlevideo.com` MP4 URL and displays the thumbnail in the native player. However, **the video fails to play/stream**. This is likely due to IP binding, expired signatures (`expire`, `sig`, `ip` parameters in the Google Video URL), or missing `Referer`/`Origin` headers when the frontend's Next.js proxy (`/api/v1/stream?url=...`) attempts to pipe the video chunks.
+- **Agent 1 (Backend):** Investigate the `googlevideo.com` streaming pipeline. Ensure the proxy at `backend/routes/stream.py` correctly handles headers, cookies, and chunking for Google Video URLs, or consider returning the URL directly to the client if the proxy is blocked by Google's IP checks.
+- **Agent 4 / 3:** Investigate a bypass for Samehadaku's 403 Forbidden Cloudflare WAF block.

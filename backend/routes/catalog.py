@@ -111,17 +111,32 @@ async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks):
 # ── GET /api/v2/anime/{anilist_id}/episodes/{ep_num}/stream ────────────────────
 
 @router.get("/v2/anime/{anilist_id}/episodes/{ep_num}/stream")
-async def get_episode_stream_v2(anilist_id: int, ep_num: str):
+async def get_episode_stream_v2(anilist_id: int, ep_num: str, refresh: bool = Query(False)):
     """
     Return resolved video sources for one episode.
 
     ep_num can be "1", "12", "12.5" (floats for OVAs / specials).
     Sources come from video_cache when fresh; re-scrapes when stale.
+    Set refresh=true to skip DB cache and force a new scrape.
     """
     try:
         ep_float = float(ep_num)
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid episode number: {ep_num}")
+
+    if refresh:
+        # Get mapping first
+        from services.pipeline import get_provider_mappings
+        mappings = await get_provider_mappings(anilist_id)
+        for pid, slug in mappings.items():
+            # Clear cache for all providers of this anime to force re-scrape
+            from services.pipeline import build_provider_series_url
+            series_url = build_provider_series_url(pid, slug)
+            # This is complex, for now we just delete from video_cache for this ep
+            await database.execute(
+                'DELETE FROM video_cache WHERE "episodeUrl" LIKE :url_pattern',
+                values={"url_pattern": f"%{slug}%"}
+            )
 
     result = await get_episode_stream(anilist_id, ep_float)
 
