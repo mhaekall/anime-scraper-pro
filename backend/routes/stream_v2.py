@@ -39,30 +39,6 @@ from db.connection import database
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
-# Circuit Breaker
-# ---------------------------------------------------------------------------
-_circuit: Dict[str, Dict] = {
-    'oploverz':   {'failures': 0, 'open_until': 0},
-    'otakudesu':  {'failures': 0, 'open_until': 0},
-    'samehadaku': {'failures': 0, 'open_until': 0},
-}
-_CB_THRESHOLD = 3
-_CB_COOLDOWN  = 300
-
-def _is_circuit_open(provider: str) -> bool:
-    cb = _circuit.get(provider, {})
-    return cb.get('open_until', 0) > time.time()
-
-def _record_failure(provider: str):
-    cb = _circuit.setdefault(provider, {'failures': 0, 'open_until': 0})
-    cb['failures'] += 1
-    if cb['failures'] >= _CB_THRESHOLD:
-        cb['open_until'] = time.time() + _CB_COOLDOWN
-
-def _record_success(provider: str):
-    _circuit[provider] = {'failures': 0, 'open_until': 0}
-
-# ---------------------------------------------------------------------------
 # Provider Scrape Helpers
 # ---------------------------------------------------------------------------
 PROVIDER_TIMEOUT = 10.0
@@ -89,26 +65,23 @@ async def _scrape_oploverz(episode_url: str) -> Dict[str, Any]:
     try:
         async with asyncio.timeout(PROVIDER_TIMEOUT):
             res = await oploverz_provider.get_episode_sources(episode_url)
-        _record_success('oploverz')
         resolved = await asyncio.gather(*[_resolve_embed(e, 'oploverz') for e in res.get('sources', [])])
         return {'sources': [s for s in resolved if s], 'downloads': res.get('downloads', []), 'provider': 'oploverz'}
     except:
-        _record_failure('oploverz')
         return {'sources': [], 'downloads': [], 'provider': 'oploverz'}
 
 async def _scrape_otakudesu(series_url: str, episode_num: float) -> Dict[str, Any]:
     try:
         async with asyncio.timeout(PROVIDER_TIMEOUT):
             details = await otakudesu_provider.get_anime_detail(series_url)
+        if not details: return {'sources': [], 'provider': 'otakudesu'}
         target_url = next((e['url'] for e in details.get('episodes', []) if re.search(fr'\b{episode_num}\b', e['title'])), None)
         if not target_url: return {'sources': [], 'provider': 'otakudesu'}
         raw = await otakudesu_provider.get_episode_sources(target_url)
-        _record_success('otakudesu')
         embeds = raw if isinstance(raw, list) else raw.get('sources', [])
         resolved = await asyncio.gather(*[_resolve_embed(e, 'otakudesu') for e in embeds])
         return {'sources': [s for s in resolved if s], 'provider': 'otakudesu'}
     except:
-        _record_failure('otakudesu')
         return {'sources': [], 'provider': 'otakudesu'}
 
 # ---------------------------------------------------------------------------
@@ -159,19 +132,17 @@ async def get_sources_v2(
     providers_attempted = []
 
     # Oploverz Attempt (Logic remains similar to previous turn but more robust)
-    if not _is_circuit_open('oploverz'):
-        # Oploverz often uses title-based slugs
-        slug = title.lower().replace(' ', '-')
-        scrape_tasks.append(_scrape_oploverz(f"https://o.oploverz.ltd/series/{slug}/episode/{ep}/"))
-        providers_attempted.append('oploverz')
+    # Oploverz often uses title-based slugs
+    slug = title.lower().replace(' ', '-')
+    scrape_tasks.append(_scrape_oploverz(f"https://o.oploverz.ltd/series/{slug}/episode/{ep}/"))
+    providers_attempted.append('oploverz')
 
     # Otakudesu Attempt (Tier 1/2 or Tier 3)
-    if not _is_circuit_open('otakudesu'):
-        if mappings and 'otakudesu' in mappings:
-            scrape_tasks.append(_scrape_otakudesu(f"https://otakudesu.cloud/anime/{mappings['otakudesu']}/", ep))
-        else:
-            scrape_tasks.append(_last_resort_otakudesu(title, ep))
-        providers_attempted.append('otakudesu')
+    if mappings and 'otakudesu' in mappings:
+        scrape_tasks.append(_scrape_otakudesu(f"https://otakudesu.cloud/anime/{mappings['otakudesu']}/", ep))
+    else:
+        scrape_tasks.append(_last_resort_otakudesu(title, ep))
+    providers_attempted.append('otakudesu')
 
     if not scrape_tasks:
         raise HTTPException(status_code=503, detail="All providers down or mapping failed.")

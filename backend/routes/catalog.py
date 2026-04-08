@@ -71,7 +71,7 @@ async def get_anime_v2(anilist_id: int, background_tasks: BackgroundTasks):
 
     # Episodes empty — sync in background so next request is fast
     if not data.get("episodes"):
-        background_tasks.add_task(sync_anime_episodes, anilist_id)
+        await enqueue_sync(anilist_id)
         # Return metadata without episodes rather than a 404
         return {
             "success": True,
@@ -307,4 +307,7 @@ async def _fetch_and_save_anilist(anilist_id: int) -> Optional[dict]:
 
     except Exception as e:
         print(f"[Catalog] _fetch_and_save_anilist error for {anilist_id}: {e}")
+        return None
+eturn None
+nilist error for {anilist_id}: {e}")
         return None
