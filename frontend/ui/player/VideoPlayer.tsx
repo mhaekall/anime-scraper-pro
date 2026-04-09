@@ -104,7 +104,26 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           hlsRef.current = hls;
           hls.loadSource(src.url);
           hls.attachMedia(video);
-          hls.once("hlsManifestParsed" as any, () => { setLoading(false); if (seekTo != null) video.currentTime = seekTo; video.play().catch(() => {}); });
+          hls.once("hlsManifestParsed" as any, (_: any, data: any) => { 
+            // Enforce minimum 720p for Auto quality
+            if (data.levels && Array.isArray(data.levels)) {
+              let minBitrate = 0;
+              data.levels.forEach((l: any) => {
+                if (l.height >= 720) {
+                  if (minBitrate === 0 || l.bitrate < minBitrate) {
+                    minBitrate = l.bitrate;
+                  }
+                }
+              });
+              if (minBitrate > 0 && hls.config) {
+                (hls.config as any).minAutoBitrate = minBitrate;
+              }
+            }
+            
+            setLoading(false); 
+            if (seekTo != null) video.currentTime = seekTo; 
+            video.play().catch(() => {}); 
+          });
           hls.on("hlsError" as any, (_: any, data: any) => {
             if (data.fatal) { setError("Stream gagal dimuat."); setLoading(false); }
           });
