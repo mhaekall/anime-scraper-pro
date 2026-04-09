@@ -257,7 +257,8 @@ async def scrape_episode(url: str = Query(..., description="Episode URL to scrap
                 'provider': embed['provider'],
                 'domain': embed['domain'],
                 'quality': embed['quality'],
-                'resolved': resolved_url,
+                'url': resolved_url,
+                'embed_url': embed['url'],
                 'type': 'direct' if resolved_url.endswith(('.m3u8', '.mp4')) or 'play_url' in html else 'iframe'
             }
 
@@ -307,9 +308,9 @@ async def get_multi_source(title: str = Query(..., description="Anime clean titl
             try:
                 series_url = None
                 if 'otakudesu' in db_mappings:
-                    series_url = f"https://otakudesu.cloud/anime/{db_mappings['otakudesu']}/"
+                    series_url = f"https://otakudesu.blog/anime/{db_mappings['otakudesu']}/"
                 else:
-                    search_url = f"https://otakudesu.cloud/?s={urllib.parse.quote_plus(title)}&post_type=anime"
+                    search_url = f"https://otakudesu.blog/?s={urllib.parse.quote_plus(title)}&post_type=anime"
                     r = await otakudesu_provider.client.get(search_url)
                     soup = BeautifulSoup(r.text, 'lxml')
                     first_result = soup.select_one('ul.chivsrc li h2 a')
@@ -363,7 +364,8 @@ async def get_multi_source(title: str = Query(..., description="Anime clean titl
                     'provider': embed['provider'],
                     'domain': embed['domain'],
                     'quality': embed['quality'],
-                    'resolved': resolved_url,
+                    'url': resolved_url,
+                    'embed_url': embed['url'],
                     'type': 'direct' if resolved_url.endswith(('.m3u8', '.mp4')) else 'iframe',
                     'source': 'oploverz'
                 }
@@ -381,7 +383,8 @@ async def get_multi_source(title: str = Query(..., description="Anime clean titl
                     'provider': embed['provider'],
                     'domain': extract_domain(embed['resolved']),
                     'quality': embed['quality'],
-                    'resolved': resolved_url,
+                    'url': resolved_url,
+                    'embed_url': embed['resolved'],
                     'type': 'direct' if resolved_url.endswith(('.m3u8', '.mp4')) else 'iframe',
                     'source': 'otakudesu'
                 }

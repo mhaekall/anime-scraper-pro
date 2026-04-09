@@ -7,7 +7,7 @@ from providers.base_provider import BaseProvider
 from providers.otakudesu.parser import OtakudesuParser
 from providers.base_parser import AnimeDetail, EpisodeSource
 
-BASE = 'https://otakudesu.cloud'
+BASE = 'https://otakudesu.blog'
 
 class OtakudesuProvider(BaseProvider):
     def __init__(self, transport: ProviderTransport):

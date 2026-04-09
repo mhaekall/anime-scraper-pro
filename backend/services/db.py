@@ -1,3 +1,4 @@
+import json
 from db.connection import database
 from db.models import anime_mappings, anime_metadata
 
@@ -6,8 +7,18 @@ async def upsert_anime_db(anilist_data, provider_id: str, provider_slug: str):
         return
     try:
         query_meta = """
-            INSERT INTO anime_metadata ("anilistId", "cleanTitle", "nativeTitle", "coverImage", "bannerImage", "synopsis", "score", "popularity", "trending", "status", "totalEpisodes", "season", "year", "updatedAt")
-            VALUES (:anilistId, :cleanTitle, :nativeTitle, :coverImage, :bannerImage, :synopsis, :score, :popularity, :trending, :status, :totalEpisodes, :season, :year, NOW())
+            INSERT INTO anime_metadata (
+                "anilistId", "cleanTitle", "nativeTitle", "coverImage", "bannerImage", 
+                "synopsis", "score", "popularity", "trending", "status", 
+                "totalEpisodes", "season", "year", "studios", "genres", 
+                "recommendations", "nextAiringEpisode", "updatedAt"
+            )
+            VALUES (
+                :anilistId, :cleanTitle, :nativeTitle, :coverImage, :bannerImage, 
+                :synopsis, :score, :popularity, :trending, :status, 
+                :totalEpisodes, :season, :year, :studios, :genres, 
+                :recommendations, :nextAiringEpisode, NOW()
+            )
             ON CONFLICT ("anilistId") DO UPDATE SET
                 "cleanTitle" = EXCLUDED."cleanTitle",
                 "nativeTitle" = EXCLUDED."nativeTitle",
@@ -21,6 +32,10 @@ async def upsert_anime_db(anilist_data, provider_id: str, provider_slug: str):
                 "totalEpisodes" = EXCLUDED."totalEpisodes",
                 "season" = EXCLUDED."season",
                 "year" = EXCLUDED."year",
+                "studios" = EXCLUDED."studios",
+                "genres" = EXCLUDED."genres",
+                "recommendations" = EXCLUDED."recommendations",
+                "nextAiringEpisode" = EXCLUDED."nextAiringEpisode",
                 "updatedAt" = NOW()
         """
         await database.execute(query=query_meta, values={
@@ -36,7 +51,11 @@ async def upsert_anime_db(anilist_data, provider_id: str, provider_slug: str):
             'status': anilist_data.get('status', ''),
             'totalEpisodes': anilist_data.get('totalEpisodes'),
             'season': anilist_data.get('season', ''),
-            'year': anilist_data.get('year')
+            'year': anilist_data.get('year'),
+            'studios': json.dumps(anilist_data.get('studios', [])),
+            'genres': json.dumps(anilist_data.get('genres', [])),
+            'recommendations': json.dumps(anilist_data.get('recommendations', [])),
+            'nextAiringEpisode': json.dumps(anilist_data.get('nextAiringEpisode'))
         })
         
         query_map = """

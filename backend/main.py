@@ -81,6 +81,7 @@ app.include_router(catalog.router, prefix="/api",    tags=["Catalog v2"])
 app.include_router(home_v2.router, prefix="/api",    tags=["Home v2"])
 app.include_router(stream_v2.router, prefix="/api/v2", tags=["v2"])
 app.include_router(webhook.router, prefix="/api/v2", tags=["Webhook"])
+app.include_router(social.router, prefix="/api/v2/social", tags=["Social"])
 
 
 @app.post("/admin/sync-popular", tags=["Admin"])

@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light" style=""><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ulasan Teknis &amp; Rekomendasi UI/UX Halaman Streaming — anime-scraper-pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-base: #0a0c10;
+        --bg-surface: rgba(28, 28, 30, 0.65);
+        --bg-surface-solid: #1c1c1e;
+        --text-primary: #f5f5f7;
+        --text-secondary: #8e8e93;
+        --accent-blue: #0a84ff;
+        --accent-cyan: #32d74b;
+        --accent-purple: #bf5af2;
+        --border-color: rgba(255, 255, 255, 0.1);
+        --danger: #ff453a;
+        --warning: #ffd60a;
+      }
+
+      /* Reset & Base */
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background-color: var(--bg-base);
+        color: var(--text-primary);
+        font-family:
+          'Inter',
+          system-ui,
+          -apple-system,
+          sans-serif;
+        line-height: 1.6;
+        margin: 0 auto;
+        padding: 40px 60px;
+        max-width: 1200px; /* Slightly wider to accommodate code wrap */
+      }
+
+      /* Typography */
+      h1,
+      h2,
+      h3,
+      h4,
+      h5 {
+        color: var(--text-primary);
+        font-weight: 700;
+        line-height: 1.3;
+        margin-top: 2em;
+        margin-bottom: 1em;
+      }
+      h1 {
+        font-size: 2.8rem;
+        letter-spacing: -0.03em;
+        margin-top: 0;
+        background: linear-gradient(135deg, #ffffff, #8e8e93);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+      }
+      .subtitle {
+        text-align: center;
+        font-size: 1.2rem;
+        color: var(--text-secondary);
+        margin-bottom: 3rem;
+      }
+      h2 {
+        font-size: 1.8rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5em;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      h3 {
+        font-size: 1.4rem;
+        color: var(--accent-blue);
+      }
+      h4 {
+        font-size: 1.1rem;
+        color: #fff;
+      }
+      p,
+      li {
+        color: var(--text-secondary);
+        margin-bottom: 1em;
+        font-size: 0.95rem;
+      }
+      strong {
+        color: var(--text-primary);
+      }
+
+      /* Table of Contents */
+      .toc {
+        background: var(--bg-surface-solid);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 40px;
+        position: sticky;
+        top: 16px;
+        z-index: 40;
+        backdrop-filter: blur(18px);
+      }
+      .toc h3 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+      }
+      .toc ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .toc li {
+        margin-bottom: 8px;
+      }
+      .toc a {
+        color: var(--accent-blue);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      /* Cards & Callouts */
+      .glass-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+
+      .callout {
+        padding: 20px;
+        border-radius: 12px;
+        margin: 24px 0;
+        border-left: 4px solid var(--accent-blue);
+        background: rgba(10, 132, 255, 0.05);
+      }
+      .callout.critical {
+        border-left-color: var(--danger);
+        background: rgba(255, 69, 58, 0.05);
+      }
+      .callout.success {
+        border-left-color: var(--accent-cyan);
+        background: rgba(50, 215, 75, 0.05);
+      }
+      .callout.warning {
+        border-left-color: var(--warning);
+        background: rgba(255, 214, 10, 0.05);
+      }
+      .callout h4 {
+        margin-top: 0;
+        margin-bottom: 8px;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .callout p {
+        margin-bottom: 0;
+        color: var(--text-primary);
+      }
+      .callout ul {
+        margin-top: 10px;
+        margin-bottom: 0;
+        color: var(--text-primary);
+      }
+
+      /* Badges */
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: var(--bg-surface-solid);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        margin-right: 6px;
+        margin-bottom: 6px;
+      }
+      .badge.high {
+        background: rgba(255, 69, 58, 0.15);
+        color: #ff6961;
+        border-color: rgba(255, 69, 58, 0.3);
+      }
+      .badge.medium {
+        background: rgba(255, 214, 10, 0.15);
+        color: #ffd60a;
+        border-color: rgba(255, 214, 10, 0.3);
+      }
+      .badge.low {
+        background: rgba(10, 132, 255, 0.15);
+        color: #64d2ff;
+        border-color: rgba(10, 132, 255, 0.3);
+      }
+
+      /* Code Blocks - Strict No Scrollbars */
+      pre {
+        background: #0d0d12;
+        border: 1px solid var(--border-color);
+        border-radius: 0 0 12px 12px;
+        padding: 20px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        margin: 0 0 24px 0;
+        color: #e5e5ea;
+        white-space: pre-wrap; /* CRITICAL: Forces wrap instead of scrollbar */
+        word-break: break-word;
+        tab-size: 2;
+      }
+      code {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      p code,
+      li code {
+        background: #1c1c1e;
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-size: 0.85em;
+        border: 1px solid var(--border-color);
+        color: #a285ff;
+      }
+      .code-header {
+        background: #1a1b23;
+        padding: 10px 20px;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+        border: 1px solid var(--border-color);
+        border-bottom: none;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
+        display: flex;
+        justify-content: space-between;
+        margin-top: 24px;
+      }
+      .code-header span:last-child {
+        color: var(--accent-purple);
+      }
+
+      /* Tables */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 24px 0;
+        background: var(--bg-surface-solid);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+      }
+      th,
+      td {
+        padding: 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+      }
+      th {
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      td {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        vertical-align: top;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* Layout Utilities */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .icon-inline {
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 6px;
+        width: 18px;
+        height: 18px;
+      }
+    </style>
+  </head>
+  <body style="">
+    <h1>Ulasan Teknis &amp; Rekomendasi UI/UX Halaman Streaming — anime-scraper-pro</h1>
+    <p class="subtitle">
+      Audit aktual repository + desain peningkatan player, navigasi episode, dan pengalaman menonton ala big-tech.
+    </p>
+
+    <div class="toc">
+      <h3>Daftar Isi</h3>
+      <ul>
+        <li><a href="#section-1">1. Executive Summary</a></li>
+        <li><a href="#section-2">2. Current State Audit — Halaman Streaming</a></li>
+        <li><a href="#section-3">3. Saran Peningkatan #1: Quality Selector Ala YouTube/Bstation</a></li>
+        <li><a href="#section-4">4. Saran Peningkatan #2: Auto-Next Episode System</a></li>
+        <li><a href="#section-5">5. Saran Peningkatan #3: Skip Opening / Intro Button</a></li>
+        <li><a href="#section-6">6. Saran Peningkatan #4: UI/UX Overhaul — Watch Page Redesign</a></li>
+        <li><a href="#section-7">7. Saran Peningkatan #5: Additional Player Features</a></li>
+        <li><a href="#section-8">8. Architecture Recommendations</a></li>
+        <li><a href="#section-9">9. Priority Matrix &amp; Roadmap</a></li>
+        <li><a href="#section-10">10. Conclusion</a></li>
+      </ul>
+    </div>
+
+    <h2 id="section-1">🚀 1. Executive Summary</h2>
+    <div class="glass-card">
+      <p>
+        <strong>Fokus Ulasan:</strong> Evaluasi arsitektur frontend dan backend khusus untuk halaman streaming video
+        (Watch Page) pada repository <code>anime-scraper-pro</code>, beserta rancangan teknis peningkatan fungsionalitas
+        UI/UX media player.
+      </p>
+      <p><strong>Stack Teknologi Repository:</strong></p>
+      <ul>
+        <li>
+          <strong>Frontend:</strong> Next.js 15, React 19, Tailwind CSS 4, Zustand 5, SWR, hls.js (Dynamic Import).
+        </li>
+        <li>
+          <strong>Backend:</strong> Python FastAPI, mekanisme Stream Proxy v1, SSRF validation, Resilient 3-tier mapping
+          resolution di <code>stream_v2.py</code>.
+        </li>
+      </ul>
+      <div class="callout success">
+        <h4>Kelebihan Saat Ini</h4>
+        <p>
+          Fondasi teknis proyek ini sudah <strong>sangat solid secara backend</strong>. Pendekatan
+          <em>proxy streaming</em> langsung mem-bypass kebutuhan iframe lintas origin, dan 3-tier reconciler memastikan
+          ketahanan link yang luar biasa tinggi. Struktur <code>app-store.ts</code> menggunakan Zustand 5 juga sudah
+          disiapkan dengan matang.
+        </p>
+      </div>
+      <div class="callout warning">
+        <h4>Overall Verdict</h4>
+        <p>
+          Meskipun arsitektur <em>under-the-hood</em> sangat mutakhir, antarmuka pengguna pada
+          <strong>halaman streaming saat ini masih sangat <em>barebones</em></strong>. Elemen krusial seperti menu pengaturan terstruktur, auto-next episode, navigasi episode di area player, dan
+          kontrol gestur mobile sama sekali belum diimplementasikan. Fitur di store (Zustand) masih berstatus
+          <em>ghost features</em>. Dokumen ini mendefinisikan langkah konkret untuk mengangkat standar player ini
+          menjadi sekelas platform <em>big tech</em> (YouTube, Bstation, Netflix).
+        </p>
+      </div>
+    </div>
+
+    <h2 id="section-2">🔍 2. Current State Audit — Halaman Streaming</h2>
+    <p>
+      Berdasarkan penelusuran file aktual di repository, berikut adalah status terkini dari komponen-komponen penyusun
+      halaman streaming.
+    </p>
+
+    <div class="grid-2">
+      <div class="glass-card">
+        <h3>🎬 frontend/ui/player/VideoPlayer.tsx</h3>
+        <p><strong>Status:</strong> Basic HLS Player</p>
+        <ul>
+          <li>
+            <strong>Fakta:</strong> Menggunakan dynamic import <code>hls.js</code>, proxyUrl, menyimpan progress ke
+            store tiap 15 detik, keyboard shortcuts (Space/Arrow/F), fallback iframe.
+          </li>
+          <li>
+            <strong>Kekurangan UX:</strong> Quality switcher hanya berupa pill dropdown yang menumpuk, bukan menu
+            bersarang. Belum ada auto-next trigger, skip intro, PiP, subtitle, atau mobile gestures (double tap seek).
+          </li>
+        </ul>
+      </div>
+      <div class="glass-card">
+        <h3>📺 frontend/features/watch/WatchClient.tsx</h3>
+        <p><strong>Status:</strong> Fixed Fullscreen Overlay</p>
+        <ul>
+          <li>
+            <strong>Fakta:</strong> Layout memakan seluruh layar (fixed inset-0 z-[300]), membagi layar menjadi Player
+            (kiri) dan Sidebar (kanan, 380px) berisi tab Episode/Komentar.
+          </li>
+          <li>
+            <strong>Kekurangan UX:</strong> Tidak ada tombol Prev/Next di dekat player. Sidebar tidak memiliki informasi
+            anime (sinopsis, genre, dll). Tab komentar masih placeholder. Tidak ada opsi pindah provider/server.
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="glass-card">
+        <h3>📋 frontend/features/detail/EpisodeList.tsx</h3>
+        <p><strong>Status:</strong> Functional but Disconnected</p>
+        <ul>
+          <li>
+            <strong>Fakta:</strong> Menampilkan list dengan thumbnail, bar progress riwayat tontonan, indikator selesai,
+            dan sistem lazy load per 50 item.
+          </li>
+          <li>
+            <strong>Kekurangan UX:</strong> Tidak ada <em>highlight</em> atau auto-scroll ke episode yang saat ini
+            sedang diputar. Ketiadaan kolom <em>search/filter</em> menyulitkan navigasi anime berepisode ratusan.
+          </li>
+        </ul>
+      </div>
+      <div class="glass-card">
+        <h3>🧠 frontend/core/stores/app-store.ts</h3>
+        <p><strong>Status:</strong> Store Siap, UI Belum Terhubung</p>
+        <ul>
+          <li>
+            <strong>Fakta:</strong> Memiliki deklarasi state <code>autoPlayNext: true</code>,
+            <code>skipIntro: false</code>, dan <code>videoQuality: "Auto"</code>.
+          </li>
+          <li>
+            <strong>Kekurangan UX:</strong> Semua pengaturan ini adalah <em>ghost features</em>. Player saat ini
+            mengabaikan <code>autoPlayNext</code> maupun <code>skipIntro</code>, membuat pengaturan tersebut tidak
+            berguna di UI.
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout critical">
+      <h4>Masalah Mendesak</h4>
+      <p>
+        Pengalaman menonton secara beruntun (<em>binge-watching</em>) saat ini terputus total karena tidak adanya
+        navigasi <em>Auto-Next</em> atau tombol episode selanjutnya di area player. Pengguna harus kembali ke sidebar,
+        mencari episode berikutnya secara manual setiap 20 menit.
+      </p>
+    </div>
+
+    <h2 id="section-3">⚙️ 3. Saran Peningkatan #1: Quality Selector Ala YouTube/Bstation</h2>
+    <p>
+      Pill dropdown (select box) di atas video terlihat murahan dan tidak mendukung ekspansi. Dibutuhkan menu
+      <em>Settings</em> terstruktur berupa <em>slide-in panel</em> yang mendukung kedalaman (nested menus) untuk
+      Kualitas, Kecepatan, dan kelak Subtitle.
+    </p>
+
+    <div class="code-header"><span>frontend/ui/player/PlayerSettings.tsx</span><span>React / TypeScript</span></div>
+    <pre><code>"use client";
+import { useState, useRef, useEffect } from 'react';
+
+// Inline SVG Icons untuk kemandirian komponen
+const GearIcon = () =&gt; (
+  &lt;svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"&gt;
+    &lt;path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /&gt;
+    &lt;circle cx="12" cy="12" r="3" /&gt;
+  &lt;/svg&gt;
+);
+const CheckIcon = () =&gt; &lt;svg viewBox="0 0 24 24" fill="none" stroke="#0a84ff" strokeWidth="3" className="w-4 h-4"&gt;&lt;path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /&gt;&lt;/svg&gt;;
+const BackIcon = () =&gt; &lt;svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"&gt;&lt;path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /&gt;&lt;/svg&gt;;
+
+interface PlayerSettingsProps {
+  qualities: string[];
+  currentQuality: string;
+  onQualityChange: (q: string) =&gt; void;
+  currentSpeed: number;
+  onSpeedChange: (s: number) =&gt; void;
+}
+
+export function PlayerSettings({ qualities, currentQuality, onQualityChange, currentSpeed, onSpeedChange }: PlayerSettingsProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [menuLevel, setMenuLevel] = useState&lt;'main' | 'quality' | 'speed'&gt;('main');
+  const menuRef = useRef&lt;HTMLDivElement&gt;(null);
+
+  // Auto-close handler
+  useEffect(() =&gt; {
+    const handleClick = (e: MouseEvent) =&gt; {
+      if (menuRef.current &amp;&amp; !menuRef.current.contains(e.target as Node)) setIsOpen(false);
+    };
+    if (isOpen) document.addEventListener('mousedown', handleClick);
+    return () =&gt; document.removeEventListener('mousedown', handleClick);
+  }, [isOpen]);
+
+  const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+
+  return (
+    &lt;div className="relative inline-block" ref={menuRef}&gt;
+      &lt;button onClick={() =&gt; setIsOpen(!isOpen)} className="p-2 text-white hover:text-[#0a84ff] transition-transform hover:rotate-90"&gt;
+        &lt;GearIcon /&gt;
+      &lt;/button&gt;
+
+      {isOpen &amp;&amp; (
+        &lt;div className="absolute bottom-12 right-0 w-64 bg-[#1c1c1e]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 text-sm font-medium text-white"&gt;
+          
+          {/* LEVEL 1: MAIN MENU */}
+          {menuLevel === 'main' &amp;&amp; (
+            &lt;div className="flex flex-col py-2"&gt;
+              &lt;button onClick={() =&gt; setMenuLevel('quality')} className="flex justify-between items-center px-4 py-3 hover:bg-white/10 transition-colors"&gt;
+                &lt;span&gt;Kualitas&lt;/span&gt;
+                &lt;span className="text-[#8e8e93] text-xs"&gt;{currentQuality} &gt;&lt;/span&gt;
+              &lt;/button&gt;
+              &lt;button onClick={() =&gt; setMenuLevel('speed')} className="flex justify-between items-center px-4 py-3 hover:bg-white/10 transition-colors"&gt;
+                &lt;span&gt;Kecepatan&lt;/span&gt;
+                &lt;span className="text-[#8e8e93] text-xs"&gt;{currentSpeed === 1 ? 'Normal' : `${currentSpeed}x`} &gt;&lt;/span&gt;
+              &lt;/button&gt;
+              &lt;button disabled className="flex justify-between items-center px-4 py-3 opacity-50 cursor-not-allowed"&gt;
+                &lt;span&gt;Subtitle (Soon)&lt;/span&gt;
+                &lt;span className="text-[#8e8e93] text-xs"&gt;Mati &gt;&lt;/span&gt;
+              &lt;/button&gt;
+            &lt;/div&gt;
+          )}
+
+          {/* LEVEL 2: QUALITY */}
+          {menuLevel === 'quality' &amp;&amp; (
+            &lt;div className="flex flex-col py-2"&gt;
+              &lt;button onClick={() =&gt; setMenuLevel('main')} className="flex items-center gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/10 text-[#8e8e93]"&gt;
+                &lt;BackIcon /&gt; Kembali ke Kualitas
+              &lt;/button&gt;
+              {qualities.map((q) =&gt; (
+                &lt;button key={q} onClick={() =&gt; { onQualityChange(q); setIsOpen(false); setMenuLevel('main'); }} 
+                        className="flex justify-between items-center px-4 py-3 hover:bg-white/10 transition-colors"&gt;
+                  &lt;span&gt;{q}&lt;/span&gt;
+                  {currentQuality === q &amp;&amp; &lt;CheckIcon /&gt;}
+                &lt;/button&gt;
+              ))}
+            &lt;/div&gt;
+          )}
+
+          {/* LEVEL 2: SPEED */}
+          {menuLevel === 'speed' &amp;&amp; (
+            &lt;div className="flex flex-col py-2"&gt;
+              &lt;button onClick={() =&gt; setMenuLevel('main')} className="flex items-center gap-2 px-4 py-3 border-b border-white/10 hover:bg-white/10 text-[#8e8e93]"&gt;
+                &lt;BackIcon /&gt; Kembali ke Kecepatan
+              &lt;/button&gt;
+              {speeds.map((s) =&gt; (
+                &lt;button key={s} onClick={() =&gt; { onSpeedChange(s); setIsOpen(false); setMenuLevel('main'); }}
+                        className="flex justify-between items-center px-4 py-3 hover:bg-white/10 transition-colors"&gt;
+                  &lt;span&gt;{s === 1 ? 'Normal' : `${s}x`}&lt;/span&gt;
+                  {currentSpeed === s &amp;&amp; &lt;CheckIcon /&gt;}
+                &lt;/button&gt;
+              ))}
+            &lt;/div&gt;
+          )}
+
+        &lt;/div&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+    <h2 id="section-4">⏭️ 4. Saran Peningkatan #2: Auto-Next Episode System</h2>
+    <p>
+      Fitur ini wajib untuk menahan <em>session duration</em> penonton. Sistem Auto-Next memiliki 3 komponen utama:
+      Overlay visual saat video hampir selesai, Navigation Bar di kontrol player, dan logika integrasinya (Wiring).
+    </p>
+
+    <h3>4.1 Komponen AutoNextOverlay</h3>
+    <div class="code-header"><span>frontend/ui/player/AutoNextOverlay.tsx</span><span>React / TypeScript</span></div>
+    <pre><code>"use client";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+interface AutoNextOverlayProps {
+  nextEpisodeUrl: string;
+  nextEpisodeTitle: string;
+  nextThumbnail?: string;
+  onCancel: () =&gt; void;
+  isLastEpisode: boolean;
+}
+
+export function AutoNextOverlay({ nextEpisodeUrl, nextEpisodeTitle, nextThumbnail, onCancel, isLastEpisode }: AutoNextOverlayProps) {
+  const [countdown, setCountdown] = useState(10);
+  const router = useRouter();
+
+  useEffect(() =&gt; {
+    if (isLastEpisode) return;
+    if (countdown === 0) {
+      router.push(nextEpisodeUrl);
+      return;
+    }
+    const timer = setInterval(() =&gt; setCountdown(c =&gt; c - 1), 1000);
+    return () =&gt; clearInterval(timer);
+  }, [countdown, nextEpisodeUrl, router, isLastEpisode]);
+
+  return (
+    &lt;div className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300"&gt;
+      
+      {isLastEpisode ? (
+        &lt;&gt;
+          &lt;h3 className="text-white text-3xl font-black mb-4"&gt;Anime Selesai! 🎉&lt;/h3&gt;
+          &lt;p className="text-[#8e8e93] mb-8"&gt;Terima kasih telah menonton serial ini.&lt;/p&gt;
+          &lt;button onClick={onCancel} className="px-8 py-3 bg-[#1c1c1e] border border-white/20 text-white font-bold rounded-full hover:bg-white/10"&gt;
+            Tutup Layar
+          &lt;/button&gt;
+        &lt;/&gt;
+      ) : (
+        &lt;&gt;
+          &lt;p className="text-[#8e8e93] font-semibold mb-2 uppercase tracking-widest text-xs"&gt;Memutar Berikutnya&lt;/p&gt;
+          &lt;h3 className="text-white text-2xl font-bold mb-8"&gt;{nextEpisodeTitle}&lt;/h3&gt;
+          
+          &lt;div className="relative w-56 aspect-video rounded-xl overflow-hidden mb-8 border border-white/20 shadow-2xl"&gt;
+            &lt;img src={nextThumbnail || '/placeholder-bg.jpg'} alt="Next" className="w-full h-full object-cover opacity-60" /&gt;
+            
+            {/* Netflix-style Circular Countdown */}
+            &lt;div className="absolute inset-0 flex items-center justify-center"&gt;
+              &lt;div className="text-white font-black text-5xl drop-shadow-lg"&gt;{countdown}&lt;/div&gt;
+              &lt;svg className="absolute w-24 h-24 -rotate-90" viewBox="0 0 100 100"&gt;
+                &lt;circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="6" /&gt;
+                &lt;circle cx="50" cy="50" r="46" fill="none" stroke="#0a84ff" strokeWidth="6" 
+                        strokeDasharray="289" strokeDashoffset={289 - (289 * countdown) / 10} 
+                        className="transition-all duration-1000 ease-linear" strokeLinecap="round" /&gt;
+              &lt;/svg&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          &lt;div className="flex gap-4"&gt;
+            &lt;button onClick={() =&gt; router.push(nextEpisodeUrl)} className="px-8 py-3 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform"&gt;
+              Putar Sekarang
+            &lt;/button&gt;
+            &lt;button onClick={onCancel} className="px-8 py-3 bg-[#1c1c1e] text-white font-bold rounded-full border border-white/20 hover:bg-white/10 transition-colors"&gt;
+              Batal
+            &lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+    <h3>4.2 Komponen EpisodeNavigationBar</h3>
+    <div class="code-header">
+      <span>frontend/ui/player/EpisodeNavigationBar.tsx</span><span>React / TypeScript</span>
+    </div>
+    <pre><code>"use client";
+import Link from "next/link";
+import { useEffect } from "react";
+
+// Inline Icons
+const PrevIcon = () =&gt; &lt;svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"&gt;&lt;path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/&gt;&lt;/svg&gt;;
+const NextIcon = () =&gt; &lt;svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"&gt;&lt;path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/&gt;&lt;/svg&gt;;
+
+interface NavigationProps {
+  prevUrl?: string;
+  nextUrl?: string;
+  currentTitle: string;
+}
+
+export function EpisodeNavigationBar({ prevUrl, nextUrl, currentTitle }: NavigationProps) {
+  // Shortcut listeners for Prev/Next
+  useEffect(() =&gt; {
+    const handleKey = (e: KeyboardEvent) =&gt; {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key.toLowerCase() === 'n' &amp;&amp; nextUrl) window.location.href = nextUrl;
+      if (e.key.toLowerCase() === 'p' &amp;&amp; prevUrl) window.location.href = prevUrl;
+    };
+    window.addEventListener('keydown', handleKey);
+    return () =&gt; window.removeEventListener('keydown', handleKey);
+  }, [nextUrl, prevUrl]);
+
+  return (
+    &lt;div className="flex items-center justify-between w-full bg-[#1c1c1e]/50 border-y border-[#2c2c2e] px-4 py-2"&gt;
+      {prevUrl ? (
+        &lt;Link href={prevUrl} className="flex items-center gap-2 text-[#8e8e93] hover:text-white text-sm font-bold transition-colors"&gt;
+          &lt;PrevIcon /&gt; Prev (P)
+        &lt;/Link&gt;
+      ) : &lt;div className="w-24" /&gt;}
+
+      &lt;div className="text-white text-sm font-bold truncate max-w-[50%]"&gt;
+        {currentTitle}
+      &lt;/div&gt;
+
+      {nextUrl ? (
+        &lt;Link href={nextUrl} className="flex items-center gap-2 text-[#0a84ff] hover:text-[#64d2ff] text-sm font-bold transition-colors"&gt;
+          Next (N) &lt;NextIcon /&gt;
+        &lt;/Link&gt;
+      ) : &lt;div className="w-24 text-right text-xs text-[#8e8e93]"&gt;Tamat&lt;/div&gt;}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+    <h3>4.3 Wiring onEnded &amp; 90% Threshold (di VideoPlayer.tsx)</h3>
+    <div class="code-header">
+      <span>frontend/ui/player/VideoPlayer.tsx (Snippets)</span><span>React / TypeScript</span>
+    </div>
+    <pre><code>import { useSettings } from "@/core/stores/app-store";
+
+// Props penambahan untuk trigger auto-next
+interface VideoPlayerProps {
+  // ... props existing ...
+  onRequireAutoNext: () =&gt; void;
+}
+
+export function VideoPlayerInner({ onRequireAutoNext /* ... */ }: VideoPlayerProps) {
+  const autoPlayNext = useSettings((s) =&gt; s.settings.autoPlayNext);
+  const [hasTriggeredAutoNext, setHasTriggeredAutoNext] = useState(false);
+
+  useEffect(() =&gt; {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleTimeUpdate = () =&gt; {
+      const current = video.currentTime;
+      const dur = video.duration;
+      // Trigger threshold: 90% completion
+      if (dur &gt; 0 &amp;&amp; (current / dur) &gt;= 0.9 &amp;&amp; autoPlayNext &amp;&amp; !hasTriggeredAutoNext) {
+        onRequireAutoNext();
+        setHasTriggeredAutoNext(true);
+      }
+    };
+
+    const handleEnded = () =&gt; {
+      if (autoPlayNext &amp;&amp; !hasTriggeredAutoNext) {
+        onRequireAutoNext();
+        setHasTriggeredAutoNext(true);
+      }
+    };
+
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("ended", handleEnded);
+
+    return () =&gt; {
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("ended", handleEnded);
+    };
+  }, [autoPlayNext, hasTriggeredAutoNext, onRequireAutoNext]);
+
+  // ... rest of component
+}</code></pre>
+
+    <h2 id="section-5">🏃 5. Saran Peningkatan #3: Skip Opening / Intro Button</h2>
+    <p>
+      Lagu <em>opening</em> anime rata-rata berdurasi <strong>90 detik</strong>. Keberadaan tombol ini bisa secara masif
+      mengurangi repetisi yang dirasakan user. Cukup tampilkan tombol di <em>window timestamp</em> tertentu (contoh:
+      00:30 hingga 02:00) yang akan menghilang jika dilewati.
+    </p>
+
+    <div class="code-header"><span>frontend/ui/player/SkipIntroButton.tsx</span><span>React / TypeScript</span></div>
+    <pre><code>"use client";
+import { useState, useEffect } from 'react';
+import { useSettings } from '@/core/stores/app-store';
+
+interface SkipIntroProps {
+  currentTime: number;
+  onSkip: (targetTime: number) =&gt; void;
+  // Default window umum: lagu mulai di detik 30, selesai di detik 120 (1m 30s durasi)
+  showAt?: number; 
+  hideAt?: number;
+}
+
+export function SkipIntroButton({ currentTime, onSkip, showAt = 30, hideAt = 120 }: SkipIntroProps) {
+  const autoSkip = useSettings(s =&gt; s.settings.skipIntro);
+  const [hasSkipped, setHasSkipped] = useState(false);
+
+  // Munculkan hanya di dalam window time, dan jika belum ditekan
+  const isVisible = currentTime &gt;= showAt &amp;&amp; currentTime &lt;= hideAt &amp;&amp; !hasSkipped;
+
+  // Fitur "Ghost": Auto-Skip tanpa klik jika diaktifkan di store
+  useEffect(() =&gt; {
+    if (autoSkip &amp;&amp; isVisible) {
+      onSkip(hideAt);
+      setHasSkipped(true);
+    }
+  }, [autoSkip, isVisible, hideAt, onSkip]);
+
+  if (!isVisible) return null;
+
+  return (
+    &lt;button 
+      onClick={(e) =&gt; { 
+        e.stopPropagation(); 
+        onSkip(hideAt); 
+        setHasSkipped(true); 
+      }}
+      className="absolute bottom-24 right-6 z-30 px-5 py-2.5 bg-black/80 hover:bg-black text-white text-sm font-bold rounded-lg border border-white/20 shadow-2xl backdrop-blur-md flex items-center gap-2 animate-in slide-in-from-right-4 duration-300"
+    &gt;
+      Lewati Opening &lt;span className="text-[#0a84ff]"&gt;▶▶&lt;/span&gt;
+    &lt;/button&gt;
+  );
+}</code></pre>
+    <div class="callout">
+      <h4>💡 Rekomendasi Praktis</h4>
+      <p>
+        Untuk masa depan, Anda bisa menyimpan struktur JSON di backend yang berisi
+        <code>{ animeId: "solo-leveling", episode: 1, opStart: 120, opEnd: 210 }</code> untuk akurasi presisi, namun
+        default 30-120 detik sudah sangat membantu untuk v1.
+      </p>
+    </div>
+
+    <h2 id="section-6">📺 6. Saran Peningkatan #4: UI/UX Overhaul — Watch Page Redesign</h2>
+    <p>
+      Halaman <code>WatchClient.tsx</code> saat ini menggunakan desain <em>Fullscreen Overlay</em> (<code>fixed inset-0</code>) yang mengisolasi halaman tontonan dari website utama. Desain ulang ini membawa pengalaman sekelas
+      Bilibili/YouTube: Mobile-first, layout grid adaptif, Theater Mode, metadata lengkap, Sidebar ber-tab, dan dukungan
+      <em>Shortcut/Gesture</em>.
+    </p>
+
+    <h3>6.1. Mobile Gesture Controls (Hook)</h3>
+    <div class="code-header"><span>frontend/core/hooks/useVideoGestures.ts</span><span>React / TypeScript</span></div>
+    <pre><code>import { useState, useRef, useEffect, MutableRefObject } from 'react';
+
+/**
+ * Hook untuk mengenali gestur double-tap kiri/kanan pada kontainer video
+ */
+export function useVideoGestures(videoRef: MutableRefObject&lt;HTMLVideoElement | null&gt;) {
+  const containerRef = useRef&lt;HTMLDivElement&gt;(null);
+  const [ripple, setRipple] = useState&lt;{ side: 'left'|'right', id: number } | null&gt;(null);
+  const lastTapRef = useRef&lt;number&gt;(0);
+
+  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) =&gt; {
+    if (!videoRef.current || !containerRef.current) return;
+    
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    
+    // Deteksi Double Tap
+    if (now - lastTapRef.current &lt; DOUBLE_TAP_DELAY) {
+      e.preventDefault(); // Mencegah zoom bawaan browser
+      
+      let clientX;
+      if ('touches' in e) clientX = e.touches[0].clientX;
+      else clientX = (e as React.MouseEvent).clientX;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const isRightSide = (clientX - rect.left) &gt; (rect.width / 2);
+      
+      // Hitung lompatan waktu (10 detik)
+      const skipAmount = isRightSide ? 10 : -10;
+      videoRef.current.currentTime = Math.max(0, Math.min(videoRef.current.duration, videoRef.current.currentTime + skipAmount));
+      
+      // Trigger animasi ripple
+      setRipple({ side: isRightSide ? 'right' : 'left', id: now });
+      setTimeout(() =&gt; setRipple(null), 500); // Bersihkan ripple
+      
+      lastTapRef.current = 0; // Reset
+    } else {
+      lastTapRef.current = now;
+    }
+  };
+
+  return { containerRef, handleTouchStart, ripple };
+}</code></pre>
+
+    <h3>6.2. Master Component: WatchClientRedesign</h3>
+    <div class="code-header">
+      <span>frontend/features/watch/WatchClientRedesign.tsx</span><span>React / TypeScript</span>
+    </div>
+    <pre><code>"use client";
+import { useState, useEffect } from "react";
+import { VideoPlayer } from "@/ui/player/VideoPlayer";
+import { EpisodeList } from "@/features/detail/EpisodeList";
+import { AutoNextOverlay } from "@/ui/player/AutoNextOverlay";
+import { EpisodeNavigationBar } from "@/ui/player/EpisodeNavigationBar";
+import { useVideoGestures } from "@/core/hooks/useVideoGestures";
+
+// Interfaces berasumsi dari standard API anime modern
+interface EnhancedWatchProps {
+  anime: { id: string; title: string; synopsis: string; genres: string[]; studios: string[]; score: number };
+  currentEpisode: { number: number; title: string; url: string; airDate?: string };
+  episodes: { number: number; title: string; url: string; thumbnailUrl?: string }[];
+  sources: { provider: string; quality: string; url: string; type: string }[];
+}
+
+// Shortcut Modal Component
+const ShortcutModal = ({ onClose }: { onClose: () =&gt; void }) =&gt; (
+  &lt;div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}&gt;
+    &lt;div className="bg-[#1c1c1e] rounded-2xl p-6 max-w-md w-full border border-white/10" onClick={e =&gt; e.stopPropagation()}&gt;
+      &lt;h3 className="text-white text-xl font-bold mb-4 border-b border-white/10 pb-2"&gt;⌨️ Keyboard Shortcuts&lt;/h3&gt;
+      &lt;ul className="space-y-3 text-sm text-[#e5e5ea]"&gt;
+        &lt;li className="flex justify-between"&gt;&lt;span&gt;Play / Pause&lt;/span&gt;&lt;code&gt;Space&lt;/code&gt;&lt;/li&gt;
+        &lt;li className="flex justify-between"&gt;&lt;span&gt;Maju / Mundur 10s&lt;/span&gt;&lt;code&gt;→ / ←&lt;/code&gt;&lt;/li&gt;
+        &lt;li className="flex justify-between"&gt;&lt;span&gt;Volume Naik / Turun&lt;/span&gt;&lt;code&gt;↑ / ↓&lt;/code&gt;&lt;/li&gt;
+        &lt;li className="flex justify-between"&gt;&lt;span&gt;Mute Toggle&lt;/span&gt;&lt;code&gt;M&lt;/code&gt;&lt;/li&gt;
+        &lt;li className="flex justify-between"&gt;&lt;span&gt;Fullscreen&lt;/span&gt;&lt;code&gt;F&lt;/code&gt;&lt;/li&gt;
+        &lt;li className="flex justify-between"&gt;&lt;span&gt;Episode Selanjutnya&lt;/span&gt;&lt;code&gt;N&lt;/code&gt;&lt;/li&gt;
+        &lt;li className="flex justify-between"&gt;&lt;span&gt;Episode Sebelumnya&lt;/span&gt;&lt;code&gt;P&lt;/code&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+);
+
+export default function WatchClientRedesign({ anime, currentEpisode, episodes, sources }: EnhancedWatchProps) {
+  const [isTheater, setIsTheater] = useState(false);
+  const [activeTab, setActiveTab] = useState&lt;'eps'|'comments'&gt;('eps');
+  const [activeServer, setActiveServer] = useState('otakudesu'); // Default provider
+  const [showAutoNext, setShowAutoNext] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Menentukan prev/next url
+  const currentIndex = episodes.findIndex(e =&gt; e.number === currentEpisode.number);
+  const nextEp = currentIndex &lt; episodes.length - 1 ? episodes[currentIndex + 1] : null;
+  const prevEp = currentIndex &gt; 0 ? episodes[currentIndex - 1] : null;
+
+  // Global Key listener untuk Shortcut Modal
+  useEffect(() =&gt; {
+    const handleKey = (e: KeyboardEvent) =&gt; {
+      if (e.key === '?' &amp;&amp; !(e.target instanceof HTMLInputElement)) setShowShortcuts(true);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () =&gt; window.removeEventListener('keydown', handleKey);
+  }, []);
+
+  return (
+    &lt;div className="min-h-screen bg-[#0a0c10] flex flex-col pt-0 lg:pt-14"&gt;
+      
+      {/* Layout Grid: berubah dinamis mengikuti Theater Mode */}
+      &lt;div className={`w-full max-w-[1600px] mx-auto flex flex-col ${isTheater ? 'lg:flex-col' : 'lg:flex-row'} gap-6 px-0 lg:px-6`}&gt;
+        
+        {/* SEKSI KIRI: Player &amp; Info */}
+        &lt;div className={`flex-1 flex flex-col w-full min-w-0 transition-all duration-300`}&gt;
+          
+          {/* Player Container dengan rasio aspek terjaga */}
+          &lt;div className="relative w-full aspect-video bg-black lg:rounded-2xl overflow-hidden shadow-2xl border border-white/5 sticky top-0 lg:static z-20 group"&gt;
+            &lt;VideoPlayer 
+              sources={sources.filter(s =&gt; s.provider === activeServer)} 
+              animeSlug={anime.id} 
+              episodeNum={currentEpisode.number} 
+              onRequireAutoNext={() =&gt; setShowAutoNext(true)}
+            /&gt;
+
+            {/* Render AutoNextOverlay bila ditrigger */}
+            {showAutoNext &amp;&amp; nextEp &amp;&amp; (
+              &lt;AutoNextOverlay 
+                nextEpisodeUrl={nextEp.url} 
+                nextEpisodeTitle={`Episode ${nextEp.number}`}
+                nextThumbnail={nextEp.thumbnailUrl}
+                isLastEpisode={false}
+                onCancel={() =&gt; setShowAutoNext(false)}
+              /&gt;
+            )}
+            {showAutoNext &amp;&amp; !nextEp &amp;&amp; (
+              &lt;AutoNextOverlay isLastEpisode={true} onCancel={() =&gt; setShowAutoNext(false)} nextEpisodeUrl="" nextEpisodeTitle="" /&gt;
+            )}
+          &lt;/div&gt;
+
+          {/* Navigation Bar di bawah player */}
+          &lt;EpisodeNavigationBar prevUrl={prevEp?.url} nextUrl={nextEp?.url} currentTitle={`${anime.title} - Ep ${currentEpisode.number}`} /&gt;
+
+          {/* Action Bar &amp; Server Selection */}
+          &lt;div className="flex flex-wrap items-center justify-between gap-4 py-4 px-4 lg:px-0"&gt;
+            &lt;div className="flex gap-2 items-center"&gt;
+              &lt;span className="text-xs text-[#8e8e93] font-bold uppercase tracking-wider"&gt;Server:&lt;/span&gt;
+              {['oploverz', 'otakudesu', 'samehadaku'].map(server =&gt; (
+                &lt;button 
+                  key={server} onClick={() =&gt; setActiveServer(server)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${activeServer === server ? 'bg-[#0a84ff] text-white' : 'bg-[#1c1c1e] text-[#8e8e93] border border-white/10 hover:text-white'}`}
+                &gt;
+                  {server.toUpperCase()}
+                &lt;/button&gt;
+              ))}
+            &lt;/div&gt;
+            &lt;div className="flex gap-3"&gt;
+              &lt;button onClick={() =&gt; setIsTheater(!isTheater)} className="hidden lg:flex items-center gap-2 px-4 py-2 bg-[#1c1c1e] hover:bg-[#2c2c2e] rounded-full text-sm font-bold text-white border border-white/10"&gt;
+                {isTheater ? 'Default Mode' : 'Theater Mode'}
+              &lt;/button&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          {/* Anime Meta Info Ala YouTube */}
+          &lt;div className="px-4 lg:px-0 py-2 mb-8"&gt;
+            &lt;h1 className="text-2xl font-black text-white mb-2"&gt;{anime.title} - Episode {currentEpisode.number}&lt;/h1&gt;
+            
+            &lt;div className="bg-[#1c1c1e]/60 p-4 rounded-xl border border-white/5"&gt;
+              &lt;div className="flex flex-wrap items-center gap-4 mb-3 text-sm"&gt;
+                &lt;span className="text-white font-bold"&gt;⭐ {anime.score} / 100&lt;/span&gt;
+                &lt;span className="text-[#8e8e93]"&gt;Rilis: {currentEpisode.airDate || 'N/A'}&lt;/span&gt;
+                &lt;span className="text-[#8e8e93]"&gt;Studio: {anime.studios.join(', ')}&lt;/span&gt;
+              &lt;/div&gt;
+              &lt;div className="flex gap-2 mb-3"&gt;
+                {anime.genres.map(g =&gt; &lt;span key={g} className="text-xs bg-[#0a84ff]/20 text-[#64d2ff] px-2 py-1 rounded"&gt;{g}&lt;/span&gt;)}
+              &lt;/div&gt;
+              &lt;p className="text-sm text-[#e5e5ea] leading-relaxed line-clamp-3 hover:line-clamp-none cursor-pointer"&gt;
+                {anime.synopsis}
+              &lt;/p&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+        &lt;/div&gt;
+
+        {/* SEKSI KANAN: Sidebar Daftar Episode */}
+        &lt;div className={`w-full ${isTheater ? 'lg:w-full' : 'lg:w-[380px] shrink-0'} flex flex-col`}&gt;
+          &lt;div className="bg-[#1c1c1e] rounded-xl border border-white/5 overflow-hidden flex flex-col max-h-[800px]"&gt;
+            
+            {/* Tabs */}
+            &lt;div className="flex border-b border-white/10"&gt;
+              &lt;button onClick={()=&gt;setActiveTab('eps')} className={`flex-1 py-4 text-sm font-bold ${activeTab==='eps' ? 'text-white border-b-2 border-[#0a84ff] bg-white/5' : 'text-[#8e8e93]'}`}&gt;Daftar Episode&lt;/button&gt;
+              &lt;button onClick={()=&gt;setActiveTab('comments')} className={`flex-1 py-4 text-sm font-bold ${activeTab==='comments' ? 'text-white border-b-2 border-[#0a84ff] bg-white/5' : 'text-[#8e8e93]'}`}&gt;Komentar&lt;/button&gt;
+            &lt;/div&gt;
+
+            {/* Content Area */}
+            &lt;div className="flex-1 overflow-y-auto no-scrollbar p-4"&gt;
+              {activeTab === 'eps' ? (
+                &lt;&gt;
+                  &lt;input type="text" placeholder="Cari episode..." className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-sm text-white mb-4 focus:outline-none focus:border-[#0a84ff]" /&gt;
+                  {/* Anggap EpisodeList menerima props 'currentActive' untuk di-highlight dengan background biru */}
+                  &lt;EpisodeList episodes={episodes} animeId={anime.id} currentActive={currentEpisode.number} /&gt;
+                &lt;/&gt;
+              ) : (
+                &lt;div className="text-center py-20 text-[#8e8e93] text-sm"&gt;Fitur Komentar Segera Hadir&lt;/div&gt;
+              )}
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+
+      &lt;/div&gt;
+      {showShortcuts &amp;&amp; &lt;ShortcutModal onClose={() =&gt; setShowShortcuts(false)} /&gt;}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+    <h2 id="section-7">⚡ 7. Saran Peningkatan #5: Additional Player Features</h2>
+    <p>
+      Setelah fondasi utama player dibenahi, fitur-fitur berikut akan memberi rasa <em>premium polish</em>. Masing-masing
+      cukup realistis untuk ditambahkan bertahap tanpa mengacak arsitektur yang sudah ada.
+    </p>
+
+    <div class="grid-2">
+      <div class="glass-card">
+        <h4>1. Picture-in-Picture (PiP) 📺</h4>
+        <p><strong>Manfaat UX:</strong> User tetap bisa menonton sambil menjelajahi daftar episode, halaman detail, atau tab lain.</p>
+        <p><strong>Catatan Implementasi:</strong> Gunakan Browser PiP API, siapkan fallback bila browser tidak mendukung.</p>
+        <pre><code>const togglePiP = async () =&gt; {
+  if (!videoRef.current) return;
+
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+      return;
+    }
+
+    if (document.pictureInPictureEnabled) {
+      await videoRef.current.requestPictureInPicture();
+    }
+  } catch (error) {
+    console.error('Gagal membuka Picture-in-Picture', error);
+  }
+};</code></pre>
+      </div>
+
+      <div class="glass-card">
+        <h4>2. Screenshot Button 📸</h4>
+        <p><strong>Manfaat UX:</strong> Pengguna anime sering menyimpan frame favorit untuk dibagikan ke Discord, X, atau Telegram.</p>
+        <p><strong>Catatan Implementasi:</strong> Hanya berlaku untuk video native, bukan iframe fallback.</p>
+        <pre><code>const captureScreenshot = () =&gt; {
+  if (!videoRef.current) return;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = videoRef.current.videoWidth;
+  canvas.height = videoRef.current.videoHeight;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+  const link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = `anime-frame-${Date.now()}.png`;
+  link.click();
+};</code></pre>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="glass-card">
+        <h4>3. Playback Resume Toast ⏯️</h4>
+        <p><strong>Manfaat UX:</strong> Saat user kembali ke episode yang pernah ditonton, sistem menawarkan lanjut dari timestamp terakhir.</p>
+        <p><strong>Catatan Implementasi:</strong> Gunakan data dari <code>useWatchHistory()</code>, tampilkan hanya jika progres &gt; 30 detik.</p>
+        <pre><code>useEffect(() =&gt; {
+  const saved = getProgress(animeSlug, episodeNum);
+  if (!saved || saved.timestampSec &lt; 30) return;
+
+  toast(`Lanjutkan dari ${fmt(saved.timestampSec)}?`, 'info', 5000);
+
+  // Contoh: pada klik CTA di toast
+  // videoRef.current.currentTime = saved.timestampSec;
+}, [animeSlug, episodeNum, getProgress, toast]);</code></pre>
+      </div>
+
+      <div class="glass-card">
+        <h4>4. Long-Press Seek / Fast Preview ⚡</h4>
+        <p><strong>Manfaat UX:</strong> Menahan tombol kanan/kiri memberi rasa navigasi cepat ala platform video modern.</p>
+        <p><strong>Catatan Implementasi:</strong> Gunakan <code>keydown</code> dengan properti <code>event.repeat</code>, lalu reset saat <code>keyup</code>.</p>
+        <pre><code>useEffect(() =&gt; {
+  const onKeyDown = (e: KeyboardEvent) =&gt; {
+    if (!videoRef.current) return;
+
+    if (e.code === 'ArrowRight' &amp;&amp; e.repeat) {
+      videoRef.current.playbackRate = 2;
+    }
+
+    if (e.code === 'ArrowLeft' &amp;&amp; e.repeat) {
+      videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 1);
+    }
+  };
+
+  const onKeyUp = () =&gt; {
+    if (videoRef.current) videoRef.current.playbackRate = 1;
+  };
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  return () =&gt; {
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+  };
+}, []);</code></pre>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="glass-card">
+        <h4>5. Volume Slider 🎚️</h4>
+        <p><strong>Manfaat UX:</strong> Tombol mute saja terlalu kasar. Slider volume membuat kontrol audio terasa lebih serius.</p>
+        <p><strong>Catatan Implementasi:</strong> Simpan volume ke state lokal agar preferensi tetap konsisten selama sesi.</p>
+        <pre><code>const [volume, setVolume] = useState(1);
+
+const handleVolumeChange = (nextVolume: number) =&gt; {
+  setVolume(nextVolume);
+  if (videoRef.current) {
+    videoRef.current.volume = nextVolume;
+    videoRef.current.muted = nextVolume === 0;
+  }
+};
+
+&lt;input
+  type="range"
+  min={0}
+  max={1}
+  step={0.05}
+  value={volume}
+  onChange={(e) =&gt; handleVolumeChange(Number(e.target.value))}
+  className="w-24 accent-[var(--accent)]"
+/&gt;;</code></pre>
+      </div>
+
+      <div class="glass-card">
+        <h4>6. Cinema Mode / Bingkai Penuh 🎬</h4>
+        <p><strong>Manfaat UX:</strong> Fokus penuh ke konten, terutama untuk scene aksi. Cocok dipasang sebagai mode di antara default dan fullscreen.</p>
+        <p><strong>Catatan Implementasi:</strong> Bedakan dengan fullscreen browser; cinema mode hanya merombak layout halaman.</p>
+        <pre><code>const [isCinema, setIsCinema] = useState(false);
+
+return (
+  &lt;div className={isCinema ? 'bg-black min-h-screen px-0' : 'bg-[#0a0c10] min-h-screen px-4'}&gt;
+    &lt;div className={isCinema ? 'max-w-none' : 'max-w-7xl mx-auto'}&gt;
+      &lt;button onClick={() =&gt; setIsCinema(v =&gt; !v)}&gt;
+        {isCinema ? 'Keluar Cinema Mode' : 'Cinema Mode'}
+      &lt;/button&gt;
+
+      {/* Saat isCinema true, sidebar diringkas dan player dibuat dominan */}
+    &lt;/div&gt;
+  &lt;/div&gt;
+);</code></pre>
+      </div>
+    </div>
+
+    <div class="callout success">
+      <h4>Rekomendasi Praktis</h4>
+      <p>
+        Tambahkan fitur tambahan ini setelah Phase 1 dan Phase 2 selesai. Fitur seperti PiP, screenshot, resume toast, dan
+        volume slider punya <strong>impact tinggi dengan effort relatif moderat</strong>.
+      </p>
+    </div>
+
+    <h2 id="section-8">🏗️ 8. Architecture Recommendations</h2>
+    <p>
+      Player saat ini sudah membuktikan fondasi teknisnya kuat, tetapi file <code>VideoPlayer.tsx</code> mulai menampung terlalu
+      banyak tanggung jawab. Jika tidak direstrukturisasi sekarang, penambahan fitur baru akan menambah risiko regressions.
+    </p>
+
+    <div class="glass-card">
+      <h3>8.1 Refactor Menjadi Subcomponents</h3>
+      <ul>
+        <li><strong><code>PlayerControls</code>:</strong> Play/pause, volume, fullscreen, PiP, settings, navigation actions.</li>
+        <li><strong><code>ProgressBar</code>:</strong> Seek bar, buffered bar, hover preview, chapter markers, skip markers.</li>
+        <li><strong><code>SettingsMenu</code>:</strong> Nested menu untuk quality, speed, subtitle, playback options.</li>
+        <li><strong><code>GestureHandler</code>:</strong> Double-tap seek, swipe volume, swipe brightness, ripple feedback.</li>
+        <li><strong><code>AutoNextOverlay</code>:</strong> Countdown akhir episode dan CTA ke episode berikutnya.</li>
+      </ul>
+    </div>
+
+    <div class="glass-card">
+      <h3>8.2 Shared Player State</h3>
+      <p>
+        Gunakan <strong><code>PlayerContext</code></strong> atau <strong><code>usePlayerStore</code></strong> (Zustand) agar state
+        seperti <code>playing</code>, <code>duration</code>, <code>progress</code>, <code>buffered</code>, <code>volume</code>,
+        <code>showControls</code>, <code>showAutoNext</code>, dan <code>activeProvider</code> tidak tersebar di banyak komponen.
+      </p>
+      <pre><code>type PlayerState = {
+  playing: boolean;
+  duration: number;
+  progress: number;
+  buffered: number;
+  volume: number;
+  playbackRate: number;
+  showControls: boolean;
+  activeProvider: string;
+  showAutoNext: boolean;
+  setProgress: (value: number) =&gt; void;
+  setVolume: (value: number) =&gt; void;
+  setShowAutoNext: (value: boolean) =&gt; void;
+};</code></pre>
+    </div>
+
+    <div class="glass-card">
+      <h3>8.3 Event-Driven Player Architecture</h3>
+      <p>
+        Dengan event-driven architecture, setiap fitur mendengar event spesifik, bukan saling menumpuk di satu
+        <code>useEffect</code> raksasa.
+      </p>
+      <ul>
+        <li><code>onEnded -&gt; triggerAutoNext()</code></li>
+        <li><code>onTimeUpdate -&gt; evaluateSkipIntro()</code></li>
+        <li><code>onSourceChange -&gt; preserveCurrentTime()</code></li>
+        <li><code>onProviderChange -&gt; warmupPreferredSource()</code></li>
+        <li><code>onVisibilityChange -&gt; enableMiniPlayer()</code></li>
+      </ul>
+    </div>
+
+    <div class="callout warning">
+      <h4>Kenapa Modularisasi Penting?</h4>
+      <p>
+        Karena halaman streaming akan terus bertambah kompleks. Tanpa modularisasi, setiap tambahan kecil akan memperbesar
+        coupling, membuat debugging lambat, pengujian sulit, dan onboarding contributor menjadi mahal.
+      </p>
+    </div>
+
+    <h2 id="section-9">📊 9. Priority Matrix &amp; Roadmap</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Impact</th>
+          <th>Effort</th>
+          <th>Priority</th>
+          <th>Alasan</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Structured Settings Menu</strong></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge high">P1</span></td>
+          <td>Mengangkat kualitas UX paling cepat dan membuka jalan untuk subtitle/speed/quality yang scalable.</td>
+        </tr>
+        <tr>
+          <td><strong>Auto-Next Episode</strong></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge high">P1</span></td>
+          <td>Langsung menaikkan binge retention dan memanfaatkan setting Zustand yang saat ini nganggur.</td>
+        </tr>
+        <tr>
+          <td><strong>Episode Navigation Bar</strong></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td><span class="badge high">P1</span></td>
+          <td>Quick win yang sangat terasa oleh user desktop dan keyboard power users.</td>
+        </tr>
+        <tr>
+          <td><strong>Skip Opening / Intro</strong></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge high">P1</span></td>
+          <td>Feature khas anime streaming; dampaknya kuat terhadap kenyamanan konsumsi serial mingguan.</td>
+        </tr>
+        <tr>
+          <td><strong>Current Episode Highlight + Search</strong></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td><span class="badge high">P1</span></td>
+          <td>Sangat penting untuk anime panjang dan nyaris tanpa risiko engineering besar.</td>
+        </tr>
+        <tr>
+          <td><strong>Provider / Server Selector</strong></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge medium">P2</span></td>
+          <td>Memberi fallback manual ke user ketika source tertentu bermasalah.</td>
+        </tr>
+        <tr>
+          <td><strong>Below-Player Info Section</strong></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge medium">P2</span></td>
+          <td>Membuat halaman watch lebih informatif dan mengurangi kebutuhan balik ke halaman detail.</td>
+        </tr>
+        <tr>
+          <td><strong>Subtitle Foundation</strong></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge medium">P2</span></td>
+          <td>Secara UX sangat penting, tetapi butuh format, parser, dan source subtitle yang stabil.</td>
+        </tr>
+        <tr>
+          <td><strong>Playback Resume Toast</strong></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td><span class="badge medium">P2</span></td>
+          <td>Relatif mudah karena pondasi riwayat menonton sudah ada.</td>
+        </tr>
+        <tr>
+          <td><strong>PiP + Screenshot</strong></td>
+          <td><span class="badge medium">Medium</span></td>
+          <td><span class="badge low">Low</span></td>
+          <td><span class="badge low">P3</span></td>
+          <td>Fitur pelengkap premium, bagus untuk engagement tetapi bukan blocker utama.</td>
+        </tr>
+        <tr>
+          <td><strong>Mobile Gesture Controls</strong></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge high">High</span></td>
+          <td><span class="badge low">P3</span></td>
+          <td>Impact tinggi di mobile, namun perlu pengujian interaksi yang cermat agar tidak bentrok dengan native controls.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="glass-card">
+      <h3>Roadmap Implementasi Bertahap</h3>
+      <p><strong>Phase 1 — Quick Wins:</strong> Structured settings, auto-next, episode navigation bar, current episode highlight, skip intro.</p>
+      <p><strong>Phase 2 — Experience Upgrade:</strong> Provider selector, below-player info, playback resume, subtitle foundation.</p>
+      <p><strong>Phase 3 — Big-League Features:</strong> Mobile gestures, mini-player, PiP, screenshot, cinema mode penuh.</p>
+    </div>
+
+    <h2 id="section-10">🎯 10. Conclusion</h2>
+    <p>
+      <code>anime-scraper-pro</code> sudah memiliki <strong>fondasi backend dan streaming pipeline yang kuat</strong>.
+      Dynamic HLS handling di frontend, progress persistence, proxy streaming, dan resilient source resolution di backend
+      menunjukkan bahwa proyek ini dibangun dengan mindset engineering yang serius.
+    </p>
+    <p>
+      Namun, untuk halaman streaming, kualitas produk masih tertinggal dibanding ekspektasi user modern. Saat ini player
+      masih terasa seperti <em>functional prototype</em>, bukan <em>flagship viewing experience</em>. Ironisnya, beberapa
+      fitur penting seperti <code>autoPlayNext</code> dan <code>skipIntro</code> sebenarnya sudah “disiapkan” di store,
+      tetapi belum disambungkan ke UX nyata.
+    </p>
+    <p>
+      <strong>Rekomendasi akhir:</strong> mulai dari perbaikan kecil yang langsung terasa (structured settings menu,
+      auto-next, navigation bar, active episode highlight), lalu lanjut ke pembaruan layout watch page yang lebih matang,
+      dan akhirnya masuk ke fitur kelas premium seperti mobile gestures, PiP, dan screenshot. Dengan urutan ini, kamu bisa
+      menaikkan standar produk secara stabil tanpa harus me-rewrite semuanya sekaligus.
+    </p>
+    <div class="callout success">
+      <h4>Kesimpulan Visioner</h4>
+      <p>
+        Jika roadmap ini dieksekusi dengan disiplin, halaman streaming <code>anime-scraper-pro</code> bisa naik kelas dari
+        sekadar tempat memutar video menjadi <strong>experience hub</strong> yang benar-benar kompetitif: cepat, nyaman,
+        binge-friendly, dan terasa “serius” di mata user. Itu adalah lompatan dari scraper product menjadi streaming
+        product.
+      </p>
+    </div>
+  
+
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body></html>

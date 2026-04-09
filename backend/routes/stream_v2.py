@@ -55,7 +55,8 @@ async def _resolve_embed(embed: dict, source_tag: str) -> Optional[dict]:
             'provider':  embed.get('provider', source_tag),
             'domain':    extract_domain(resolved),
             'quality':   determine_quality(embed.get('quality', 'Auto')),
-            'resolved':  resolved,
+            'url':       resolved,
+            'embed_url': url,
             'type':      'direct' if resolved.endswith(('.m3u8', '.mp4')) else 'iframe',
             'source':    source_tag,
         }
@@ -91,7 +92,7 @@ async def _last_resort_otakudesu(title: str, episode_num: float) -> Dict[str, An
     try:
         async with asyncio.timeout(8.0):
             q = urllib.parse.quote_plus(title)
-            r = await otakudesu_provider.client.get(f"https://otakudesu.cloud/?s={q}&post_type=anime")
+            r = await otakudesu_provider.client.get(f"https://otakudesu.blog/?s={q}&post_type=anime")
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(r.text, 'lxml')
             first = soup.select_one('ul.chivsrc li h2 a')
@@ -139,7 +140,7 @@ async def get_sources_v2(
 
     # Otakudesu Attempt (Tier 1/2 or Tier 3)
     if mappings and 'otakudesu' in mappings:
-        scrape_tasks.append(_scrape_otakudesu(f"https://otakudesu.cloud/anime/{mappings['otakudesu']}/", ep))
+        scrape_tasks.append(_scrape_otakudesu(f"https://otakudesu.blog/anime/{mappings['otakudesu']}/", ep))
     else:
         scrape_tasks.append(_last_resort_otakudesu(title, ep))
     providers_attempted.append('otakudesu')

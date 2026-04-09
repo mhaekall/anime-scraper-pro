@@ -29,9 +29,9 @@ export default function AppShell() {
   if (!mounted) return <div className="w-full h-screen bg-black" />;
 
   return (
-    <div className="w-full h-screen bg-black overflow-hidden flex sm:flex-row flex-col relative select-none antialiased text-white">
+    <div className="w-full min-h-[100dvh] bg-black flex sm:flex-row flex-col relative select-none antialiased text-white min-w-0">
       {/* Desktop Sidebar */}
-      <aside className="hidden sm:flex flex-col w-64 bg-[#0a0a0a] border-r border-white/5 pt-12 pb-6 z-50 shrink-0">
+      <aside className="hidden sm:flex flex-col w-64 h-screen sticky top-0 bg-[#0a0a0a] border-r border-white/5 pt-12 pb-6 z-50 shrink-0">
         <div className="px-8 mb-12">
           <h1 className="text-2xl font-black text-white tracking-tight">AnimeScraper<span className="text-[#0A84FF]">.</span></h1>
         </div>
@@ -54,8 +54,8 @@ export default function AppShell() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 w-full h-full relative flex flex-col min-w-0">
-        <main className="flex-1 h-full overflow-y-auto no-scrollbar pb-[70px] sm:pb-0">
+      <div className="flex-1 w-full min-h-[100dvh] relative flex flex-col min-w-0">
+        <main className="flex-1 w-full pb-[70px] sm:pb-0 min-w-0">
           {tab === 0 && <HomeView />}
           {tab === 1 && <ExploreView />}
           {tab === 2 && <CollectionView />}
