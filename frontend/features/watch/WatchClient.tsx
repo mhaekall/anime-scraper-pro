@@ -22,6 +22,7 @@ export default function WatchClient({ id, episode, title, poster, sources, allEp
   const router = useRouter();
   const [showAutoNext, setShowAutoNext] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [showAllEpisodes, setShowAllEpisodes] = useState(false);
   const epNum = parseFloat(episode) || 1;
 
   // Assuming episodes are sorted ascending by number
@@ -37,69 +38,96 @@ export default function WatchClient({ id, episode, title, poster, sources, allEp
   // Scroll current episode into view on mount
   const epsContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const activeEp = epsContainerRef.current?.querySelector('[data-active="true"]');
-    if (activeEp) {
-      activeEp.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    if (!showAllEpisodes) {
+      const activeEp = epsContainerRef.current?.querySelector('[data-active="true"]');
+      if (activeEp) {
+        activeEp.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
     }
-  }, []);
+  }, [showAllEpisodes]);
 
   return (
-    <div className="w-full min-h-[100dvh] bg-black flex flex-col lg:flex-row anim-fade">
+    <div className="w-full min-h-[100dvh] bg-black flex flex-col anim-fade items-center">
       
-      {/* LEFT COLUMN: Player + Details + Comments */}
-      <div className="relative w-full lg:flex-1 shrink-0 bg-black flex flex-col min-w-0 pb-10 lg:border-r border-[#2c2c2e]">
-        
-        {/* Sticky Player */}
-        <div className="sticky top-0 z-[100] w-full bg-black shadow-xl border-b border-[#2c2c2e]/50">
-          <button onClick={() => router.back()} className="absolute top-4 left-4 z-50 w-9 h-9 bg-black/40 rounded-full flex items-center justify-center text-white border border-white/10 active:scale-90 transition-transform"><IconBack /></button>
-          <div className="relative w-full aspect-video flex flex-col justify-center min-h-0 bg-black md:rounded-b-none overflow-hidden">
-            <VideoPlayer 
-              title={`${title} - Eps ${episode}`} 
-              poster={poster} 
-              sources={sources} 
-              animeSlug={id} 
-              episodeNum={epNum} 
-              onRequireAutoNext={() => setShowAutoNext(true)} 
-              onTimeUpdate={setCurrentTime} 
+      {/* Sticky Player (Full Width) */}
+      <div className="sticky top-0 z-[100] w-full bg-black shadow-xl border-b border-[#2c2c2e]/50 max-w-[1200px] mx-auto">
+        <button onClick={() => router.back()} className="absolute top-4 left-4 z-50 w-9 h-9 bg-black/40 rounded-full flex items-center justify-center text-white border border-white/10 active:scale-90 transition-transform"><IconBack /></button>
+        <div className="relative w-full aspect-video flex flex-col justify-center min-h-0 bg-black overflow-hidden">
+          <VideoPlayer 
+            title={`${title} - Eps ${episode}`} 
+            poster={poster} 
+            sources={sources} 
+            animeSlug={id} 
+            episodeNum={epNum} 
+            onRequireAutoNext={() => setShowAutoNext(true)} 
+            onTimeUpdate={setCurrentTime} 
+          />
+          
+          {showAutoNext && nextEp && (
+            <AutoNextOverlay 
+              nextEpisodeUrl={`/watch/${id}/${nextEp.number}`} 
+              nextEpisodeTitle={`Episode ${nextEp.number} - ${nextEp.title || ''}`}
+              nextThumbnail={nextEp.thumbnailUrl || poster}
+              isLastEpisode={false}
+              onCancel={() => setShowAutoNext(false)}
             />
-            
-            {showAutoNext && nextEp && (
-              <AutoNextOverlay 
-                nextEpisodeUrl={`/watch/${id}/${nextEp.number}`} 
-                nextEpisodeTitle={`Episode ${nextEp.number} - ${nextEp.title || ''}`}
-                nextThumbnail={nextEp.thumbnailUrl || poster}
-                isLastEpisode={false}
-                onCancel={() => setShowAutoNext(false)}
-              />
-            )}
-            {showAutoNext && !nextEp && (
-              <AutoNextOverlay 
-                isLastEpisode={true} 
-                onCancel={() => setShowAutoNext(false)} 
-                nextEpisodeUrl="" 
-                nextEpisodeTitle="" 
-              />
-            )}
+          )}
+          {showAutoNext && !nextEp && (
+            <AutoNextOverlay 
+              isLastEpisode={true} 
+              onCancel={() => setShowAutoNext(false)} 
+              nextEpisodeUrl="" 
+              nextEpisodeTitle="" 
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Main Content Column */}
+      <div className="w-full max-w-[1200px] p-4 lg:p-6 space-y-6 lg:space-y-8 flex flex-col min-w-0 pb-10">
+        
+        {/* Info */}
+        <div>
+          <h1 className="text-white font-black text-xl md:text-2xl leading-tight line-clamp-2">{title}</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-[#0a84ff] font-bold text-sm bg-[#0a84ff]/10 px-2 py-0.5 rounded-md">Episode {episode}</span>
           </div>
         </div>
 
-        {/* Content Below Player */}
-        <div className="p-4 lg:p-6 space-y-6">
-          
-          {/* Info */}
-          <div>
-            <h1 className="text-white font-black text-xl md:text-2xl leading-tight line-clamp-2">{title}</h1>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-[#0a84ff] font-bold text-sm bg-[#0a84ff]/10 px-2 py-0.5 rounded-md">Episode {episode}</span>
-              <span className="text-[#8e8e93] text-sm font-medium">Bstation Style</span>
-            </div>
+        {/* Episode List */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white font-bold text-base md:text-lg tracking-tight">Episode ({allEpisodes.length})</h3>
+            <button 
+              onClick={() => setShowAllEpisodes(!showAllEpisodes)}
+              className="text-[#0a84ff] text-sm font-bold bg-[#0a84ff]/10 hover:bg-[#0a84ff]/20 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {showAllEpisodes ? "Tutup" : "Semua"}
+            </button>
           </div>
-
-          {/* Episode List Horizontal (Bstation Style) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-white font-bold text-base md:text-lg tracking-tight">Episode ({allEpisodes.length})</h3>
+          
+          {showAllEpisodes ? (
+            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2 anim-fade">
+              {sortedEpisodes.map(ep => {
+                const isActive = ep.number === epNum;
+                return (
+                  <Link 
+                    key={ep.number} 
+                    href={`/watch/${id}/${ep.number}`}
+                    replace
+                    prefetch={false}
+                    className={`flex items-center justify-center w-full aspect-square rounded-[10px] border text-[14px] font-bold transition-all ${
+                      isActive 
+                        ? "bg-white text-black border-white shadow-[0_0_12px_rgba(255,255,255,0.2)]" 
+                        : "bg-[#1c1c1e] text-[#8e8e93] border-transparent hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    {ep.number}
+                  </Link>
+                )
+              })}
             </div>
+          ) : (
             <div ref={epsContainerRef} className="flex gap-2.5 overflow-x-auto no-scrollbar pb-2 pt-1 px-1 -mx-1 snap-x">
               {sortedEpisodes.map(ep => {
                 const isActive = ep.number === epNum;
@@ -122,61 +150,28 @@ export default function WatchClient({ id, episode, title, poster, sources, allEp
                 )
               })}
             </div>
-          </div>
-
-          {/* Mobile Only: Recommendations */}
-          <div className="lg:hidden space-y-3 pt-2">
-            <h3 className="text-white font-bold text-base tracking-tight">Karena Kamu Nonton Ini</h3>
-            {recommendations && recommendations.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {recommendations.slice(0, 6).map(rec => (
-                  <Link key={rec.id || rec.node?.id} href={`/anime/${rec.id || rec.node?.id}`} className="block group">
-                    <div className="aspect-[3/4] bg-[#1c1c1e] rounded-xl overflow-hidden relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={rec.coverImage?.extraLarge || rec.coverImage?.large || rec.node?.coverImage?.large || poster} alt={rec.title?.userPreferred || rec.node?.title?.userPreferred || "Anime"} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                      <div className="absolute bottom-0 inset-x-0 p-2.5">
-                        <p className="text-white font-bold text-[11px] leading-tight line-clamp-2">{rec.title?.userPreferred || rec.title?.english || rec.node?.title?.userPreferred || "Anime"}</p>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-[#8e8e93] text-xs">Belum ada rekomendasi.</div>
-            )}
-          </div>
-
-          {/* Comments Section */}
-          <div className="pt-6 border-t border-[#2c2c2e]/50">
-            <h3 className="text-white font-bold text-base md:text-lg mb-4 tracking-tight">Komentar</h3>
-            <div className="bg-[#0a0c10] border border-[#2c2c2e]/50 rounded-2xl overflow-hidden">
-              <CommentSection anilistId={id} episode={episode} currentTime={currentTime} onSeek={handleSeek} />
-            </div>
-          </div>
-
+          )}
         </div>
-      </div>
 
-      {/* RIGHT SIDEBAR (Desktop Only: Recommendations) */}
-      <div className="hidden lg:flex w-[400px] shrink-0 bg-[#0a0c10] flex-col">
-        <div className="p-6 pb-20 sticky top-0 h-screen overflow-y-auto no-scrollbar">
-          <h3 className="text-white font-bold text-lg tracking-tight mb-6">Karena Kamu Nonton Ini</h3>
-          
+        {/* Comments Section (YouTube Style) */}
+        <div className="pt-4 border-t border-[#2c2c2e]/50">
+          <h3 className="text-white font-bold text-base md:text-lg mb-4 tracking-tight">Komentar</h3>
+          <CommentSection anilistId={id} episode={episode} currentTime={currentTime} onSeek={handleSeek} />
+        </div>
+
+        {/* Recommendations (Horizontal Scroll) */}
+        <div className="pt-4 border-t border-[#2c2c2e]/50 space-y-3">
+          <h3 className="text-white font-bold text-base md:text-lg tracking-tight">Rekomendasi</h3>
           {recommendations && recommendations.length > 0 ? (
-            <div className="flex flex-col gap-5">
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 snap-x">
               {recommendations.slice(0, 10).map(rec => (
-                <Link key={rec.id || rec.node?.id} href={`/anime/${rec.id || rec.node?.id}`} className="flex gap-4 group">
-                  <div className="w-[100px] aspect-[3/4] bg-[#1c1c1e] rounded-[10px] overflow-hidden shrink-0 shadow-lg border border-white/5">
+                <Link key={rec.id || rec.node?.id} href={`/anime/${rec.id || rec.node?.id}`} className="block group shrink-0 w-[140px] md:w-[160px] snap-start">
+                  <div className="aspect-[3/4] bg-[#1c1c1e] rounded-xl overflow-hidden relative shadow-md">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={rec.coverImage?.extraLarge || rec.coverImage?.large || rec.node?.coverImage?.large || poster} alt={rec.title?.userPreferred || rec.node?.title?.userPreferred || "Anime"} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
-                  </div>
-                  <div className="flex flex-col justify-center py-1">
-                    <p className="text-white font-bold text-[15px] leading-snug line-clamp-2 group-hover:text-[#0a84ff] transition-colors">{rec.title?.userPreferred || rec.title?.english || rec.node?.title?.userPreferred || "Anime"}</p>
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <span className="text-[#8e8e93] text-xs font-medium">{rec.format || rec.node?.format || "TV"}</span>
-                      <span className="w-1 h-1 rounded-full bg-[#2c2c2e]"></span>
-                      <span className="text-[#8e8e93] text-xs font-medium">{rec.status || rec.node?.status || "FINISHED"}</span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 inset-x-0 p-2.5">
+                      <p className="text-white font-bold text-[12px] leading-tight line-clamp-2">{rec.title?.userPreferred || rec.title?.english || rec.node?.title?.userPreferred || "Anime"}</p>
                     </div>
                   </div>
                 </Link>
@@ -186,8 +181,8 @@ export default function WatchClient({ id, episode, title, poster, sources, allEp
             <div className="text-[#8e8e93] text-sm">Belum ada rekomendasi.</div>
           )}
         </div>
-      </div>
 
+      </div>
     </div>
   );
 }
