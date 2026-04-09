@@ -6,6 +6,8 @@ import { useState, memo } from "react";
 import { useRouter } from "next/navigation";
 import { VideoPlayer } from "@/ui/player/VideoPlayer";
 import { EpisodeList } from "@/features/detail/EpisodeList";
+import { AutoNextOverlay } from "@/ui/player/AutoNextOverlay";
+import { EpisodeNavigationBar } from "@/ui/player/EpisodeNavigationBar";
 import { IconBack, IconInfo } from "@/ui/icons";
 
 interface Props {
@@ -20,14 +22,46 @@ interface Props {
 export default function WatchClient({ id, episode, title, poster, sources, allEpisodes }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState("episodes");
+  const [showAutoNext, setShowAutoNext] = useState(false);
   const epNum = parseFloat(episode) || 1;
+
+  // Assuming episodes are sorted descending, so next episode is at index - 1
+  const sortedEpisodes = [...allEpisodes].sort((a, b) => a.number - b.number);
+  const currentIndex = sortedEpisodes.findIndex(e => e.number === epNum);
+  const nextEp = currentIndex < sortedEpisodes.length - 1 ? sortedEpisodes[currentIndex + 1] : null;
+  const prevEp = currentIndex > 0 ? sortedEpisodes[currentIndex - 1] : null;
 
   return (
     <div className="fixed inset-0 z-[300] bg-black flex flex-col md:flex-row anim-fade">
-      {/* Player */}
-      <div className="relative w-full md:flex-1 shrink-0 bg-black flex flex-col justify-center border-b border-[#2c2c2e] md:border-b-0 md:h-full">
+      {/* Player Area */}
+      <div className="relative w-full md:flex-1 shrink-0 bg-black flex flex-col justify-center border-b border-[#2c2c2e] md:border-b-0 md:h-full overflow-hidden">
         <button onClick={() => router.back()} className="absolute top-4 left-4 z-50 w-9 h-9 bg-black/40 rounded-full flex items-center justify-center text-white border border-white/10 active:scale-90"><IconBack /></button>
-        <VideoPlayer title={`${title} - Eps ${episode}`} poster={poster} sources={sources} animeSlug={id} episodeNum={epNum} />
+        <div className="relative w-full flex-1 flex flex-col justify-center min-h-0">
+          <VideoPlayer title={`${title} - Eps ${episode}`} poster={poster} sources={sources} animeSlug={id} episodeNum={epNum} onRequireAutoNext={() => setShowAutoNext(true)} />
+          
+          {showAutoNext && nextEp && (
+            <AutoNextOverlay 
+              nextEpisodeUrl={`/watch/${id}/${nextEp.number}`} 
+              nextEpisodeTitle={`Episode ${nextEp.number} - ${nextEp.title || ''}`}
+              nextThumbnail={nextEp.thumbnailUrl || poster}
+              isLastEpisode={false}
+              onCancel={() => setShowAutoNext(false)}
+            />
+          )}
+          {showAutoNext && !nextEp && (
+            <AutoNextOverlay 
+              isLastEpisode={true} 
+              onCancel={() => setShowAutoNext(false)} 
+              nextEpisodeUrl="" 
+              nextEpisodeTitle="" 
+            />
+          )}
+        </div>
+        <EpisodeNavigationBar 
+          prevUrl={prevEp ? `/watch/${id}/${prevEp.number}` : undefined} 
+          nextUrl={nextEp ? `/watch/${id}/${nextEp.number}` : undefined} 
+          currentTitle={`${title} - Eps ${episode}`} 
+        />
       </div>
 
       {/* Sidebar */}

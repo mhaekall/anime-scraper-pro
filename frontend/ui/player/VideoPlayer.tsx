@@ -7,6 +7,8 @@ import { useEffect, useRef, useState, useCallback, memo } from "react";
 import { IconPlay, IconPause, IconFullscreen, IconVolume } from "@/ui/icons";
 import { useSettings } from "@/core/stores/app-store";
 import { useWatchHistory } from "@/core/hooks/use-watch-history";
+import { useVideoGestures } from "@/core/hooks/use-video-gestures";
+import { SkipIntroButton } from "./SkipIntroButton";
 import type { VideoSource } from "@/core/types/anime";
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -29,10 +31,12 @@ interface Props {
   sources: VideoSource[];
   animeSlug?: string;
   episodeNum?: number;
+  onRequireAutoNext?: () => void;
 }
 
-function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum }: Props) {
+function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onRequireAutoNext }: Props) {
   const accent = useSettings((s) => s.settings.accentColor);
+  const autoPlayNext = useSettings((s) => s.settings.autoPlayNext);
   const { updateProgress } = useWatchHistory();
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -59,6 +63,10 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum }: Pro
   const [speed, setSpeed] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [useIframe, setUseIframe] = useState(direct.length === 0 && iframes.length > 0);
+  const [hasTriggeredAutoNext, setHasTriggeredAutoNext] = useState(false);
+  const [volume, setVolume] = useState(1);
+
+  const { handleTouchStart, ripple } = useVideoGestures(videoRef);
 
   // Dynamic HLS.js import
   const loadSource = useCallback(async (src: VideoSource, seekTo?: number) => {
@@ -100,17 +108,36 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum }: Pro
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const onTime = () => { setProgress(v.currentTime); if (v.buffered.length > 0) setBuffered(v.buffered.end(v.buffered.length - 1)); };
+    const onTime = () => {
+      setProgress(v.currentTime);
+      if (v.buffered.length > 0) setBuffered(v.buffered.end(v.buffered.length - 1));
+      
+      // Auto-Next 90% threshold
+      const dur = v.duration;
+      if (dur > 0 && (v.currentTime / dur) >= 0.9 && autoPlayNext && !hasTriggeredAutoNext && onRequireAutoNext) {
+        onRequireAutoNext();
+        setHasTriggeredAutoNext(true);
+      }
+    };
     const onDur = () => setDuration(v.duration);
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onWait = () => setLoading(true);
     const onCan = () => setLoading(false);
+    const onEnd = () => {
+      setPlaying(false);
+      if (autoPlayNext && !hasTriggeredAutoNext && onRequireAutoNext) {
+        onRequireAutoNext();
+        setHasTriggeredAutoNext(true);
+      }
+    };
+    
     v.addEventListener("timeupdate", onTime); v.addEventListener("durationchange", onDur);
     v.addEventListener("play", onPlay); v.addEventListener("pause", onPause);
     v.addEventListener("waiting", onWait); v.addEventListener("canplay", onCan);
-    return () => { v.removeEventListener("timeupdate", onTime); v.removeEventListener("durationchange", onDur); v.removeEventListener("play", onPlay); v.removeEventListener("pause", onPause); v.removeEventListener("waiting", onWait); v.removeEventListener("canplay", onCan); };
-  }, []);
+    v.addEventListener("ended", onEnd);
+    return () => { v.removeEventListener("timeupdate", onTime); v.removeEventListener("durationchange", onDur); v.removeEventListener("play", onPlay); v.removeEventListener("pause", onPause); v.removeEventListener("waiting", onWait); v.removeEventListener("canplay", onCan); v.removeEventListener("ended", onEnd); };
+  }, [autoPlayNext, hasTriggeredAutoNext, onRequireAutoNext]);
 
   // Save progress every 15s
   useEffect(() => {
@@ -146,6 +173,13 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum }: Pro
   const switchQ = useCallback((s: VideoSource) => { const t = videoRef.current?.currentTime ?? 0; setCurrent(s); setShowQuality(false); loadSource(s, t); }, [loadSource]);
   const toggleFS = useCallback(() => { if (!document.fullscreenElement) containerRef.current?.requestFullscreen(); else document.exitFullscreen(); }, []);
   const changeSpeed = useCallback((s: number) => { setSpeed(s); setShowSpeed(false); if (videoRef.current) videoRef.current.playbackRate = s; }, []);
+  const togglePiP = useCallback(async () => {
+    if (!videoRef.current) return;
+    try {
+      if (document.pictureInPictureElement) await document.exitPictureInPicture();
+      else if (document.pictureInPictureEnabled) await videoRef.current.requestPictureInPicture();
+    } catch (e) { console.error("PiP error:", e); }
+  }, []);
 
   const pct = duration > 0 ? (progress / duration) * 100 : 0;
   const bufPct = duration > 0 ? (buffered / duration) * 100 : 0;
@@ -167,8 +201,20 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum }: Pro
   );
 
   return (
-    <div ref={containerRef} tabIndex={-1} className="relative w-full aspect-video bg-black md:rounded-2xl overflow-hidden outline-none select-none border border-white/5" onMouseMove={reveal} onMouseLeave={() => playing && setControls(false)} onClick={togglePlay}>
+    <div ref={containerRef} tabIndex={-1} className="relative w-full aspect-video bg-black md:rounded-2xl overflow-hidden outline-none select-none border border-white/5 group" onMouseMove={reveal} onMouseLeave={() => playing && setControls(false)} onClick={togglePlay} onTouchStart={handleTouchStart}>
       <video ref={videoRef} poster={poster} className="w-full h-full object-contain" playsInline muted={muted} preload="auto" onContextMenu={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()} onDoubleClick={toggleFS} />
+
+      {/* Ripple effect for double tap */}
+      {ripple && (
+        <div className={`absolute top-0 bottom-0 w-1/2 pointer-events-none flex items-center justify-center overflow-hidden z-30 ${ripple.side === 'left' ? 'left-0' : 'right-0'}`}>
+          <div className="absolute inset-0 bg-white/10 opacity-0 animate-[ripple_0.5s_ease-out]" />
+          <div className="flex flex-col items-center justify-center gap-2 bg-black/40 rounded-full p-4 animate-in fade-in zoom-in duration-200">
+             <span className="text-white font-bold text-sm">
+                {ripple.side === 'left' ? '⏪ -10s' : '+10s ⏩'}
+             </span>
+          </div>
+        </div>
+      )}
 
       {loading && !error && <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none"><div className="w-10 h-10 border-3 border-white/20 border-t-white rounded-full anim-spin" /></div>}
 
@@ -187,6 +233,8 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum }: Pro
           <div className="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center border border-white/10"><IconPlay className="w-8 h-8 ml-0.5" /></div>
         </div>
       )}
+
+      <SkipIntroButton currentTime={progress} onSkip={(t) => { if (videoRef.current) { videoRef.current.currentTime = t; } }} />
 
       {/* Controls overlay */}
       <div className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-200 z-20 pointer-events-none ${controls ? "opacity-100" : "opacity-0"}`} onClick={(e) => e.stopPropagation()}>
@@ -218,8 +266,16 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum }: Pro
               <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white">{playing ? <IconPause /> : <IconPlay />}</button>
               <span className="text-white text-[11px] font-mono tabular-nums">{fmt(progress)} / {fmt(duration)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); } }} className="text-white"><IconVolume muted={muted} /></button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 group/vol">
+                <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); if (!v.muted && volume === 0) { v.volume = 1; setVolume(1); } } }} className="text-white"><IconVolume muted={muted || volume === 0} /></button>
+                <div className="w-0 group-hover/vol:w-16 overflow-hidden transition-all duration-200 hidden md:block">
+                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => { const val = Number(e.target.value); setVolume(val); if (videoRef.current) { videoRef.current.volume = val; videoRef.current.muted = val === 0; setMuted(val === 0); } }} className="w-full h-1 cursor-pointer accent-white" />
+                </div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); togglePiP(); }} className="text-white hidden md:block" title="Picture in Picture">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><rect x="3" y="5" width="18" height="14" rx="2" /><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" stroke="none" /></svg>
+              </button>
               <button onClick={(e) => { e.stopPropagation(); toggleFS(); }} className="text-white"><IconFullscreen /></button>
             </div>
           </div>
