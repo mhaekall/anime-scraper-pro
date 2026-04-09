@@ -20,8 +20,7 @@ async def lifespan(app: FastAPI):
     retries = 10
     for i in range(retries):
         try:
-            # Explicitly set a timeout for the connection attempt
-            await asyncio.wait_for(database.connect(), timeout=15.0)
+            await database.connect()
             print(f"[DB] Connected to Neon DB (attempt {i+1})")
             # Auto-migrate columns
             try:

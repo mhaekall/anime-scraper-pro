@@ -58,7 +58,6 @@ def format_anilist_data(media):
     }
 
 async def sync_popular_anime():
-    await database.connect()
     print("🚀 Starting Sync Popular & Trending Anime...")
 
     trending_media = await fetch_anilist_list("TRENDING_DESC")
@@ -68,7 +67,6 @@ async def sync_popular_anime():
     
     if not all_media:
         print("❌ No anime found.")
-        await database.disconnect()
         return
 
     print(f"Found {len(all_media)} unique trending/popular anime. Processing...")
@@ -128,7 +126,11 @@ async def sync_popular_anime():
             print(f"  -> ⚠️ Could not find any provider mappings for {title}")
 
     print("\n✅ Sync Anime Finished.")
+
+async def main():
+    await database.connect()
+    await sync_popular_anime()
     await database.disconnect()
 
 if __name__ == "__main__":
-    asyncio.run(sync_popular_anime())
+    asyncio.run(main())

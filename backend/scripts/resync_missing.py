@@ -8,7 +8,6 @@ from db.connection import database
 from services.pipeline import sync_anime_episodes
 
 async def resync_missing_episodes():
-    await database.connect()
     print("🚀 Looking for mapped anime with 0 episodes...")
 
     rows = await database.fetch_all("""
@@ -22,7 +21,6 @@ async def resync_missing_episodes():
     
     if not rows:
         print("✅ No missing episodes found for mapped anime.")
-        await database.disconnect()
         return
 
     print(f"Found {len(rows)} anime mapped but without episodes. Syncing now...")
@@ -38,7 +36,11 @@ async def resync_missing_episodes():
             print(f"  -> Error: {e}")
 
     print("\n✅ Resync Finished.")
+
+async def main():
+    await database.connect()
+    await resync_missing_episodes()
     await database.disconnect()
 
 if __name__ == "__main__":
-    asyncio.run(resync_missing_episodes())
+    asyncio.run(main())
