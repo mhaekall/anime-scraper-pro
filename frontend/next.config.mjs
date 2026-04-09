@@ -1,7 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   productionBrowserSourceMaps: false,
-  serverExternalPackages: ['@neondatabase/serverless', 'better-auth', 'drizzle-orm'],
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 's4.anilist.co' },
+      { protocol: 'https', hostname: 'img.anili.st' },
+      { protocol: 'https', hostname: 'media.kitsu.app' },
+    ],
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400,
+  },
+  experimental: {
+    optimizePackageImports: ['swr', 'clsx'],
+  },
 };
 
 export default nextConfig;

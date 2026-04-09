@@ -1,11 +1,8 @@
-import { Icons } from "@/components/Icons";
-
-export default function AnimeDetailLoading() {
+// Loading states for dynamic routes
+export default function Loading() {
   return (
-    <div className="min-h-screen bg-[#000000] flex flex-col items-center justify-center p-6 text-center text-white">
-      <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin shadow-lg mb-4" />
-      <h2 className="text-[20px] font-black tracking-tight">Membuka Detail...</h2>
-      <p className="text-[#8E8E93] text-[13px] mt-1">Mempersiapkan daftar episode</p>
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="w-10 h-10 border-3 border-white/20 border-t-[var(--accent)] rounded-full anim-spin" />
     </div>
   );
 }

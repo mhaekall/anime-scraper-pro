@@ -1,0 +1,61 @@
+// features/watch/WatchClient.tsx — Watch page client layout
+
+"use client";
+
+import { useState, memo } from "react";
+import { useRouter } from "next/navigation";
+import { VideoPlayer } from "@/ui/player/VideoPlayer";
+import { EpisodeList } from "@/features/detail/EpisodeList";
+import { IconBack, IconInfo } from "@/ui/icons";
+
+interface Props {
+  id: string;
+  episode: string;
+  title: string;
+  poster: string;
+  sources: any[];
+  allEpisodes: any[];
+}
+
+export default function WatchClient({ id, episode, title, poster, sources, allEpisodes }: Props) {
+  const router = useRouter();
+  const [tab, setTab] = useState("episodes");
+  const epNum = parseFloat(episode) || 1;
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-black flex flex-col md:flex-row anim-fade">
+      {/* Player */}
+      <div className="relative w-full md:flex-1 shrink-0 bg-black flex flex-col justify-center border-b border-[#2c2c2e] md:border-b-0 md:h-full">
+        <button onClick={() => router.back()} className="absolute top-4 left-4 z-50 w-9 h-9 bg-black/40 rounded-full flex items-center justify-center text-white border border-white/10 active:scale-90"><IconBack /></button>
+        <VideoPlayer title={`${title} - Eps ${episode}`} poster={poster} sources={sources} animeSlug={id} episodeNum={epNum} />
+      </div>
+
+      {/* Sidebar */}
+      <div className="flex-1 md:w-[380px] md:shrink-0 bg-[#0a0c10] flex flex-col md:border-l border-[#2c2c2e]">
+        <div className="flex border-b border-[#2c2c2e] px-4 pt-4 bg-black/80 backdrop-blur-xl sticky top-0 z-20">
+          {(["episodes", "komentar"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`pb-2.5 mr-5 text-[14px] font-bold border-b-2 capitalize ${tab === t ? "text-white border-white" : "text-[#8e8e93] border-transparent"}`}>{t === "episodes" ? "Episode" : "Komentar"}</button>
+          ))}
+        </div>
+        <div className="flex-1 overflow-y-auto no-scrollbar p-4 pb-20">
+          {tab === "episodes" && (
+            <div className="anim-fade">
+              <div className="mb-4">
+                <h2 className="text-white font-black text-lg line-clamp-2">{title}</h2>
+                <p className="text-[#8e8e93] text-[12px] mt-0.5 font-medium tracking-wide">EPISODE {episode.toUpperCase()}</p>
+              </div>
+              <EpisodeList episodes={allEpisodes} animeId={id} cover={poster} />
+            </div>
+          )}
+          {tab === "komentar" && (
+            <div className="anim-fade flex flex-col items-center pt-16 text-center gap-3">
+              <IconInfo className="w-8 h-8 text-[#48484a]" />
+              <h3 className="text-white font-bold text-sm">Komentar Belum Tersedia</h3>
+              <p className="text-[#8e8e93] text-[12px]">Fitur sedang dikembangkan.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
