@@ -1,10 +1,7 @@
-// ui/layout/AppShell.tsx — Main app shell with LAZY tab loading
-// KEY FIX: Only renders active tab. Inactive tabs are unmounted = zero memory/network.
-
 "use client";
 
 import { useState, lazy, Suspense, memo } from "react";
-import { Home, PlaySquare, FolderDot, User } from "lucide-react";
+import { IconHome, IconExplore, IconCollection, IconUser } from "@/ui/icons";
 import { Toaster } from "@/ui/overlays/Toaster";
 
 // Lazy-load each view — code-split at route level
@@ -14,10 +11,10 @@ const CollectionView = lazy(() => import("@/features/collection/CollectionView")
 const ProfileView = lazy(() => import("@/features/profile/ProfileView"));
 
 const TABS = [
-  { id: "home", label: "Beranda", Icon: Home, View: HomeView },
-  { id: "explore", label: "Eksplor", Icon: PlaySquare, View: ExploreView },
-  { id: "collection", label: "Koleksi", Icon: FolderDot, View: CollectionView },
-  { id: "profile", label: "Anda", Icon: User, View: ProfileView },
+  { id: "home", label: "Beranda", Icon: IconHome, View: HomeView },
+  { id: "explore", label: "Eksplor", Icon: IconExplore, View: ExploreView },
+  { id: "collection", label: "Koleksi", Icon: IconCollection, View: CollectionView },
+  { id: "profile", label: "Anda", Icon: IconUser, View: ProfileView },
 ] as const;
 
 const Spinner = () => (
@@ -46,7 +43,7 @@ function AppShell() {
                 onClick={() => setTab(i)}
                 className={`flex items-center gap-4 px-4 py-3.5 rounded-[16px] transition-all font-bold text-[14px] ${isActive ? 'bg-[#1C1C1E] border border-white/10 text-white shadow-lg' : 'border border-transparent text-[#8E8E93] hover:bg-white/5 hover:text-[#D1D1D6]'}`}
               >
-                <t.Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                <t.Icon className="w-5 h-5" filled={isActive} />
                 {t.label}
               </button>
             );
@@ -79,8 +76,7 @@ function AppShell() {
                       className={`w-[22px] h-[22px] transition-colors ${
                         isActive ? "text-white" : "text-white/60"
                       }`} 
-                      strokeWidth={isActive ? 2 : 1.5}
-                      fill={isActive ? "currentColor" : "none"}
+                      filled={isActive}
                     />
                   </div>
                   <span className={`text-[10px] tracking-tight transition-colors ${
