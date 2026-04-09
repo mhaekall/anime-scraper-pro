@@ -46,12 +46,13 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const saveTimer = useRef<ReturnType<typeof setInterval>>(undefined);
 
-  let direct = sources.filter((s) => s.type !== "iframe" && s.url && s.quality !== "360p" && s.quality !== "480p").map((s) => ({ ...s, url: proxyUrl(s.url) })).sort((a, b) => QUALITY_ORDER.indexOf(a.quality) - QUALITY_ORDER.indexOf(b.quality));
-  if (direct.length === 0) {
-    direct = sources.filter((s) => s.type !== "iframe" && s.url).map((s) => ({ ...s, url: proxyUrl(s.url) })).sort((a, b) => QUALITY_ORDER.indexOf(a.quality) - QUALITY_ORDER.indexOf(b.quality));
-  }
+  const direct = sources
+    .filter((s) => s.type !== "iframe" && s.url && s.quality !== "360p" && s.quality !== "480p")
+    .map((s) => ({ ...s, url: proxyUrl(s.url) }))
+    .sort((a, b) => QUALITY_ORDER.indexOf(a.quality) - QUALITY_ORDER.indexOf(b.quality));
+  
   const iframes = sources.filter((s) => s.type === "iframe" && s.url);
-  const defaultSrc = direct.find((s) => s.quality === "720p") ?? direct[0] ?? null;
+  const defaultSrc = direct.find((s) => s.quality === "720p") ?? direct.find((s) => s.quality === "1080p") ?? direct.find((s) => s.quality === "Auto") ?? direct[0] ?? null;
 
   const [current, setCurrent] = useState(defaultSrc);
   const [playing, setPlaying] = useState(false);
