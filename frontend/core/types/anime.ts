@@ -42,6 +42,7 @@ export interface VideoSource {
   provider: string;
   quality: string;
   url: string;
+  resolved?: string;
   type: string; // 'hls' | 'mp4' | 'iframe'
   source?: string;
 }
