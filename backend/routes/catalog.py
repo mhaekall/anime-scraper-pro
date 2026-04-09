@@ -51,38 +51,40 @@ router = APIRouter()
 @router.get("/v2/anime/{anilist_id}")
 async def get_anime_v2(anilist_id: int, background_tasks: BackgroundTasks, response: Response):
     response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
-    """
-    Full anime detail with episode list.
-
-    1. Look up anime in DB.
-    2. If not in DB, fetch from AniList and save it.
-    3. If episodes are missing, sync them in the background and return what we have.
-    """
-    # Fetch from DB (fast path)
-    data = await get_anime_detail(anilist_id)
-
-    # Not in DB at all — try AniList
-    if data is None:
-        anilist_data = await _fetch_and_save_anilist(anilist_id)
-        if not anilist_data:
-            raise HTTPException(status_code=404, detail=f"Anime {anilist_id} not found on AniList")
-        # Try DB again after saving
+    try:
+        """
+        Full anime detail with episode list.
+        """
+        # Fetch from DB (fast path)
         data = await get_anime_detail(anilist_id)
+
+        # Not in DB at all — try AniList
         if data is None:
-            raise HTTPException(status_code=404, detail="Anime saved but could not be read back")
+            anilist_data = await _fetch_and_save_anilist(anilist_id)
+            if not anilist_data:
+                raise HTTPException(status_code=404, detail=f"Anime {anilist_id} not found on AniList")
+            # Try DB again after saving
+            data = await get_anime_detail(anilist_id)
+            if data is None:
+                raise HTTPException(status_code=404, detail="Anime saved but could not be read back")
 
-    # Episodes empty — sync in background so next request is fast
-    if not data.get("episodes"):
-        await enqueue_sync(anilist_id)
-        # Return metadata without episodes rather than a 404
-        return {
-            "success": True,
-            "syncing": True,
-            "message": "Episode list is being fetched. Please refresh in ~10 seconds.",
-            "data": data,
-        }
+        # Episodes empty — sync in background so next request is fast
+        if not data.get("episodes"):
+            from services.queue import enqueue_sync
+            await enqueue_sync(anilist_id)
+            # Return metadata without episodes rather than a 404
+            return {
+                "success": True,
+                "syncing": True,
+                "message": "Episode list is being fetched. Please refresh in ~10 seconds.",
+                "data": data,
+            }
 
-    return {"success": True, "data": data}
+        return {"success": True, "data": data}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e), "trace": traceback.format_exc()}
 
 
 # ── GET /api/v2/anime/{anilist_id}/episodes ────────────────────────────────────
@@ -105,10 +107,10 @@ async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks, re
         WHERE  "anilistId" = :id
         ORDER  BY "episodeNumber" DESC,
                CASE "providerId" 
-                 WHEN 'oploverz' THEN 1 
-                 WHEN 'otakudesu' THEN 2 
-                 WHEN 'samehadaku' THEN 3 
-                 WHEN 'doronime' THEN 4 
+                 WHEN 'otakudesu' THEN 1 
+                 WHEN 'samehadaku' THEN 2 
+                 WHEN 'doronime' THEN 3 
+                 WHEN 'oploverz' THEN 4 
                  ELSE 99 
                END
         """,
@@ -422,7 +424,7 @@ async def _fetch_and_save_anilist(anilist_id: int) -> Optional[dict]:
         title { romaji english native }
         coverImage { extraLarge large color }
         bannerImage
-        averageScore episodes status season seasonYear
+        averageScore popularity trending episodes status season seasonYear
         description(asHtml: false)
         genres
         studios { nodes { name isAnimationStudio } }
@@ -459,6 +461,8 @@ async def _fetch_and_save_anilist(anilist_id: int) -> Optional[dict]:
             "color":            media["coverImage"].get("color"),
             "banner":           media.get("bannerImage"),
             "score":            media.get("averageScore"),
+            "popularity":       media.get("popularity", 0),
+            "trending":         media.get("trending", 0),
             "description":      media.get("description"),
             "genres":           media.get("genres", []),
             "totalEpisodes":    media.get("episodes"),
