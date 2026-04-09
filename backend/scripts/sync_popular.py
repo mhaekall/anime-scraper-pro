@@ -10,10 +10,10 @@ from services.db import upsert_anime_db, upsert_mapping_atomic
 from services.pipeline import PROVIDERS, sync_anime_episodes
 from services.queue import enqueue_sync
 
-ANILIST_TRENDING_QUERY = """
-query {
-  Page(page: 1, perPage: 15) {
-    media(type: ANIME, sort: TRENDING_DESC, status_in: [RELEASING, FINISHED]) {
+ANILIST_QUERY = """
+query($sort: [MediaSort]) {
+  Page(page: 1, perPage: 30) {
+    media(type: ANIME, sort: $sort, status_in: [RELEASING, FINISHED]) {
       id
       title { romaji english native }
       coverImage { extraLarge large color }
@@ -25,18 +25,18 @@ query {
 }
 """
 
-async def fetch_trending_anilist():
+async def fetch_anilist_list(sort_type):
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(
                 "https://graphql.anilist.co",
-                json={"query": ANILIST_TRENDING_QUERY},
+                json={"query": ANILIST_QUERY, "variables": {"sort": [sort_type]}},
                 timeout=10.0
             )
             data = resp.json()
             return data.get("data", {}).get("Page", {}).get("media", [])
         except Exception as e:
-            print(f"[SyncPopular] Failed to fetch trending from AniList: {e}")
+            print(f"[SyncPopular] Failed to fetch {sort_type} from AniList: {e}")
             return []
 
 def format_anilist_data(media):
@@ -59,17 +59,21 @@ def format_anilist_data(media):
 
 async def sync_popular_anime():
     await database.connect()
-    print("🚀 Starting Sync Popular Anime...")
+    print("🚀 Starting Sync Popular & Trending Anime...")
 
-    trending_media = await fetch_trending_anilist()
-    if not trending_media:
-        print("❌ No trending anime found.")
+    trending_media = await fetch_anilist_list("TRENDING_DESC")
+    popular_media = await fetch_anilist_list("POPULARITY_DESC")
+    
+    all_media = {m["id"]: m for m in trending_media + popular_media}.values() # Deduplicate by ID
+    
+    if not all_media:
+        print("❌ No anime found.")
         await database.disconnect()
         return
 
-    print(f"Found {len(trending_media)} trending anime. Processing...")
+    print(f"Found {len(all_media)} unique trending/popular anime. Processing...")
 
-    for media in trending_media:
+    for media in all_media:
         anilist_data = format_anilist_data(media)
         aid = anilist_data["anilistId"]
         title = anilist_data["cleanTitle"]
@@ -82,7 +86,7 @@ async def sync_popular_anime():
         existing = await database.fetch_one('SELECT 1 FROM anime_mappings WHERE "anilistId" = :id', {"id": aid})
         if existing:
             print(f"  -> Already mapped. Triggering episode sync...")
-            await enqueue_sync(aid)
+            await sync_anime_episodes(aid)
             continue
 
         # 3. No mappings found, search providers
@@ -123,7 +127,7 @@ async def sync_popular_anime():
         else:
             print(f"  -> ⚠️ Could not find any provider mappings for {title}")
 
-    print("\n✅ Sync Popular Anime Finished.")
+    print("\n✅ Sync Anime Finished.")
     await database.disconnect()
 
 if __name__ == "__main__":
