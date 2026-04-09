@@ -94,6 +94,18 @@ class SamehadakuParser(BaseParser):
                         
         return sources
 
+    def parse_search_results(self, html: str) -> list[dict]:
+        soup = BeautifulSoup(html, 'lxml')
+        results = []
+        for article in soup.select('article.animpost'):
+            a = article.select_one('a')
+            if a:
+                title = a.get('title') or a.text.strip()
+                url = a.get('href')
+                if url and '/anime/' in url:
+                    results.append({'title': title, 'url': url})
+        return results
+
     def _detect_quality(self, text: str) -> str:
         text = text.lower()
         if '1080' in text: return '1080p'

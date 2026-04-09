@@ -43,6 +43,28 @@ class OtakudesuParser(BaseParser):
                 })
         return sources
 
+    def parse_search_results(self, html: str) -> list[dict]:
+        soup = BeautifulSoup(html, 'lxml')
+        results = []
+        for li in soup.select('ul.chbox li'):
+            a = li.find('a')
+            if a:
+                title = a.get_text(strip=True)
+                url = a.get('href')
+                if url and '/anime/' in url:
+                    results.append({'title': title, 'url': url})
+        
+        # Fallback to general search items
+        if not results:
+            for article in soup.select('article'):
+                a = article.find('a')
+                if a and '/anime/' in a.get('href', ''):
+                    results.append({
+                        'title': a.get('title') or a.text.strip(),
+                        'url': a.get('href')
+                    })
+        return results
+
     def extract_mirrors(self, html: str) -> list[dict]:
         soup = BeautifulSoup(html, 'lxml')
         mirrors = []

@@ -29,10 +29,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from db.connection import database
+from utils.distributed_lock import DistributedLock
+from services.cache import upstash_get, upstash_set, upstash_del
 from services.providers import (
     oploverz_provider,
     otakudesu_provider,
     samehadaku_provider,
+    doronime_provider,
     extractor,
 )
 
@@ -42,11 +45,12 @@ PROVIDERS = {
     "oploverz":   oploverz_provider,
     "otakudesu":  otakudesu_provider,
     "samehadaku": samehadaku_provider,
+    "doronime":   doronime_provider,
 }
 
 # Priority when multiple providers have the same episode.
 # Lower number = higher priority.
-PROVIDER_PRIORITY = {"oploverz": 1, "otakudesu": 2, "samehadaku": 3}
+PROVIDER_PRIORITY = {"oploverz": 1, "otakudesu": 2, "samehadaku": 3, "doronime": 4}
 
 SOURCE_CACHE_HOURS = 6
 
@@ -81,6 +85,7 @@ def build_provider_series_url(provider_id: str, provider_slug: str) -> str:
         "oploverz":  "https://o.oploverz.ltd/series/{slug}/",
         "otakudesu": "https://otakudesu.cloud/anime/{slug}/",
         "samehadaku": "https://v2.samehadaku.how/anime/{slug}/",
+        "doronime":  "https://doronime.id/{slug}/",
     }
     template = bases.get(provider_id, "")
     return template.format(slug=provider_slug) if template else ""
@@ -176,50 +181,63 @@ async def sync_anime_episodes(anilist_id: int) -> dict:
     providers_done = []
     errors = []
 
-    for provider_id, provider_slug in mappings.items():
-        provider = PROVIDERS.get(provider_id)
-        if not provider:
-            errors.append(f"Unknown provider: {provider_id}")
-            continue
+    lock = DistributedLock(
+        upstash_get_fn=upstash_get,
+        upstash_set_fn=upstash_set,
+        upstash_del_fn=upstash_del,
+        key=f"sync_anime:{anilist_id}",
+        timeout=120
+    )
 
-        series_url = build_provider_series_url(provider_id, provider_slug)
-        if not series_url:
-            errors.append(f"Cannot build URL for {provider_id}")
-            continue
+    try:
+        async with lock:
+            for provider_id, provider_slug in mappings.items():
+                provider = PROVIDERS.get(provider_id)
+                if not provider:
+                    errors.append(f"Unknown provider: {provider_id}")
+                    continue
 
-        try:
-            detail = await provider.get_anime_detail(series_url)
-            raw_episodes = detail.get("episodes", [])
-            print(f"[Pipeline Debug] Fetched {len(raw_episodes)} episodes from {series_url}")
+                series_url = build_provider_series_url(provider_id, provider_slug)
+                if not series_url:
+                    errors.append(f"Cannot build URL for {provider_id}")
+                    continue
 
-            sem = asyncio.Semaphore(5)
-            count = 0
+                try:
+                    detail = await provider.get_anime_detail(series_url)
+                    raw_episodes = detail.get("episodes", [])
+                    print(f"[Pipeline Debug] Fetched {len(raw_episodes)} episodes from {series_url}")
 
-            async def process_ep(ep: dict):
-                nonlocal count
-                ep_num = extract_episode_number(ep.get("title", ""))
-                if ep_num is None:
-                    return
-                async with sem:
-                    await upsert_episode(
-                        anilist_id=anilist_id,
-                        provider_id=provider_id,
-                        ep_num=ep_num,
-                        ep_url=ep["url"],
-                        ep_title=ep.get("title"),
-                        thumbnail=ep.get("thumbnail"),
-                    )
-                    count += 1
+                    sem = asyncio.Semaphore(5)
+                    count = 0
 
-            await asyncio.gather(*(process_ep(ep) for ep in raw_episodes))
-            synced_total += count
-            providers_done.append(provider_id)
-            print(f"[Pipeline] Synced {count} episodes from {provider_id} for anilist_id={anilist_id}")
+                    async def process_ep(ep: dict):
+                        nonlocal count
+                        ep_num = extract_episode_number(ep.get("title", ""))
+                        if ep_num is None:
+                            return
+                        async with sem:
+                            await upsert_episode(
+                                anilist_id=anilist_id,
+                                provider_id=provider_id,
+                                ep_num=ep_num,
+                                ep_url=ep["url"],
+                                ep_title=ep.get("title"),
+                                thumbnail=ep.get("thumbnail"),
+                            )
+                            count += 1
 
-        except Exception as e:
-            error_msg = f"{provider_id}: {str(e)}"
-            errors.append(error_msg)
-            print(f"[Pipeline] Sync error — {error_msg}")
+                    await asyncio.gather(*(process_ep(ep) for ep in raw_episodes))
+                    synced_total += count
+                    providers_done.append(provider_id)
+                    print(f"[Pipeline] Synced {count} episodes from {provider_id} for anilist_id={anilist_id}")
+
+                except Exception as e:
+                    error_msg = f"{provider_id}: {str(e)}"
+                    errors.append(error_msg)
+                    print(f"[Pipeline] Sync error — {error_msg}")
+    except TimeoutError:
+        print(f"[Pipeline] Another sync is already in progress for anilist_id={anilist_id}")
+        errors.append("Sync already in progress")
 
     return {"synced": synced_total, "providers": providers_done, "errors": errors}
 
@@ -352,6 +370,7 @@ async def get_anime_detail(anilist_id: int) -> Optional[dict]:
                  WHEN 'oploverz'   THEN 1
                  WHEN 'otakudesu'  THEN 2
                  WHEN 'samehadaku' THEN 3
+                 WHEN 'doronime'   THEN 4
                  ELSE 99
                END
         """,
@@ -380,6 +399,7 @@ async def get_episode_stream(anilist_id: int, ep_num: float) -> Optional[dict]:
                  WHEN 'oploverz'   THEN 1
                  WHEN 'otakudesu'  THEN 2
                  WHEN 'samehadaku' THEN 3
+                 WHEN 'doronime'   THEN 4
                  ELSE 99
                END
         """,

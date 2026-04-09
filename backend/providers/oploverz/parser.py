@@ -42,3 +42,13 @@ class OploverzParser(BaseParser):
                     sources.append({"provider": src, "quality": "Auto",
                                     "url": url, "type": "iframe"})
         return sources
+
+    def parse_search_results(self, html: str) -> list[dict]:
+        soup = BeautifulSoup(html, 'lxml')
+        results = []
+        for a in soup.select('a.anime-card, .anime-list a'):
+            title = a.get('title') or a.text.strip()
+            url = a.get('href')
+            if url and '/series/' in url:
+                results.append({'title': title, 'url': url})
+        return results
