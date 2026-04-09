@@ -4,7 +4,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, memo } from "react";
-import { IconPlay, IconPause, IconFullscreen, IconVolume } from "@/ui/icons";
+import { IconPlay, IconPause, IconFullscreen, IconVolume, IconSettings } from "@/ui/icons";
 import { useSettings } from "@/core/stores/app-store";
 import { useWatchHistory } from "@/core/hooks/use-watch-history";
 import { useVideoGestures } from "@/core/hooks/use-video-gestures";
@@ -58,8 +58,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const [buffered, setBuffered] = useState(0);
   const [muted, setMuted] = useState(false);
   const [controls, setControls] = useState(true);
-  const [showQuality, setShowQuality] = useState(false);
-  const [showSpeed, setShowSpeed] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [useIframe, setUseIframe] = useState(direct.length === 0 && iframes.length > 0);
@@ -80,42 +79,48 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
     const isHls = src.type === "hls" || src.url.includes("m3u8");
 
     if (isHls) {
-      // Dynamic import — only loads HLS.js when actually needed
-      const { default: Hls } = await import("hls.js");
-      
-      if (Hls.isSupported()) {
-        const { HlsJsP2PEngine } = await import("p2p-media-loader-hlsjs");
-        const HlsWithP2P = HlsJsP2PEngine.injectMixin(Hls as any);
+      try {
+        // Dynamic import — only loads HLS.js when actually needed
+        const { default: Hls } = await import("hls.js");
         
-        const hls = new HlsWithP2P({ 
-          startLevel: -1, 
-          maxMaxBufferLength: 60, 
-          enableWorker: true,
-          p2p: {
-            core: {
-              swarmId: animeSlug && episodeNum ? `${animeSlug}-ep${episodeNum}` : undefined,
+        if (Hls.isSupported()) {
+          const { HlsJsP2PEngine } = await import("p2p-media-loader-hlsjs");
+          const HlsWithP2P = HlsJsP2PEngine.injectMixin(Hls as any);
+          
+          const hls = new HlsWithP2P({ 
+            startLevel: -1, 
+            maxMaxBufferLength: 60, 
+            enableWorker: true,
+            p2p: {
+              core: {
+                swarmId: animeSlug && episodeNum ? `${animeSlug}-ep${episodeNum}` : undefined,
+              }
             }
-          }
-        });
-        hlsRef.current = hls;
-        hls.loadSource(src.url);
-        hls.attachMedia(video);
-        hls.once("hlsManifestParsed" as any, () => { setLoading(false); if (seekTo != null) video.currentTime = seekTo; video.play().catch(() => {}); });
-        hls.on("hlsError" as any, (_: any, data: any) => {
-          if (data.fatal) { setError("Stream gagal dimuat."); setLoading(false); }
-        });
-      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = src.url;
-        video.onloadedmetadata = () => { setLoading(false); if (seekTo != null) video.currentTime = seekTo; video.play().catch(() => {}); };
+          });
+          hlsRef.current = hls;
+          hls.loadSource(src.url);
+          hls.attachMedia(video);
+          hls.once("hlsManifestParsed" as any, () => { setLoading(false); if (seekTo != null) video.currentTime = seekTo; video.play().catch(() => {}); });
+          hls.on("hlsError" as any, (_: any, data: any) => {
+            if (data.fatal) { setError("Stream gagal dimuat."); setLoading(false); }
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = src.url;
+          video.onloadedmetadata = () => { setLoading(false); if (seekTo != null) video.currentTime = seekTo; video.play().catch(() => {}); };
+        }
+      } catch (e) {
+        console.error("HLS Load Error:", e);
+        setError("Gagal memuat player.");
+        setLoading(false);
       }
     } else {
       video.src = src.url;
       video.oncanplay = () => { setLoading(false); if (seekTo != null) video.currentTime = seekTo; video.play().catch(() => {}); };
       video.load();
     }
-  }, []);
+  }, [animeSlug, episodeNum]);
 
-  useEffect(() => { if (current) loadSource(current); return () => hlsRef.current?.destroy(); }, []);
+  useEffect(() => { if (current) loadSource(current); return () => hlsRef.current?.destroy(); }, [current, loadSource]);
 
   // Video events
   useEffect(() => {
@@ -183,14 +188,15 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const togglePlay = useCallback(() => { const v = videoRef.current; if (!v) return; v.paused ? v.play() : v.pause(); reveal(); }, [reveal]);
   const skip = useCallback((s: number) => { const v = videoRef.current; if (!v || !duration) return; v.currentTime = Math.max(0, Math.min(duration, v.currentTime + s)); reveal(); }, [duration, reveal]);
   const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => { const b = barRef.current; const v = videoRef.current; if (!b || !v || !duration) return; v.currentTime = Math.max(0, Math.min(1, (e.clientX - b.getBoundingClientRect().left) / b.offsetWidth)) * duration; }, [duration]);
-  const switchQ = useCallback((s: VideoSource) => { const t = videoRef.current?.currentTime ?? 0; setCurrent(s); setShowQuality(false); loadSource(s, t); }, [loadSource]);
+  const switchQ = useCallback((s: VideoSource) => { const t = videoRef.current?.currentTime ?? 0; setCurrent(s); setShowSettings(false); loadSource(s, t); }, [loadSource]);
   const toggleFS = useCallback(() => { if (!document.fullscreenElement) containerRef.current?.requestFullscreen(); else document.exitFullscreen(); }, []);
-  const changeSpeed = useCallback((s: number) => { setSpeed(s); setShowSpeed(false); if (videoRef.current) videoRef.current.playbackRate = s; }, []);
+  const changeSpeed = useCallback((s: number) => { setSpeed(s); if (videoRef.current) videoRef.current.playbackRate = s; }, []);
   const togglePiP = useCallback(async () => {
     if (!videoRef.current) return;
     try {
       if (document.pictureInPictureElement) await document.exitPictureInPicture();
       else if (document.pictureInPictureEnabled) await videoRef.current.requestPictureInPicture();
+      setShowSettings(false);
     } catch (e) { console.error("PiP error:", e); }
   }, []);
 
@@ -249,15 +255,55 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
 
       <SkipIntroButton currentTime={progress} onSkip={(t) => { if (videoRef.current) { videoRef.current.currentTime = t; } }} />
 
+      {/* Settings Menu */}
+      {showSettings && (
+        <div className="absolute bottom-16 right-4 z-50 bg-[#1c1c1e]/95 border border-white/10 rounded-2xl p-4 shadow-2xl min-w-[240px] animate-in fade-in slide-in-from-bottom-4 duration-200 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+            <span className="text-white font-bold text-sm">Pengaturan</span>
+            <button onClick={() => setShowSettings(false)} className="text-[#8e8e93]"><IconSettings className="w-4 h-4" /></button>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Quality Section */}
+            {direct.length > 0 && (
+              <div>
+                <p className="text-[#8e8e93] text-[10px] uppercase font-bold tracking-wider mb-2">Kualitas Video</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {direct.map((s) => (
+                    <button key={s.quality} onClick={() => switchQ(s)} className={`py-1.5 rounded-lg text-[11px] font-bold transition-all ${s === current ? 'bg-white text-black' : 'bg-white/5 text-[#8e8e93] hover:bg-white/10'}`}>
+                      {s.quality.replace('p', '')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Speed Section */}
+            <div>
+              <p className="text-[#8e8e93] text-[10px] uppercase font-bold tracking-wider mb-2">Kecepatan</p>
+              <div className="flex flex-wrap gap-1.5">
+                {SPEED_OPTIONS.map((s) => (
+                  <button key={s} onClick={() => changeSpeed(s)} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${speed === s ? 'bg-white text-black' : 'bg-white/5 text-[#8e8e93] hover:bg-white/10'}`}>
+                    {s}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* PiP Toggle */}
+            <button onClick={togglePiP} className="w-full py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-2 border border-white/5 transition-all">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><rect x="3" y="5" width="18" height="14" rx="2" /><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" stroke="none" /></svg>
+              Picture in Picture
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Controls overlay */}
       <div className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-200 z-20 pointer-events-none ${controls ? "opacity-100" : "opacity-0"}`} onClick={(e) => e.stopPropagation()}>
         <div className="bg-gradient-to-b from-black/70 to-transparent p-3 pointer-events-auto">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-white font-bold text-xs truncate max-w-[55%]">{title}</p>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button onClick={(e) => { e.stopPropagation(); setShowSpeed((v) => !v); setShowQuality(false); }} className="px-2.5 h-7 bg-black/50 rounded-full text-white text-[11px] font-bold border border-white/15">{speed === 1 ? "1×" : `${speed}×`}</button>
-              {showSpeed && <div className="absolute top-10 right-3 bg-[#1c1c1e]/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-30 pointer-events-auto">{SPEED_OPTIONS.map((s) => <button key={s} onClick={(e) => { e.stopPropagation(); changeSpeed(s); }} className={`block w-full px-4 py-1.5 text-[11px] font-bold text-left hover:bg-white/10 ${speed === s ? "text-white" : "text-[#8e8e93]"}`}>{s}×</button>)}</div>}
-            </div>
+            <p className="text-white font-bold text-xs truncate max-w-[70%]">{title}</p>
           </div>
         </div>
 
@@ -274,29 +320,18 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
               <span className="text-white text-[11px] font-mono tabular-nums">{fmt(progress)} / {fmt(duration)}</span>
             </div>
             <div className="flex items-center gap-3">
-              {direct.length > 1 && (
-                <div className="flex items-center gap-0.5 bg-black/50 rounded-full p-0.5 border border-white/15 pointer-events-auto mr-1 hidden sm:flex">
-                  {direct.map((s) => (
-                    <button 
-                      key={`${s.quality}-${s.provider}`} 
-                      onClick={(e) => { e.stopPropagation(); switchQ(s); }} 
-                      className={`px-2.5 h-6 rounded-full text-[10px] sm:text-[11px] font-bold transition-colors ${s === current ? 'bg-white text-black' : 'text-[#8e8e93] hover:text-white'}`}
-                    >
-                      {s.quality.replace('p', '')}
-                    </button>
-                  ))}
-                </div>
-              )}
               <div className="flex items-center gap-2 group/vol">
                 <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); if (!v.muted && volume === 0) { v.volume = 1; setVolume(1); } } }} className="text-white"><IconVolume muted={muted || volume === 0} /></button>
                 <div className="w-0 group-hover/vol:w-16 overflow-hidden transition-all duration-200 hidden md:block">
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => { const val = Number(e.target.value); setVolume(val); if (videoRef.current) { videoRef.current.volume = val; videoRef.current.muted = val === 0; setMuted(val === 0); } }} className="w-full h-1 cursor-pointer accent-white" />
                 </div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); togglePiP(); }} className="text-white hidden md:block" title="Picture in Picture">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5"><rect x="3" y="5" width="18" height="14" rx="2" /><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor" stroke="none" /></svg>
+              
+              <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }} className={`transition-transform duration-200 ${showSettings ? 'rotate-90 text-white' : 'text-[#8e8e93] hover:text-white'}`}>
+                <IconSettings />
               </button>
-              <button onClick={(e) => { e.stopPropagation(); toggleFS(); }} className="text-white"><IconFullscreen /></button>
+
+              <button onClick={(e) => { e.stopPropagation(); toggleFS(); }} className="text-white hover:scale-110 transition-transform"><IconFullscreen /></button>
             </div>
           </div>
         </div>
