@@ -1,3 +1,5 @@
+"use client";
+
 import dynamic from "next/dynamic";
 
 const AppShell = dynamic(() => import("@/ui/layout/AppShell"), { ssr: false });

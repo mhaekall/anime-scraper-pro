@@ -43,8 +43,8 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const containerRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<any>(null);
-  const hideTimer = useRef<ReturnType<typeof setTimeout>>();
-  const saveTimer = useRef<ReturnType<typeof setInterval>>();
+  const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const saveTimer = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const direct = sources.filter((s) => s.type !== "iframe" && s.url).map((s) => ({ ...s, url: proxyUrl(s.url) })).sort((a, b) => QUALITY_ORDER.indexOf(a.quality) - QUALITY_ORDER.indexOf(b.quality));
   const iframes = sources.filter((s) => s.type === "iframe" && s.url);
