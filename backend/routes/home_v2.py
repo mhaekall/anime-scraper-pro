@@ -47,6 +47,11 @@ async def get_home_v2(response: Response):
 
     def format_anime(r):
         d = dict(r)
+        if "nextAiringEpisode" in d and isinstance(d["nextAiringEpisode"], str):
+            try:
+                d["nextAiringEpisode"] = json.loads(d["nextAiringEpisode"])
+            except Exception:
+                pass
         return {
             "id": str(d["anilistId"]),
             "title": d.get("cleanTitle") or d.get("nativeTitle"),
