@@ -36,6 +36,15 @@ export const api = {
   /** Series list from provider (v1 — only used as fallback) */
   seriesList: () => request<{ success: boolean; data: any[] }>("/api/series"),
 
+  /** Browse catalog from our DB */
+  browse: (params: { page?: number; genre?: string; sort?: string }) => {
+    const q = new URLSearchParams();
+    if (params.page) q.set("page", String(params.page));
+    if (params.genre) q.set("genre", params.genre);
+    if (params.sort) q.set("sort", params.sort);
+    return request<{ success: boolean; page: number; data: any[] }>(`/api/v2/browse?${q.toString()}`);
+  },
+
   /** AniList GraphQL proxy */
   anilist: (query: string, variables?: Record<string, any>) =>
     request<any>("/api/anilist", {
