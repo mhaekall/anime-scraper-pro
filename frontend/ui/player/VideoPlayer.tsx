@@ -107,16 +107,23 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           hls.once("hlsManifestParsed" as any, (_: any, data: any) => { 
             // Enforce minimum 720p for Auto quality
             if (data.levels && Array.isArray(data.levels)) {
-              let minBitrate = 0;
-              data.levels.forEach((l: any) => {
-                if (l.height >= 720) {
-                  if (minBitrate === 0 || l.bitrate < minBitrate) {
-                    minBitrate = l.bitrate;
+              const allowedLevels = data.levels
+                .map((l: any, i: number) => ({ ...l, index: i }))
+                .filter((l: any) => l.height >= 720);
+              
+              if (allowedLevels.length > 0) {
+                // Find the index of the first 720p level
+                const firstHDIndex = allowedLevels[0].index;
+                hls.startLevel = firstHDIndex;
+                
+                // Override the level controller to only pick from HD levels
+                hls.on("hlsLevelLoading" as any, () => {
+                  if (hls.autoLevelEnabled) {
+                    if (hls.nextLevel < firstHDIndex) {
+                      hls.nextLevel = firstHDIndex;
+                    }
                   }
-                }
-              });
-              if (minBitrate > 0 && hls.config) {
-                (hls.config as any).minAutoBitrate = minBitrate;
+                });
               }
             }
             
