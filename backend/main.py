@@ -20,6 +20,12 @@ async def lifespan(app: FastAPI):
         try:
             await database.connect()
             print("[DB] Connected to Neon DB")
+            # Auto-migrate columns for popular/trending
+            try:
+                await database.execute('ALTER TABLE anime_metadata ADD COLUMN IF NOT EXISTS "popularity" INTEGER DEFAULT 0')
+                await database.execute('ALTER TABLE anime_metadata ADD COLUMN IF NOT EXISTS "trending" INTEGER DEFAULT 0')
+            except Exception as e:
+                print(f"[DB] Auto-migration error: {e}")
             break
         except Exception as e:
             print(f"[DB] Connection failed ({i+1}/{retries}): {e}")
