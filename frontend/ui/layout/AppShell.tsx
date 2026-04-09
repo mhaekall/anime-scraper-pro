@@ -66,14 +66,26 @@ function AppShell() {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 sm:hidden glass-nav border-t border-white/10 pb-safe">
-        <div className="flex justify-around items-center h-[56px]">
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] sm:hidden bg-[#0a0a0a]/90 backdrop-blur-xl border-t border-white/10 pb-safe">
+        <div className="flex justify-between items-center px-2 h-[60px] pb-1">
           {TABS.map((t, i) => {
             const active = tab === i;
             return (
-              <button key={t.id} onClick={() => setTab(i)} className="flex flex-col items-center gap-0.5 pt-1">
-                <t.Icon className={`w-[22px] h-[22px] ${active ? "text-white" : "text-white/50"}`} filled={active} />
-                <span className={`text-[10px] ${active ? "text-white font-medium" : "text-white/50"}`}>{t.label}</span>
+              <button 
+                key={t.id} 
+                onClick={() => setTab(i)} 
+                className="flex flex-col items-center justify-center flex-1 h-full gap-1 pt-1 bg-transparent border-none outline-none"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <div className="relative flex items-center justify-center">
+                  <t.Icon 
+                    className={`w-[22px] h-[22px] transition-colors ${active ? "text-white" : "text-white/60"}`} 
+                    filled={active} 
+                  />
+                </div>
+                <span className={`text-[10px] tracking-tight transition-colors ${active ? "text-white font-medium" : "text-white/60 font-normal"}`}>
+                  {t.label}
+                </span>
               </button>
             );
           })}

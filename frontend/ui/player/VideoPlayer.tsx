@@ -258,10 +258,17 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
               <button onClick={(e) => { e.stopPropagation(); setShowSpeed((v) => !v); setShowQuality(false); }} className="px-2.5 h-7 bg-black/50 rounded-full text-white text-[11px] font-bold border border-white/15">{speed === 1 ? "1×" : `${speed}×`}</button>
               {showSpeed && <div className="absolute top-10 right-3 bg-[#1c1c1e]/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-30 pointer-events-auto">{SPEED_OPTIONS.map((s) => <button key={s} onClick={(e) => { e.stopPropagation(); changeSpeed(s); }} className={`block w-full px-4 py-1.5 text-[11px] font-bold text-left hover:bg-white/10 ${speed === s ? "text-white" : "text-[#8e8e93]"}`}>{s}×</button>)}</div>}
               {direct.length > 1 && (
-                <>
-                  <button onClick={(e) => { e.stopPropagation(); setShowQuality((v) => !v); setShowSpeed(false); }} className="px-2.5 h-7 bg-black/50 rounded-full text-white text-[11px] font-bold border border-white/15">{current?.quality ?? "Auto"}</button>
-                  {showQuality && <div className="absolute top-10 right-3 bg-[#1c1c1e]/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl min-w-[120px] z-30 pointer-events-auto">{direct.map((s) => <button key={`${s.quality}-${s.provider}`} onClick={(e) => { e.stopPropagation(); switchQ(s); }} className={`block w-full px-4 py-1.5 text-[11px] font-bold text-left hover:bg-white/10 ${s === current ? "text-white" : "text-[#8e8e93]"}`}>{s.quality}</button>)}</div>}
-                </>
+                <div className="flex items-center gap-0.5 bg-black/50 rounded-full p-0.5 border border-white/15 pointer-events-auto">
+                  {direct.map((s) => (
+                    <button 
+                      key={`${s.quality}-${s.provider}`} 
+                      onClick={(e) => { e.stopPropagation(); switchQ(s); }} 
+                      className={`px-2.5 h-6 rounded-full text-[10px] sm:text-[11px] font-bold transition-colors ${s === current ? 'bg-white text-black' : 'text-[#8e8e93] hover:text-white'}`}
+                    >
+                      {s.quality.replace('p', '')}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
