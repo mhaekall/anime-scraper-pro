@@ -82,8 +82,21 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
     if (isHls) {
       // Dynamic import — only loads HLS.js when actually needed
       const { default: Hls } = await import("hls.js");
+      
       if (Hls.isSupported()) {
-        const hls = new Hls({ startLevel: -1, maxMaxBufferLength: 60, enableWorker: true });
+        const { HlsJsP2PEngine } = await import("p2p-media-loader-hlsjs");
+        const HlsWithP2P = HlsJsP2PEngine.injectMixin(Hls as any);
+        
+        const hls = new HlsWithP2P({ 
+          startLevel: -1, 
+          maxMaxBufferLength: 60, 
+          enableWorker: true,
+          p2p: {
+            core: {
+              swarmId: animeSlug && episodeNum ? `${animeSlug}-ep${episodeNum}` : undefined,
+            }
+          }
+        });
         hlsRef.current = hls;
         hls.loadSource(src.url);
         hls.attachMedia(video);
