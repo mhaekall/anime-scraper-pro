@@ -23,7 +23,7 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
   const eps = d.episodes || [];
   const recs = d.recommendations || [];
 
-  const firstEp = eps.length > 0 ? eps[0].url.replace(/\/$/, "").split("/").pop() : null;
+  const firstEp = eps.length > 0 && eps[0].url ? eps[0].url.replace(/\/$/, "").split("/").pop() : null;
 
   return (
     <main className="min-h-screen bg-black pb-24 text-white overflow-y-auto no-scrollbar">
