@@ -325,6 +325,78 @@ async def search_v2(
     return {"success": True, "data": data or []}
 
 
+# ── GET /api/v2/stats ──────────────────────────────────────────────────────────
+
+@router.get("/v2/stats")
+async def get_stats():
+    """Return database statistics."""
+    anime_count = await database.fetch_one('SELECT COUNT(*) as cnt FROM anime_metadata')
+    episodes_count = await database.fetch_one('SELECT COUNT(*) as cnt FROM episodes')
+    return {
+        "success": True,
+        "data": {
+            "total_anime": anime_count["cnt"] if anime_count else 0,
+            "total_episodes": episodes_count["cnt"] if episodes_count else 0
+        }
+    }
+
+# ── POST /api/v2/sync-latest ───────────────────────────────────────────────────
+
+@router.post("/v2/sync-latest")
+async def sync_latest(background_tasks: BackgroundTasks):
+    """
+    Scrape latest from providers, map them, and sync episodes immediately via background tasks.
+    Returns how many new mappings were found.
+    """
+    from services.background import scrape_oploverz_home, scrape_otakudesu_home, scrape_samehadaku_home, scrape_doronime_home
+    from services.anilist import fetch_anilist_info
+    from services.db import upsert_mapping_atomic
+    
+    results = await asyncio.gather(
+        scrape_oploverz_home(),
+        scrape_otakudesu_home(),
+        scrape_samehadaku_home(),
+        scrape_doronime_home(),
+        return_exceptions=True
+    )
+    
+    all_items = []
+    for res in results:
+        if isinstance(res, list):
+            all_items.extend(res)
+
+    seen_titles = set()
+    items = []
+    for item in all_items:
+        t = item['title'].lower()
+        if t not in seen_titles:
+            seen_titles.add(t)
+            items.append(item)
+
+    processed_count = 0
+    for item in items[:40]: # limit to 40 to avoid timeouts
+        try:
+            anilist_data = await fetch_anilist_info(item['title'])
+            if anilist_data:
+                await upsert_anime_db(anilist_data, "anilist_sync", str(anilist_data['anilistId']))
+                await upsert_mapping_atomic(
+                    anilist_id=anilist_data['anilistId'],
+                    provider_id=item['provider_id'],
+                    provider_slug=item['provider_slug'],
+                    clean_title=anilist_data.get("cleanTitle") or anilist_data.get("nativeTitle", ""),
+                    cover_image=anilist_data.get("hdImage") or anilist_data.get("coverImage", "")
+                )
+                # Use background_tasks to bypass QStash
+                background_tasks.add_task(sync_anime_episodes, anilist_data['anilistId'])
+                processed_count += 1
+        except Exception as e:
+            print(f"[SyncLatest] Error processing {item['title']}: {e}")
+
+    return {
+        "success": True,
+        "message": f"Successfully mapped {processed_count} latest anime and started episode sync in background."
+    }
+
 # ── GET /api/v2/anime/{anilist_id}/mappings ────────────────────────────────────
 
 @router.get("/v2/anime/{anilist_id}/mappings")
