@@ -50,7 +50,7 @@ PROVIDERS = {
 
 # Priority when multiple providers have the same episode.
 # Lower number = higher priority.
-PROVIDER_PRIORITY = {"oploverz": 1, "otakudesu": 2, "samehadaku": 3, "doronime": 4}
+PROVIDER_PRIORITY = {"otakudesu": 1, "samehadaku": 2, "doronime": 3, "oploverz": 4}
 
 SOURCE_CACHE_HOURS = 6
 
@@ -367,10 +367,10 @@ async def get_anime_detail(anilist_id: int) -> Optional[dict]:
         ORDER  BY
                "episodeNumber" DESC,
                CASE "providerId"
-                 WHEN 'oploverz'   THEN 1
-                 WHEN 'otakudesu'  THEN 2
-                 WHEN 'samehadaku' THEN 3
-                 WHEN 'doronime'   THEN 4
+                 WHEN 'otakudesu'  THEN 1
+                 WHEN 'samehadaku' THEN 2
+                 WHEN 'doronime'   THEN 3
+                 WHEN 'oploverz'   THEN 4
                  ELSE 99
                END
         """,
@@ -407,10 +407,10 @@ async def get_episode_stream(anilist_id: int, ep_num: float) -> Optional[dict]:
         WHERE  "anilistId" = :anilist_id AND "episodeNumber" = :ep_num
         ORDER  BY
                CASE "providerId"
-                 WHEN 'oploverz'   THEN 1
-                 WHEN 'otakudesu'  THEN 2
-                 WHEN 'samehadaku' THEN 3
-                 WHEN 'doronime'   THEN 4
+                 WHEN 'otakudesu'  THEN 1
+                 WHEN 'samehadaku' THEN 2
+                 WHEN 'doronime'   THEN 3
+                 WHEN 'oploverz'   THEN 4
                  ELSE 99
                END
         """,
