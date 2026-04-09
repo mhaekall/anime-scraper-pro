@@ -22,7 +22,6 @@ body {
   color: var(--fg);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
 }
 
 /* Scrollbar hide */

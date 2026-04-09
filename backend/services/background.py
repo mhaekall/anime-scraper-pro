@@ -39,7 +39,7 @@ async def scrape_oploverz_home():
 async def scrape_otakudesu_home():
     """Fetch latest from Otakudesu"""
     try:
-        r = await scraping_client.get('https://otakudesu.cloud/')
+        r = await scraping_client.get('https://otakudesu.blog/')
         soup = BeautifulSoup(r.text, 'lxml')
         items = []
         for div in soup.select('.venz ul li'):

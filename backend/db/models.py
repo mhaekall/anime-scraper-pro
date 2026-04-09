@@ -82,3 +82,72 @@ video_cache = Table(
     Index("idx_video_cache_url",     "episodeUrl"),
     Index("idx_video_cache_expires", "expiresAt"),
 )
+
+# ── NEW: social & watch behavior ──────────────────────────────────────────────
+
+users = Table(
+    "users",
+    metadata,
+    Column("id", String, primary_key=True),
+    Column("username", String, unique=True, nullable=False),
+    Column("avatar", Text),
+    Column("created_at", DateTime, nullable=False, server_default=func.now()),
+)
+
+comments = Table(
+    "comments",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("anilistId", Integer, nullable=False),
+    Column("episodeNumber", Float, nullable=False),
+    Column("parent_id", Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True),
+    Column("text", Text, nullable=False),
+    Column("timestamp_sec", Integer, nullable=True),
+    Column("created_at", DateTime, nullable=False, server_default=func.now()),
+    Index("idx_comments_episode", "anilistId", "episodeNumber"),
+)
+
+comment_reactions = Table(
+    "comment_reactions",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("comment_id", Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=False),
+    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("emoji", String, nullable=False),
+    Column("created_at", DateTime, nullable=False, server_default=func.now()),
+    UniqueConstraint("comment_id", "user_id", "emoji", name="uq_reaction_user"),
+)
+
+follows = Table(
+    "follows",
+    metadata,
+    Column("follower_id", String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("following_id", String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("created_at", DateTime, nullable=False, server_default=func.now()),
+)
+
+notifications = Table(
+    "notifications",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("type", String, nullable=False),
+    Column("reference_id", String, nullable=False),
+    Column("is_read", Boolean, nullable=False, default=False),
+    Column("created_at", DateTime, nullable=False, server_default=func.now()),
+    Index("idx_notifications_user", "user_id"),
+)
+
+watch_events = Table(
+    "watch_events",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("anilistId", Integer, nullable=False),
+    Column("episodeNumber", Float, nullable=False),
+    Column("event_type", String, nullable=False),
+    Column("timestamp_sec", Integer, nullable=True),
+    Column("created_at", DateTime, nullable=False, server_default=func.now()),
+    Index("idx_watch_events_episode", "anilistId", "episodeNumber"),
+)

@@ -83,7 +83,7 @@ def build_provider_series_url(provider_id: str, provider_slug: str) -> str:
     """Build the series page URL for a given provider + slug."""
     bases = {
         "oploverz":  "https://o.oploverz.ltd/series/{slug}/",
-        "otakudesu": "https://otakudesu.cloud/anime/{slug}/",
+        "otakudesu": "https://otakudesu.blog/anime/{slug}/",
         "samehadaku": "https://v2.samehadaku.how/anime/{slug}/",
         "doronime":  "https://doronime.id/{slug}/",
     }

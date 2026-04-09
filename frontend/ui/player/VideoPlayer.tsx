@@ -32,15 +32,15 @@ interface Props {
   animeSlug?: string;
   episodeNum?: number;
   onRequireAutoNext?: () => void;
+  onTimeUpdate?: (time: number) => void;
 }
 
-function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onRequireAutoNext }: Props) {
+function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onRequireAutoNext, onTimeUpdate }: Props) {
   const accent = useSettings((s) => s.settings.accentColor);
   const autoPlayNext = useSettings((s) => s.settings.autoPlayNext);
   const { updateProgress } = useWatchHistory();
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<any>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -69,7 +69,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const [hasTriggeredAutoNext, setHasTriggeredAutoNext] = useState(false);
   const [volume, setVolume] = useState(1);
 
-  const { handleTouchStart, ripple } = useVideoGestures(videoRef);
+  const { containerRef, handleTouchStart, ripple } = useVideoGestures(videoRef);
 
   // Dynamic HLS.js import
   const loadSource = useCallback(async (src: VideoSource, seekTo?: number) => {
