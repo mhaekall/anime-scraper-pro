@@ -257,19 +257,6 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
             <div className="flex items-center gap-1.5 shrink-0">
               <button onClick={(e) => { e.stopPropagation(); setShowSpeed((v) => !v); setShowQuality(false); }} className="px-2.5 h-7 bg-black/50 rounded-full text-white text-[11px] font-bold border border-white/15">{speed === 1 ? "1×" : `${speed}×`}</button>
               {showSpeed && <div className="absolute top-10 right-3 bg-[#1c1c1e]/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-30 pointer-events-auto">{SPEED_OPTIONS.map((s) => <button key={s} onClick={(e) => { e.stopPropagation(); changeSpeed(s); }} className={`block w-full px-4 py-1.5 text-[11px] font-bold text-left hover:bg-white/10 ${speed === s ? "text-white" : "text-[#8e8e93]"}`}>{s}×</button>)}</div>}
-              {direct.length > 1 && (
-                <div className="flex items-center gap-0.5 bg-black/50 rounded-full p-0.5 border border-white/15 pointer-events-auto">
-                  {direct.map((s) => (
-                    <button 
-                      key={`${s.quality}-${s.provider}`} 
-                      onClick={(e) => { e.stopPropagation(); switchQ(s); }} 
-                      className={`px-2.5 h-6 rounded-full text-[10px] sm:text-[11px] font-bold transition-colors ${s === current ? 'bg-white text-black' : 'text-[#8e8e93] hover:text-white'}`}
-                    >
-                      {s.quality.replace('p', '')}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -287,6 +274,19 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
               <span className="text-white text-[11px] font-mono tabular-nums">{fmt(progress)} / {fmt(duration)}</span>
             </div>
             <div className="flex items-center gap-3">
+              {direct.length > 1 && (
+                <div className="flex items-center gap-0.5 bg-black/50 rounded-full p-0.5 border border-white/15 pointer-events-auto mr-1 hidden sm:flex">
+                  {direct.map((s) => (
+                    <button 
+                      key={`${s.quality}-${s.provider}`} 
+                      onClick={(e) => { e.stopPropagation(); switchQ(s); }} 
+                      className={`px-2.5 h-6 rounded-full text-[10px] sm:text-[11px] font-bold transition-colors ${s === current ? 'bg-white text-black' : 'text-[#8e8e93] hover:text-white'}`}
+                    >
+                      {s.quality.replace('p', '')}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-2 group/vol">
                 <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); if (!v.muted && volume === 0) { v.volume = 1; setVolume(1); } } }} className="text-white"><IconVolume muted={muted || volume === 0} /></button>
                 <div className="w-0 group-hover/vol:w-16 overflow-hidden transition-all duration-200 hidden md:block">
