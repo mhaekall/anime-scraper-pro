@@ -40,6 +40,6 @@ shared_transport = ProviderTransport()
 
 oploverz_provider = ProviderCircuitBreakerProxy(OploverzProvider(transport=shared_transport), "oploverz")
 otakudesu_provider = ProviderCircuitBreakerProxy(OtakudesuProvider(transport=shared_transport), "otakudesu")
-doronime_provider = ProviderCircuitBreakerProxy(DoronimeProvider(), "doronime")
+doronime_provider = ProviderCircuitBreakerProxy(DoronimeProvider(transport=shared_transport), "doronime")
 samehadaku_provider = ProviderCircuitBreakerProxy(SamehadakuProvider(transport=shared_transport), "samehadaku")
 extractor = UniversalExtractor()

@@ -27,6 +27,7 @@ GET  /api/v2/anime/{anilist_id}/episodes
 """
 
 import asyncio
+import urllib.parse
 from typing import Optional, List, Dict
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Response
 
@@ -48,7 +49,8 @@ router = APIRouter()
 # ── GET /api/v2/anime/{anilist_id} ─────────────────────────────────────────────
 
 @router.get("/v2/anime/{anilist_id}")
-async def get_anime_v2(anilist_id: int, background_tasks: BackgroundTasks):
+async def get_anime_v2(anilist_id: int, background_tasks: BackgroundTasks, response: Response):
+    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     """
     Full anime detail with episode list.
 
@@ -86,7 +88,8 @@ async def get_anime_v2(anilist_id: int, background_tasks: BackgroundTasks):
 # ── GET /api/v2/anime/{anilist_id}/episodes ────────────────────────────────────
 
 @router.get("/v2/anime/{anilist_id}/episodes")
-async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks):
+async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks, response: Response):
+    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     """Lightweight endpoint: only the episode list."""
     has_eps = await ensure_episodes_exist(anilist_id)
     if not has_eps:
@@ -101,7 +104,13 @@ async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks):
         FROM   episodes
         WHERE  "anilistId" = :id
         ORDER  BY "episodeNumber" DESC,
-               CASE "providerId" WHEN 'oploverz' THEN 1 WHEN 'otakudesu' THEN 2 ELSE 3 END
+               CASE "providerId" 
+                 WHEN 'oploverz' THEN 1 
+                 WHEN 'otakudesu' THEN 2 
+                 WHEN 'samehadaku' THEN 3 
+                 WHEN 'doronime' THEN 4 
+                 ELSE 99 
+               END
         """,
         values={"id": anilist_id},
     )
@@ -177,6 +186,55 @@ async def trigger_sync_v2(anilist_id: int, background_tasks: BackgroundTasks):
     }
 
 
+@router.get("/v2/browse")
+async def browse_anime(
+    response: Response,
+    page: int = Query(1, ge=1),
+    sort: str = Query("score", regex="^(score|popularity|trending|newest)$"),
+    genre: str = Query(None),
+    status: str = Query(None, regex="^(RELEASING|FINISHED|NOT_YET_RELEASED)$"),
+    limit: int = Query(24, le=50),
+):
+    response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
+    """Browse full anime catalog from database, with filter and sorting."""
+    conditions = ['1=1']
+    values = {"offset": (page - 1) * limit, "limit": limit}
+    
+    if genre:
+        # Use simple ILIKE for JSONB array of strings or text representation
+        conditions.append("meta.genres::text ILIKE :genre")
+        values["genre"] = f"%{genre}%"
+    if status:
+        conditions.append('meta.status = :status')
+        values["status"] = status
+    
+    sort_map = {
+        "score": 'meta.score DESC NULLS LAST',
+        "popularity": 'meta.popularity DESC NULLS LAST',
+        "trending": 'meta.trending DESC NULLS LAST',
+        "newest": 'meta."seasonYear" DESC NULLS LAST',
+    }
+    
+    where_clause = " AND ".join(conditions)
+    order_clause = sort_map.get(sort, 'meta.score DESC NULLS LAST')
+    
+    query = f"""
+        SELECT meta.*, COUNT(e."episodeNumber") as episode_count
+        FROM anime_metadata meta
+        LEFT JOIN episodes e ON meta."anilistId" = e."anilistId"
+        WHERE {where_clause}
+        GROUP BY meta."anilistId"
+        ORDER BY {order_clause}
+        LIMIT :limit OFFSET :offset
+    """
+    
+    try:
+        rows = await database.fetch_all(query, values=values)
+        return {"success": True, "page": page, "data": [dict(r) for r in rows]}
+    except Exception as e:
+        print(f"[Catalog] Browse error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── GET /api/v2/search ─────────────────────────────────────────────────────────
 
 @router.get("/v2/search")
@@ -200,6 +258,45 @@ async def search_v2(
         from services.anilist import fetch_anilist_info  # local import to avoid circulars
         result = await fetch_anilist_info(q)
         if not result:
+            # Fallback to provider searches
+            from services.pipeline import PROVIDERS
+            tasks = []
+            for name, provider in PROVIDERS.items():
+                if hasattr(provider, 'search') and callable(getattr(provider, 'search')):
+                    async def _safe_search(n, p, q):
+                        try:
+                            import asyncio
+                            async with asyncio.timeout(10.0):
+                                res = await p.search(q)
+                                for item in res:
+                                    item['source'] = n
+                                return res
+                        except Exception as e:
+                            print(f"[{n}] Fallback search error: {e}")
+                            return []
+                    tasks.append(_safe_search(name, provider, q))
+            
+            if tasks:
+                fallback_results = await asyncio.gather(*tasks)
+                combined = []
+                seen = set()
+                for res_list in fallback_results:
+                    for item in res_list:
+                        title = item.get('title')
+                        if title and title.lower() not in seen:
+                            seen.add(title.lower())
+                            # Format to match AniList structure as closely as possible
+                            combined.append({
+                                "anilistId": 0, # Fallback ID indicating no AniList link yet
+                                "title": title,
+                                "url": item.get('url'),
+                                "source": item.get('source', 'unknown'),
+                                "hasMapping": True, # Assume we can scrape it if we found it
+                                "hasEpisodes": False,
+                                "detailUrl": f"/anime/0?title={urllib.parse.quote_plus(title)}",
+                            })
+                if combined:
+                    return combined
             return []
 
         anilist_id = result["anilistId"]

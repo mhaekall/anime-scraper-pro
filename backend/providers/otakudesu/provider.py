@@ -1,13 +1,15 @@
 import base64
 import json
 import re
+import urllib.parse
 from services.transport import ProviderTransport
+from providers.base_provider import BaseProvider
 from providers.otakudesu.parser import OtakudesuParser
 from providers.base_parser import AnimeDetail, EpisodeSource
 
 BASE = 'https://otakudesu.cloud'
 
-class OtakudesuProvider:
+class OtakudesuProvider(BaseProvider):
     def __init__(self, transport: ProviderTransport):
         self._t = transport
         self._p = OtakudesuParser()
@@ -85,3 +87,14 @@ class OtakudesuProvider:
             sources = self._p.parse_episode_sources(html)
             
         return sources
+
+    async def search(self, query: str) -> list[dict]:
+        """Search for anime on Otakudesu."""
+        try:
+            await self._warmup()
+            url = f"{BASE}/?s={urllib.parse.quote_plus(query)}&post_type=anime"
+            html = await self._t.get_html(url)
+            return self._p.parse_search_results(html)
+        except Exception as e:
+            print(f"[Otakudesu] Search error: {e}")
+            return []
