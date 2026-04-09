@@ -11,12 +11,12 @@ async def get_home_v2(response: Response):
     Return homepage data exclusively from our database (datacenter).
     Ensures we only show anime that actually exist in our DB and have episodes.
     """
-    # 1. Hero / Trending: highest score anime that have episodes
+    # 1. Hero / Trending: highest trending anime that have episodes
     hero_rows = await database.fetch_all('''
         SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."synopsis", m."score", m."nextAiringEpisode"
         FROM anime_metadata m
         WHERE EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
-        ORDER BY m.score DESC NULLS LAST
+        ORDER BY m.trending DESC NULLS LAST, m.popularity DESC NULLS LAST, m.score DESC NULLS LAST
         LIMIT 6
     ''')
 
@@ -36,12 +36,12 @@ async def get_home_v2(response: Response):
         ORDER BY l.last_up DESC
     ''')
 
-    # 3. Popular: highest score anime all-time in our DB
+    # 3. Popular: highest popularity anime all-time in our DB
     popular_rows = await database.fetch_all('''
         SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
         FROM anime_metadata m
         WHERE EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
-        ORDER BY m.score DESC NULLS LAST
+        ORDER BY m.popularity DESC NULLS LAST, m.score DESC NULLS LAST
         LIMIT 15
     ''')
 

@@ -6,8 +6,8 @@ async def upsert_anime_db(anilist_data, provider_id: str, provider_slug: str):
         return
     try:
         query_meta = """
-            INSERT INTO anime_metadata ("anilistId", "cleanTitle", "nativeTitle", "coverImage", "bannerImage", "synopsis", "score", "status", "totalEpisodes", "season", "year", "updatedAt")
-            VALUES (:anilistId, :cleanTitle, :nativeTitle, :coverImage, :bannerImage, :synopsis, :score, :status, :totalEpisodes, :season, :year, NOW())
+            INSERT INTO anime_metadata ("anilistId", "cleanTitle", "nativeTitle", "coverImage", "bannerImage", "synopsis", "score", "popularity", "trending", "status", "totalEpisodes", "season", "year", "updatedAt")
+            VALUES (:anilistId, :cleanTitle, :nativeTitle, :coverImage, :bannerImage, :synopsis, :score, :popularity, :trending, :status, :totalEpisodes, :season, :year, NOW())
             ON CONFLICT ("anilistId") DO UPDATE SET
                 "cleanTitle" = EXCLUDED."cleanTitle",
                 "nativeTitle" = EXCLUDED."nativeTitle",
@@ -15,6 +15,8 @@ async def upsert_anime_db(anilist_data, provider_id: str, provider_slug: str):
                 "bannerImage" = EXCLUDED."bannerImage",
                 "synopsis" = EXCLUDED."synopsis",
                 "score" = EXCLUDED."score",
+                "popularity" = EXCLUDED."popularity",
+                "trending" = EXCLUDED."trending",
                 "status" = EXCLUDED."status",
                 "totalEpisodes" = EXCLUDED."totalEpisodes",
                 "season" = EXCLUDED."season",
@@ -29,6 +31,8 @@ async def upsert_anime_db(anilist_data, provider_id: str, provider_slug: str):
             'bannerImage': anilist_data.get('banner', ''),
             'synopsis': anilist_data.get('description', ''),
             'score': anilist_data.get('score'),
+            'popularity': anilist_data.get('popularity', 0),
+            'trending': anilist_data.get('trending', 0),
             'status': anilist_data.get('status', ''),
             'totalEpisodes': anilist_data.get('totalEpisodes'),
             'season': anilist_data.get('season', ''),
