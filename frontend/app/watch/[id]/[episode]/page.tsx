@@ -13,6 +13,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
 
   let sources: any[] = [];
   let allEpisodes: any[] = [];
+  let recommendations: any[] = [];
   let title = `Episode ${episode}`;
   let poster = "";
 
@@ -32,6 +33,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     if (anime) {
       title = anime.cleanTitle ?? anime.nativeTitle ?? title;
       poster = anime.coverImage ?? "";
+      recommendations = anime.recommendations ?? [];
       allEpisodes = (anime.episodes ?? []).map((e: any) => ({
         title: `Episode ${e.episodeNumber}`,
         url: `/watch/${id}/${e.episodeNumber}`,
@@ -40,5 +42,5 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  return <WatchClient id={String(anilistId)} episode={episode} title={title} poster={poster} sources={sources} allEpisodes={allEpisodes} />;
+  return <WatchClient id={String(anilistId)} episode={episode} title={title} poster={poster} sources={sources} allEpisodes={allEpisodes} recommendations={recommendations} />;
 }

@@ -97,9 +97,9 @@ export function CommentSection({ anilistId, episode, currentTime, onSeek }: Prop
   };
 
   return (
-    <div className="flex flex-col h-full anim-fade">
+    <div className="flex flex-col h-auto anim-fade">
       {/* Composer */}
-      <div className="p-4 border-b border-[#2c2c2e] bg-[#0a0c10] sticky top-0 z-10">
+      <div className="p-4 border-b border-[#2c2c2e]/50 bg-[#0a0c10]">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input 
             type="text" 
