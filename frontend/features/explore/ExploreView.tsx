@@ -50,39 +50,64 @@ export default function ExploreView() {
   useEffect(() => setSearchHist(getSearchHist()), []);
 
   useEffect(() => {
-    if (dq.length < 2 && !genre) { setResults([]); return; }
     setLoading(true);
-    const vars: any = { page: 1, perPage: 24 };
-    if (dq) vars.search = dq;
-    if (genre) vars.genres = [genre];
-    vars.sort = ["POPULARITY_DESC"];
+    
+    // CASE A: Search mode (AniList Proxy)
+    if (dq.length >= 2) {
+      const vars: any = { page: 1, perPage: 24, search: dq };
+      if (genre) vars.genres = [genre];
+      vars.sort = ["POPULARITY_DESC"];
 
-    api.anilist(SEARCH_Q, vars)
-      .then((data) => {
-        const media = data?.data?.Page?.media || [];
-        setResults(media.map((m: any) => ({
-          id: String(m.id),
-          title: m.title.english || m.title.romaji || m.title.native || "",
-          img: m.coverImage?.extraLarge || m.coverImage?.large,
-          score: m.averageScore,
-          color: m.coverImage?.color,
-          status: m.status,
-          seasonYear: m.seasonYear,
-        })));
-        if (dq && media.length > 0) {
-          const updated = [dq, ...getSearchHist().filter((t) => t.toLowerCase() !== dq.toLowerCase())].slice(0, 10);
-          saveSearchHist(updated);
-          setSearchHist(updated);
+      api.anilist(SEARCH_Q, vars)
+        .then((data) => {
+          const media = data?.data?.Page?.media || [];
+          setResults(media.map((m: any) => ({
+            id: String(m.id),
+            title: m.title.english || m.title.romaji || m.title.native || "",
+            img: m.coverImage?.extraLarge || m.coverImage?.large,
+            score: m.averageScore,
+            color: m.coverImage?.color,
+            status: m.status,
+            seasonYear: m.seasonYear,
+          })));
+          if (dq && media.length > 0) {
+            const updated = [dq, ...getSearchHist().filter((t) => t.toLowerCase() !== dq.toLowerCase())].slice(0, 10);
+            saveSearchHist(updated);
+            setSearchHist(updated);
+          }
+        })
+        .catch(() => setResults([]))
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    // CASE B: Browse mode (Local DB)
+    api.browse({ genre: genre || undefined, sort: "score" })
+      .then((res) => {
+        if (res.success) {
+          setResults(res.data.map((m: any) => ({
+            id: String(m.anilistId),
+            title: m.cleanTitle || m.nativeTitle || "",
+            img: m.coverImage,
+            score: m.score,
+            color: null, // DB doesn't have color yet
+            status: m.status,
+            seasonYear: m.year,
+          })));
+        } else {
+          setResults([]);
         }
       })
       .catch(() => setResults([]))
       .finally(() => setLoading(false));
+
   }, [dq, genre]);
 
   return (
     <div className="w-full pb-24">
       <div className="pt-10 px-5 md:px-8 mb-4">
         <h1 className="text-3xl font-black text-white">Eksplorasi</h1>
+        {!dq && !genre && <p className="text-[#8e8e93] text-[12px] mt-1">Menampilkan katalog perpustakaan lokal</p>}
       </div>
 
       {/* Search bar + genre filter — sticky */}
