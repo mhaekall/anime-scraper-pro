@@ -228,33 +228,3 @@ async def background_scrape_job():
             await asyncio.sleep(60)
             continue
             
-        await asyncio.sleep(3600)
- from DB: {db_e}")
-
-                now = int(time.time())
-                payload = {
-                    'data': {
-                        'latest_episodes': valid_items[:24],
-                        'top_anime': top_anime,
-                        'last_updated': now
-                    },
-                    'stale_at': now + 3600,
-                    'expires_at': now + 86400,
-                    'created_at': now
-                }
-                
-                await upstash_set("home_data", payload, ex=86400)
-                print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis.")
-                consecutive_failures = 0
-                
-        except TimeoutError:
-            print("[Cron] Another instance is running, skipping")
-        except Exception as e:
-            consecutive_failures += 1
-            import traceback
-            traceback.print_exc()
-            print(f"[Cron] Aggregator Error: {e}")
-            await asyncio.sleep(60)
-            continue
-            
-        await asyncio.sleep(3600)
