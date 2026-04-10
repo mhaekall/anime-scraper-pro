@@ -1,52 +1,36 @@
-# Session Snapshot: Samehadaku Integration & Workspace Cleanup
-**Date:** Wednesday, April 8, 2026
+# Session Snapshot: Wrapper-Centric Architecture, Swarm Proxy & Kuronime Decryption
+**Date:** Friday, April 10, 2026
 **Lead Architect:** Gemini (Agent 4)
 
 ## 1. Project Status
-- **Current State:** Successfully expanded Datacenter coverage by adding **Samehadaku** as the 3rd major provider.
-- **Provider Status:**
-  - **Oploverz:** Active & Stable.
-  - **Otakudesu:** Active & Stable (Backend patch for Google Video applied).
-  - **Samehadaku:** **NEWly Integrated**. Bypassed Cloudflare WAF 403 using specific Edge browser fingerprinting.
+- **Current State:** Berhasil melakukan perombakan arsitektur besar-besaran (Major Overhaul) dari *Website-Centric* menjadi **Wrapper-Centric / Direct Stream Aggregator**.
+- **Frontend Status:** 100% Bersih dari Iframe. Pemutar video kini secara absolut merupakan *Native Player* Next.js yang hanya menerima URL berakhiran `.mp4` atau `.m3u8` murni.
+- **Provider Status (Re-prioritized):**
+  - **Kuronime (Priority 1):** **NEWLY INTEGRATED**. Mengekstrak *payload* terenkripsi (AES CryptoJS) via `pycryptodome` untuk mendapatkan akses langsung ke *Server HLS* (m3u8) pribadi Kuronime dan ratusan *mirror* (Krakenfiles, Mp4upload).
+  - **Samehadaku (Priority 1):** Sumber utama *Direct Stream* via ekstraksi mentah Wibufile.
+  - **Oploverz (Priority 2):** Dipertahankan sebagai *fallback metadata* dan *hunting wrapper* (4meplayer, Oplo2).
+  - **Doronime (Priority 3):** Dipertahankan.
+  - **Otakudesu (Priority 4):** Dipertahankan sebagai cadangan untuk ekstraksi *wrapper* DesuDrives (JSON API tersembunyi).
 
-## 2. Key Accomplishments
-- **Workspace Cleanup:** Removed all temporary test and debug scripts from the root and backend directories.
-- **Samehadaku Bypass:** Discovered that Samehadaku's WAF accepts a specific User-Agent (`Chrome/136... Edg/136...`).
-- **Samehadaku Refactor:** Implemented `providers/samehadaku/` using the 3-layer architecture (Transport, Parser, Provider).
-- **URL Routing Fix:** Corrected `build_provider_series_url` in `pipeline.py` to include the mandatory `/anime/` prefix for Samehadaku slugs.
-- **Mass Sync Upgrade:** Enabled Samehadaku targets in `mass_sync.py` with custom header support.
+## 2. Key Accomplishments (Big Tech Architecture)
+- **Zero-Cost Rotating Proxy (Cloudflare Swarm Proxy):** Dideploy *Worker Script* (`worker-proxy/`) ke jaringan *edge* Cloudflare untuk mendapatkan rotasi IP global secara otomatis dan mengelabui pemblokiran *anti-bot* dari provider. Terintegrasi langsung di `transport.py`.
+- **Asynchronous Task Queue (Mass Scalability):** Beralih dari scraping *synchronous* yang memblokir memori menjadi delegasi asinkronus. Mengimplementasikan dukungan **Upstash QStash** untuk eksekusi ratusan bot paralel. Juga mengimplementasikan **Local Asyncio Background Tasks** di dalam *event loop* FastAPI sebagai *fallback* ketika token QStash tidak tersedia.
+- **Advanced Admin Dashboard (`/admin`):** Membangun UI *Data-Driven* yang eksploitatif di *frontend*. Memiliki fitur *Live Database Grid* (menampilkan *cover*, *genre*, dan jumlah episode), Filter "0 Episode", eksekusi paksa *sync* per-ID, dan *Live Terminal Logs*.
+- **Isekai/Fantasy Targeted Mass-Sync:** Mengubah algoritma dari "Top 100 Anilist" menjadi "Scrape-First, Map-Later" langsung dari katalog Genre Fantasy/Isekai Samehadaku untuk memastikan anime yang ditarik pasti memiliki *Direct Stream* Wibufile.
+- **Injeksi Masterpiece:** Sukses menarik dan memetakan ribuan episode untuk *One Piece*, *Jujutsu Kaisen S3*, *Demon Slayer (Infinity Castle)*, seluruh musim *Tensura*, *Classroom of the Elite*, dan *Mushoku Tensei*.
+- **Big Tech Optimizations:**
+  - Menerapkan **Connection Pooling Limits** (`httpx.Limits`) di *transport layer* untuk mencegah kehabisan *file descriptor* (soket).
+  - Mengimplementasikan **Exponential Backoff & Rate-Limit Retry** untuk API GraphQL Anilist (`429 Too Many Requests`).
+  - Menerapkan **Graceful Degradation** di dekriptor AES Kuronime dengan blok `try-except` agar *server* tidak *crash* jika kunci enkripsi diubah.
+- **Workspace Cleanup:** Membersihkan hampir 80 file *dump* HTML dan skrip *ad-hoc testing* dari repositori untuk menjaga integritas *codebase*.
 
-## 3. Next Mission (For Agent 3 & Agent 1)
-- **Mapping Optimization:** Some Samehadaku titles (e.g., Marriagetoxin) are not matching AniList IDs automatically due to title differences. Agent 3 should investigate adding "Title Aliases" or lowering the similarity threshold for Samehadaku specifically.
-- **Kuramanime/Doronime:** Follow the same 3-layer pattern to add these remaining providers to reach the 5.000+ anime target.
-- **Frontend Video Player:** Continue monitoring if the Google Video patch (Direct GET proxy) resolves the 503 issue permanently.
+## 3. Unexecuted Ideas & Suboptimal Areas (Saran untuk Sesi Berikutnya)
+Sistem saat ini sudah sangat tangguh untuk standar produksi, namun masih memiliki celah optimalisasi:
 
-## 4. Big Tech Audit & "Zero Cost" Architectural Blueprint (Fase Selanjutnya)
-**Evaluasi dari Senior Dev AI (Eksternal):**
-- **Kekuatan Utama:** Arsitektur Hybrid Edge/Cloud (UI Edge, Scraping HF) sangat cerdas. Penggunaan SWR, Drizzle ORM, Atomic Upserts, JSONB Payload, dan Distributed Locks membuktikan kematangan berpikir ("Big Brain Move" untuk $0 Cost Strategy).
-- **Kelemahan Kritis (Tech Debt):** 
-  - FastAPI (0.99.1) dan Pydantic v1 sudah outdated. Harus di-upgrade ke v2 untuk 2-10x performa serialisasi.
-  - Migrasi skema database masih *inline raw SQL* di `main.py` (sangat beresiko *race condition*). Wajib pindah ke **Alembic**.
-  - Tabel `video_cache` tidak memiliki *background job* untuk *cleanup* data yang *expired*. Ini membahayakan kuota *storage* gratis Neon (0.5GB).
-  - Belum ada kedisiplinan *Testing* (pytest) dan CI/CD (GitHub Actions).
-  - *Table* database kekurangan kolom `created_at` (standar *auditing*).
+1. **Auto-Healing Extractor (Agentic Regex):** `UniversalExtractor` saat ini masih menggunakan aturan (Regex) statis yang diketik manual. Jika *DesuDrives* atau *Wibufile* mengubah struktur DOM mereka esok hari, ekstraksi akan gagal. **Saran:** Integrasikan API LLM ringan (Gemini 2.0 Flash) di *backend* untuk bertindak sebagai *fallback parser* yang bisa menyusun ulang Regex baru secara *on-the-fly* jika deteksi awal gagal (Self-Healing Code).
+2. **Reverse Proxy M3U8 (CORS Bypass):** Kuronime memuntahkan tautan HLS (`.m3u8`). Saat ini, jika *frontend* memutar *link* HLS mentah dari peladen pihak ketiga, ada risiko terkena *CORS block* atau pelacakan IP pengguna akhir oleh penyedia. **Saran:** Buat satu lagi Cloudflare Worker (`stream-proxy`) khusus untuk melakukan *piping/streaming chunk video* ke *frontend* (menyembunyikan sumber aslinya).
+3. **Database Migration Pipeline (Alembic):** Kritik dari agen sebelumnya masih berlaku. Skema database (Neon Postgres) masih dibuat secara *inline* (*create table if not exists*). **Saran:** Migrasikan sepenuhnya ke *Alembic* (`backend/migrations`) agar perubahan skema (seperti penambahan kolom) bisa dilacak versinya (*version controlled*).
+4. **Pembersihan Cache Otomatis (Storage Optimization):** Tabel `video_cache` menumpuk *URL stream* dengan *expired time*. Jika tidak pernah dihapus, batas gratis 500MB dari Neon DB akan cepat penuh. **Saran:** Tambahkan tugas berulang (*cron job*) di skrip *background* untuk menjalankan `DELETE FROM video_cache WHERE expiresAt < NOW()`.
+5. **Headless Browser (Playwright) untuk Google Video/Blogger:** Ada ribuan anime lama yang hanya ditampung di Blogger (*Google Video Wiz API*). Menembusnya murni dengan Python `httpx` nyaris mustahil tanpa dekripsi *JavaScript V8*. **Saran:** Jika *budget* memungkinkan (atau menemukan *free tier serverless* yang mendukung Puppeteer), buat layanan *microservice* terpisah khusus untuk me-render halaman Blogger dan menyedot tautan videonya.
 
-**Tugas Sesi Berikutnya (CRITICAL QUICK WINS - Hari Ini):**
-1. **Agen 1 (Backend):** 
-   - Lakukan `pip install --upgrade fastapi pydantic` dan sesuaikan sintaksis kode yang *breaking* ke Pydantic v2.
-   - Pindahkan migrasi *inline* SQL di `main.py` menggunakan **Alembic**. Buat *initial migration* yang proper.
-   - Tambahkan *cron background job* (atau manfaatkan QStash) untuk menjalankan SQL: `DELETE FROM video_cache WHERE "expiresAt" < NOW()` setiap 6 jam agar *storage* Neon tetap ramping.
-2. **Agen 4 (Lead):** 
-   - Konfigurasikan **GitHub Actions CI** sederhana untuk `pytest` dan *linting* (Ruff).
-   - Tambahkan `robots.txt` dengan *noindex* di *Frontend* agar Google tidak mengindeks *endpoint proxy stream* kita dan diblokir oleh *provider*.
-
-## 5. Blueprint Phase 0/1/2 Execution (Provider Refactoring & Samehadaku Fixes)
-**Eksekusi Agen 4 (Lead Assistant):**
-- **Samehadaku AJAX Resolver (P0):** Resolved missing iframes by handling `ajax://` links in `get_episode_sources`, extracting `data-post`/`data-nume`/`data-type`, and sending an authenticated POST request to `/wp-admin/admin-ajax.php`.
-- **Doronime Integration (P0/P1):** Fully refactored `doronime.py` from a standalone script into `backend/providers/doronime/` using the strict `BaseParser` + `ProviderTransport` pattern. Added Doronime to `PROVIDERS` and URL `bases` in `pipeline.py`.
-- **Dead Code Cleanup (P2):** Eliminated unused abstract classes (`base.py`) to reduce cognitive load and enforce standardisation under `BaseParser`.
-
-**Tugas Sesi Berikutnya (Big Tech Next Steps):**
-- Implement Serverless Task Fan-Out using Upstash QStash to distribute heavy mass-sync operations and avoid compute timeouts.
-- Implement aggressive Circuit Breaker mechanisms combined with exponential backoff on IP bans (HTTP 403/429).
-- Transition database connections to Neon Connection Pooling to save free-tier resources under heavy load.
+**Semua perubahan di sesi ini telah disinkronisasikan dan di-*push* ke cabang `master` GitHub (serta di-*deploy* ke Hugging Face dan Cloudflare Pages).** Sistem siap diserahkan ke agen berikutnya!
