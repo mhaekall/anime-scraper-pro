@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from db.connection import database
 from services.background import background_scrape_job
-from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook
+from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook, social
 
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://anime-scraper-pro.pages.dev")
 
