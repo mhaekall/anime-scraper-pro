@@ -18,6 +18,7 @@ class ProviderTransport:
                 verify=True,
                 timeout=25.0, # Increased timeout for proxy relay
                 follow_redirects=True,
+                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
             )
         return cls._client
