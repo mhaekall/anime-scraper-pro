@@ -46,10 +46,26 @@ def create_uptimerobot_monitor():
                 print(f"✅ Monitor successfully created! ID: {res_data['monitor']['id']}")
             else:
                 print(f"❌ Failed to create monitor: {res_data.get('error', {}).get('message', 'Unknown error')}")
+                try:
+                    urllib.request.urlopen(urllib.request.Request(
+                        "https://ntfy.sh/anime_scraper_pro_alerts",
+                        data="Failed to create UptimeRobot monitor for Anime Scraper Pro".encode('utf-8'),
+                        method="POST"
+                    ))
+                except Exception:
+                    pass
                 
     except urllib.error.HTTPError as e:
         print(f"❌ API Request failed with status code: {e.code}")
         print(e.read().decode('utf-8'))
+        try:
+            urllib.request.urlopen(urllib.request.Request(
+                "https://ntfy.sh/anime_scraper_pro_alerts",
+                data=f"UptimeRobot API Request failed with status: {e.code}".encode('utf-8'),
+                method="POST"
+            ))
+        except Exception:
+            pass
     except Exception as e:
         print(f"❌ Error: {e}")
 
