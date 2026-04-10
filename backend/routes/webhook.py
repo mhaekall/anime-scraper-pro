@@ -68,12 +68,14 @@ async def cleanup_webhook(request: Request):
     await _verify_qstash(request)
     
     try:
-        # Delete expired video cache entries
-        query = 'DELETE FROM video_cache WHERE "expiresAt" < NOW()'
-        await database.execute(query)
-        print("[Webhook] Cleaned up expired video_cache entries")
+        await cleanup_expired_cache()
+        await vacuum_old_episodes()
+        print("[Webhook] Completed full DB vacuum cycle")
         
         return Response(status_code=200, content="Cleanup Completed")
+    except Exception as e:
+        print(f"[Webhook] Error running cleanup: {e}")
+        raise HTTPException(status_code=500, detail=str(e))nup Completed")
     except Exception as e:
         print(f"[Webhook] Error running cleanup: {e}")
         raise HTTPException(status_code=500, detail=str(e))
