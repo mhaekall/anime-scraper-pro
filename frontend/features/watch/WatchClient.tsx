@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { VideoPlayer } from "@/ui/player/VideoPlayer";
 import { AutoNextOverlay } from "@/ui/player/AutoNextOverlay";
 import { IconBack, IconPlay } from "@/ui/icons";
 import { CommentSection } from "./CommentSection";
+import { API } from "@/core/lib/api";
 
 interface Props {
   id: string;
@@ -18,12 +20,24 @@ interface Props {
   recommendations?: any[];
 }
 
-export default function WatchClient({ id, episode, title, poster, sources, allEpisodes, recommendations = [] }: Props) {
+export default function WatchClient({ id, episode, title, poster, sources: initialSources, allEpisodes, recommendations = [] }: Props) {
   const router = useRouter();
   const [showAutoNext, setShowAutoNext] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [showAllEpisodes, setShowAllEpisodes] = useState(false);
   const epNum = parseFloat(episode) || 1;
+
+  // Fetch stream secara async setelah halaman render
+  const { data: streamData, isLoading: streamLoading } = useSWR(
+    `stream-${id}-${episode}`,
+    () => fetch(`${API}/api/v2/anime/${id}/episodes/${episode}/stream`).then(r => r.json()),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300_000, // Cache 5 menit
+    }
+  );
+
+  const sources = streamData?.sources ?? initialSources;
 
   // Assuming episodes are sorted ascending by number
   const sortedEpisodes = [...allEpisodes].sort((a, b) => a.number - b.number);
@@ -60,7 +74,8 @@ export default function WatchClient({ id, episode, title, poster, sources, allEp
             animeSlug={id} 
             episodeNum={epNum} 
             onRequireAutoNext={() => setShowAutoNext(true)} 
-            onTimeUpdate={setCurrentTime} 
+            onTimeUpdate={setCurrentTime}
+            isLoadingSources={streamLoading && sources.length === 0}
           />
           
           {showAutoNext && nextEp && (

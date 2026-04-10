@@ -45,3 +45,20 @@ body {
 
 /* Safe area */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* View Transition API */
+@keyframes slide-from-right {
+  from { transform: translateX(30px); opacity: 0; }
+}
+
+@keyframes slide-to-left {
+  to { transform: translateX(-30px); opacity: 0; }
+}
+
+::view-transition-old(root) {
+  animation: 200ms ease-out slide-to-left;
+}
+
+::view-transition-new(root) {
+  animation: 200ms ease-out slide-from-right;
+}

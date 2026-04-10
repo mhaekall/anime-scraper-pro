@@ -1,20 +1,22 @@
 // app/anime/[id]/page.tsx — Anime detail page (server-side fetch)
 
+import { Suspense } from "react";
 import Link from "next/link";
-import { api, API } from "@/core/lib/api";
+import { API } from "@/core/lib/api";
 import DetailClient from "@/features/detail/DetailClient";
+import DetailSkeleton from "@/features/detail/DetailSkeleton";
 
 export const dynamic = "force-dynamic";
 export const runtime = "edge";
 
-export default async function AnimeDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-
+async function AnimeData({ id }: { id: string }) {
   let detail: any = null;
   let error: string | null = null;
 
   try {
-    const res = await fetch(`${API}/api/v2/anime/${id}`);
+    const res = await fetch(`${API}/api/v2/anime/${id}`, {
+      next: { revalidate: 300 }, // ISR 5 menit
+    });
     if (res.ok) {
       const json = await res.json();
       const a = json.data;
@@ -60,4 +62,13 @@ export default async function AnimeDetailPage({ params }: { params: Promise<{ id
   }
 
   return <DetailClient detail={detail} id={id} />;
+}
+
+export default async function AnimeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return (
+    <Suspense fallback={<DetailSkeleton />}>
+      <AnimeData id={id} />
+    </Suspense>
+  );
 }

@@ -16,10 +16,20 @@ class ProviderTransport:
             cls._client = httpx.AsyncClient(
                 transport=SSRFSafeTransport(),
                 verify=True,
-                timeout=25.0, # Increased timeout for proxy relay
+                timeout=httpx.Timeout(
+                    connect=5.0,  # Lebih cepat timeout connect
+                    read=20.0,    # Beri waktu lebih buat read stream
+                    write=5.0,
+                    pool=2.0,
+                ),
                 follow_redirects=True,
-                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+                limits=httpx.Limits(
+                    max_connections=100,
+                    max_keepalive_connections=20,
+                    keepalive_expiry=30.0,
+                ),
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+                http2=True,  # Enable HTTP/2 untuk multiplexing
             )
         return cls._client
 
