@@ -137,17 +137,32 @@ async def upsert_episode(
 
 
 async def get_video_cache(episode_url: str) -> Optional[dict]:
+    # 1. Try Redis first (hot cache)
+    redis_key = f"video_cache:{episode_url}"
+    cached_redis = await upstash_get(redis_key)
+    if cached_redis:
+        return cached_redis
+
+    # 2. Fallback to Postgres
     row = await database.fetch_one(
         'SELECT payload FROM video_cache WHERE "episodeUrl" = :url AND "expiresAt" > NOW()',
         values={"url": episode_url},
     )
     if row and row["payload"]:
         raw = row["payload"]
-        return raw if isinstance(raw, dict) else json.loads(raw)
+        parsed = raw if isinstance(raw, dict) else json.loads(raw)
+        # Restore to redis
+        await upstash_set(redis_key, parsed, ex=SOURCE_CACHE_HOURS * 3600)
+        return parsed
     return None
 
 
 async def save_video_cache(episode_url: str, provider_id: str, payload: dict) -> None:
+    # 1. Save to Redis (hot cache)
+    redis_key = f"video_cache:{episode_url}"
+    await upstash_set(redis_key, payload, ex=SOURCE_CACHE_HOURS * 3600)
+
+    # 2. Save to Postgres
     expires = datetime.utcnow() + timedelta(hours=SOURCE_CACHE_HOURS)
     await database.execute(
         """
