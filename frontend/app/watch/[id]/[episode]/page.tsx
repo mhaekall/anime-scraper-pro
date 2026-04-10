@@ -9,26 +9,20 @@ export const runtime = "edge";
 export default async function WatchPage({ params }: { params: Promise<{ id: string; episode: string }> }) {
   const { id, episode } = await params;
   const anilistId = parseInt(id, 10);
-  const epNum = parseFloat(episode);
 
-  let sources: any[] = [];
   let allEpisodes: any[] = [];
   let recommendations: any[] = [];
   let title = `Episode ${episode}`;
   let poster = "";
 
-  const [streamRes, detailRes] = await Promise.allSettled([
-    fetch(`${API}/api/v2/anime/${anilistId}/episodes/${epNum}/stream`),
-    fetch(`${API}/api/v2/anime/${anilistId}`),
-  ]);
+  // Hanya ambil detail dulu (metadata ringan)
+  // Stream di-fetch CLIENT-SIDE setelah mount
+  const detailRes = await fetch(`${API}/api/v2/anime/${anilistId}`, {
+    next: { revalidate: 300 },
+  });
 
-  if (streamRes.status === "fulfilled" && streamRes.value.ok) {
-    const data = await streamRes.value.json();
-    sources = data.sources ?? [];
-  }
-
-  if (detailRes.status === "fulfilled" && detailRes.value.ok) {
-    const data = await detailRes.value.json();
+  if (detailRes.ok) {
+    const data = await detailRes.json();
     const anime = data.data;
     if (anime) {
       title = anime.cleanTitle ?? anime.nativeTitle ?? title;
@@ -42,5 +36,15 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  return <WatchClient id={String(anilistId)} episode={episode} title={title} poster={poster} sources={sources} allEpisodes={allEpisodes} recommendations={recommendations} />;
+  return (
+    <WatchClient 
+      id={String(anilistId)} 
+      episode={episode} 
+      title={title} 
+      poster={poster} 
+      sources={[]} 
+      allEpisodes={allEpisodes} 
+      recommendations={recommendations} 
+    />
+  );
 }

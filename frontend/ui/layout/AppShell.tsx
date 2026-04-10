@@ -4,12 +4,16 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Home, PlaySquare, FolderDot, User } from "lucide-react";
 import { Toaster } from "@/ui/overlays/Toaster";
+import { useKonami } from "@/core/hooks/use-konami";
+import { SnakeGame } from "@/ui/games/SnakeGame";
+
+const loadingSkeleton = () => <div className="w-full h-screen bg-black animate-pulse flex items-center justify-center"><div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full anim-spin" /></div>;
 
 // Views
-const HomeView = dynamic(() => import("@/features/home/HomeView"), { ssr: false });
-const ExploreView = dynamic(() => import("@/features/explore/ExploreView"), { ssr: false });
-const CollectionView = dynamic(() => import("@/features/collection/CollectionView"), { ssr: false });
-const ProfileView = dynamic(() => import("@/features/profile/ProfileView"), { ssr: false });
+const HomeView = dynamic(() => import("@/features/home/HomeView"), { ssr: false, loading: loadingSkeleton });
+const ExploreView = dynamic(() => import("@/features/explore/ExploreView"), { ssr: false, loading: loadingSkeleton });
+const CollectionView = dynamic(() => import("@/features/collection/CollectionView"), { ssr: false, loading: loadingSkeleton });
+const ProfileView = dynamic(() => import("@/features/profile/ProfileView"), { ssr: false, loading: loadingSkeleton });
 
 const TABS = [
   { id: "home", label: "Beranda", icon: Home },
@@ -21,6 +25,9 @@ const TABS = [
 export default function AppShell() {
   const [tab, setTab] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [snakeActive, setSnakeActive] = useState(false);
+
+  useKonami(() => setSnakeActive(true));
 
   useEffect(() => {
     setMounted(true);
@@ -93,6 +100,7 @@ export default function AppShell() {
       </div>
 
       <Toaster />
+      {snakeActive && <SnakeGame onClose={() => setSnakeActive(false)} />}
     </div>
   );
 }
