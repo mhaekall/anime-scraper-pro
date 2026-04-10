@@ -34,9 +34,10 @@ interface Props {
   episodeNum?: number;
   onRequireAutoNext?: () => void;
   onTimeUpdate?: (time: number) => void;
+  isLoadingSources?: boolean;
 }
 
-function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onRequireAutoNext, onTimeUpdate }: Props) {
+function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onRequireAutoNext, onTimeUpdate, isLoadingSources }: Props) {
   const accent = useSettings((s) => s.settings.accentColor);
   const autoPlayNext = useSettings((s) => s.settings.autoPlayNext);
   const { updateProgress } = useWatchHistory();
@@ -232,6 +233,14 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const pct = duration > 0 ? (progress / duration) * 100 : 0;
   const bufPct = duration > 0 ? (buffered / duration) * 100 : 0;
 
+  // Loading sources
+  if (isLoadingSources && direct.length === 0) return (
+    <div className="w-full aspect-video bg-[#0a0c10] md:rounded-2xl flex flex-col items-center justify-center text-[#8e8e93] gap-3 border border-white/5">
+      <div className="w-8 h-8 border-3 border-white/20 border-t-white rounded-full anim-spin" />
+      <p className="text-sm font-semibold">Mencari sumber video...</p>
+    </div>
+  );
+
   // No sources
   if (direct.length === 0) return (
     <div className="w-full aspect-video bg-[#0a0c10] md:rounded-2xl flex flex-col items-center justify-center text-[#8e8e93] gap-2 border border-white/5">
@@ -257,7 +266,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
         </div>
       )}
 
-      {loading && !error && <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none"><div className="w-10 h-10 border-3 border-white/20 border-t-white rounded-full anim-spin" /></div>}
+      {(loading || isLoadingSources) && !error && <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none"><div className="w-10 h-10 border-3 border-white/20 border-t-white rounded-full anim-spin" /></div>}
 
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3">
