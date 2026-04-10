@@ -108,6 +108,13 @@ async def background_scrape_job():
             async with lock:
                 print("[Cron] Starting Multi-Source Aggregator Scrape Job...")
                 
+                # Zero-Cost Optimization: Auto-cleanup expired video_cache
+                try:
+                    res = await database.execute('DELETE FROM video_cache WHERE "expiresAt" < NOW()')
+                    print(f"[Cron] Cleaned {res} expired cache entries.")
+                except Exception as db_err:
+                    print(f"[Cron] Failed to clean cache: {db_err}")
+                
                 # Fetch from all providers concurrently to maximize direct wrapper discoveries (DesuDrives, 4meplayer, Wibufile)
                 results = await asyncio.gather(
                     scrape_kuronime_home(),
