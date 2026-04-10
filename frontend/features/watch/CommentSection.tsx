@@ -27,7 +27,15 @@ export function CommentSection({ anilistId, episode, currentTime, onSeek }: Prop
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   
-  const userId = "local_user_" + Math.floor(Math.random() * 1000); // MVP Mock User
+  const [userId] = useState(() => {
+    if (typeof window === 'undefined') return 'ssr';
+    let id = localStorage.getItem('anon_user_id');
+    if (!id) {
+      id = 'anon_' + Math.floor(Math.random() * 1000000);
+      localStorage.setItem('anon_user_id', id);
+    }
+    return id;
+  });
 
   useEffect(() => {
     fetch(`${API}/api/v2/social/comments?anilistId=${anilistId}&episodeNumber=${episode}`)
