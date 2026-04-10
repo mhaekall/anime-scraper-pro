@@ -228,3 +228,5 @@ async def background_scrape_job():
             await asyncio.sleep(60)
             continue
             
+        await asyncio.sleep(3600)
+            
