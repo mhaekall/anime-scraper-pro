@@ -85,6 +85,22 @@ async def _scrape_otakudesu(series_url: str, episode_num: float) -> Dict[str, An
     except:
         return {'sources': [], 'provider': 'otakudesu'}
 
+async def _scrape_kuronime(title: str, episode_num: float) -> Dict[str, Any]:
+    try:
+        async with asyncio.timeout(PROVIDER_TIMEOUT):
+            s = await kuronime_provider.search(title)
+            if not s: return {'sources': [], 'provider': 'kuronime'}
+            details = await kuronime_provider.get_anime_detail(s[0]['url'])
+            if not details: return {'sources': [], 'provider': 'kuronime'}
+            target_url = next((e['url'] for e in details.get('episodes', []) if re.search(fr'\b{episode_num}\b', e['title'])), None)
+            if not target_url: return {'sources': [], 'provider': 'kuronime'}
+            raw = await kuronime_provider.get_episode_sources(target_url)
+            embeds = raw if isinstance(raw, list) else raw.get('sources', [])
+            resolved = await asyncio.gather(*[_resolve_embed(e, 'kuronime') for e in embeds])
+            return {'sources': [s for s in resolved if s], 'provider': 'kuronime'}
+    except:
+        return {'sources': [], 'provider': 'kuronime'}
+
 # ---------------------------------------------------------------------------
 # Tier-3 Last Resort Helpers
 # ---------------------------------------------------------------------------
@@ -116,13 +132,12 @@ async def get_sources_v2(
     anilist_id: int = Query(None, description="Anilist ID")
 ):
     start_ts = time.monotonic()
-    
     # Tier 1 & 2: Reconciler with Variants
     mappings = {}
     for variant in _title_variants(title):
         try:
             async with asyncio.timeout(10.0):
-                recon_result = await reconciler.reconcile(provider_id="otakudesu", provider_slug="", raw_title=variant)
+                recon_result = await reconciler.reconcile(provider_id="samehadaku", provider_slug="", raw_title=variant)
                 if recon_result and recon_result.providers:
                     for p in recon_result.providers:
                         mappings[p.provider_id] = p.provider_slug
@@ -132,18 +147,34 @@ async def get_sources_v2(
     scrape_tasks = []
     providers_attempted = []
 
-    # Oploverz Attempt (Logic remains similar to previous turn but more robust)
-    # Oploverz often uses title-based slugs
-    slug = title.lower().replace(' ', '-')
+    # Focus on all providers that can yield Direct Streams (Wibufile, DesuDrives, 4meplayer)
+    
+    # 1. Samehadaku (Wibufile, etc)
+    if mappings and 'samehadaku' in mappings:
+        pass # Currently _scrape_samehadaku handles title search internally, but we can just use the mapping title if needed
+    scrape_tasks.append(_scrape_samehadaku(title, ep))
+    providers_attempted.append('samehadaku')
+    
+    # 2. Oploverz (4meplayer, Oplo2, Blogger)
+    # Oploverz often uses title-based slugs, so we can try slugifying
+    if mappings and 'oploverz' in mappings:
+        slug = mappings['oploverz']
+    else:
+        slug = title.lower().replace(' ', '-')
     scrape_tasks.append(_scrape_oploverz(f"https://o.oploverz.ltd/series/{slug}/episode/{ep}/"))
     providers_attempted.append('oploverz')
 
-    # Otakudesu Attempt (Tier 1/2 or Tier 3)
+    # 3. Otakudesu (DesuDrives, Blogger)
     if mappings and 'otakudesu' in mappings:
         scrape_tasks.append(_scrape_otakudesu(f"https://otakudesu.blog/anime/{mappings['otakudesu']}/", ep))
     else:
+        # Fallback to search
         scrape_tasks.append(_last_resort_otakudesu(title, ep))
     providers_attempted.append('otakudesu')
+    
+    # 4. Kuronime (KuroPlayer, HLS, Kraken)
+    scrape_tasks.append(_scrape_kuronime(title, ep))
+    providers_attempted.append('kuronime')
 
     if not scrape_tasks:
         raise HTTPException(status_code=503, detail="All providers down or mapping failed.")
@@ -155,6 +186,9 @@ async def get_sources_v2(
         if isinstance(res, dict) and res.get('sources'):
             all_sources.extend(res['sources'])
 
+    # FILTER: ONLY DIRECT LINKS
+    all_sources = [s for s in all_sources if s.get('type') == 'direct']
+
     all_sources.sort(key=lambda x: QUALITY_RANK.get(x.get('quality', 'Auto'), 1), reverse=True)
 
     return {
@@ -162,3 +196,4 @@ async def get_sources_v2(
         'sources': all_sources,
         'elapsed_ms': int((time.monotonic() - start_ts) * 1000)
     }
+

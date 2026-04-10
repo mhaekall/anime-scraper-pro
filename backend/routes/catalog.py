@@ -95,8 +95,9 @@ async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks, re
     """Lightweight endpoint: only the episode list."""
     has_eps = await ensure_episodes_exist(anilist_id)
     if not has_eps:
-        # Kick off a sync but don't block
-        background_tasks.add_task(sync_anime_episodes, anilist_id)
+        # Kick off a sync via QStash task queue to distribute bots
+        from services.queue import enqueue_sync
+        await enqueue_sync(anilist_id)
         return {"success": False, "syncing": True, "data": []}
 
     rows = await database.fetch_all(

@@ -4,6 +4,7 @@ import urllib.parse
 import time
 import random
 import string
+import asyncio
 from utils.ssrf_guard import SSRFSafeTransport
 
 HEADERS = {
@@ -13,18 +14,28 @@ HEADERS = {
 }
 
 class UniversalExtractor:
-    def __init__(self):
+    def __init__(self, concurrency_limit=20):
         self.client = httpx.AsyncClient(
             transport=SSRFSafeTransport(),
-            verify=True,
+            verify=False, # Ignore SSL errors for shady providers
             headers=HEADERS,
             timeout=15.0,
-            follow_redirects=True
+            follow_redirects=True,
+            limits=httpx.Limits(max_connections=50, max_keepalive_connections=20)
         )
+        self.semaphore = asyncio.Semaphore(concurrency_limit)
 
     async def extract_raw_video(self, embed_url: str) -> str:
+        async with self.semaphore:
+            return await self._extract_raw_video_impl(embed_url)
+
+    async def _extract_raw_video_impl(self, embed_url: str) -> str:
         url = embed_url
         
+        # Wibufile direct handling (already raw mp4, skip fetching to save time)
+        if 'wibufile' in url.lower() and url.endswith(('.mp4', '.m3u8')):
+            return url
+            
         # Handle if the input is actually an iframe HTML string (like what wajik-anime-api generateSrcFromIframeTag does)
         if '<iframe' in url.lower():
             iframe_match = re.search(r'<iframe[^>]+src="([^"]+)"', url, re.IGNORECASE)
@@ -45,17 +56,31 @@ class UniversalExtractor:
                 try:
                     data = res.json()
                     if data.get('ok') and data.get('video'):
-                        return await self.extract_raw_video(data['video'].replace('&amp;', '&'))
+                        return await self._extract_raw_video_impl(data['video'].replace('&amp;', '&'))
                 except Exception:
                     # It might return HTML instead of JSON
                     match = re.search(r'<source[^>]+src=["\']([^"\']+)["\']', res.text, re.IGNORECASE)
                     if match:
                         return match.group(1).replace('&amp;', '&')
             elif 'blogger.com' in url:
+                # Blogger Videos
                 res = await self.client.get(url)
                 match = re.search(r'"play_url":"([^"]+)"', res.text)
                 if match: 
                     return match.group(1).encode('utf-8').decode('unicode_escape')
+            elif 'krakenfiles.com' in url:
+                res = await self.client.get(url)
+                token_match = re.search(r'var\s+token\s*=\s*["\']([^"\']+)["\']', res.text)
+                form_match = re.search(r'url:\s*["\'](//krakenfiles.com/download/[^"\']+)["\']', res.text)
+                if token_match and form_match:
+                    dl_url = "https:" + form_match.group(1)
+                    res2 = await self.client.post(dl_url, data={"token": token_match.group(1)})
+                    try:
+                        data = res2.json()
+                        if data.get('status') == 'ok' and data.get('url'):
+                            return data['url']
+                    except Exception:
+                        pass
             elif '4meplayer' in url or 'oplo2.' in url:
                 hash_id = url.split('#')[-1]
                 if not hash_id: return url
@@ -116,11 +141,6 @@ class UniversalExtractor:
                 match = re.search(r'file:\s*["\'](https?://[^"\']+\.(?:m3u8|mp4)[^"\']*)["\']', res.text)
                 if match:
                     return match.group(1)
-                # handle packed js
-                packed_match = re.search(r'eval\(function\(p,a,c,k,e,d\).*?split\(\'\|\'\)\)\)', res.text)
-                if packed_match:
-                    # Unpack could be complex, for now fallback to looking for m3u8
-                    pass
         except Exception as e:
             print(f"[Extractor] Error resolving {url}: {e}")
         

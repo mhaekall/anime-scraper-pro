@@ -1,0 +1,7 @@
+name = "scraper-proxy-swarm"
+main = "worker.js"
+compatibility_date = "2024-04-01"
+
+[vars]
+# Ensure you define this securely in production
+PROXY_SECRET = "anime-pro-secure-2026"

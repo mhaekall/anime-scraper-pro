@@ -36,6 +36,7 @@ from services.providers import (
     otakudesu_provider,
     samehadaku_provider,
     doronime_provider,
+    kuronime_provider,
     extractor,
 )
 
@@ -46,11 +47,12 @@ PROVIDERS = {
     "otakudesu":  otakudesu_provider,
     "samehadaku": samehadaku_provider,
     "doronime":   doronime_provider,
+    "kuronime":   kuronime_provider,
 }
 
 # Priority when multiple providers have the same episode.
 # Lower number = higher priority.
-PROVIDER_PRIORITY = {"otakudesu": 1, "samehadaku": 2, "doronime": 3, "oploverz": 4}
+PROVIDER_PRIORITY = {"samehadaku": 1, "kuronime": 1, "otakudesu": 4, "doronime": 3, "oploverz": 2}
 
 SOURCE_CACHE_HOURS = 6
 
@@ -186,7 +188,7 @@ async def sync_anime_episodes(anilist_id: int) -> dict:
         upstash_set_fn=upstash_set,
         upstash_del_fn=upstash_del,
         key=f"sync_anime:{anilist_id}",
-        timeout=120
+        ttl=120
     )
 
     try:
@@ -367,12 +369,12 @@ async def get_anime_detail(anilist_id: int) -> Optional[dict]:
         ORDER  BY
                "episodeNumber" DESC,
                CASE "providerId"
-                 WHEN 'otakudesu'  THEN 1
-                 WHEN 'samehadaku' THEN 2
-                 WHEN 'doronime'   THEN 3
-                 WHEN 'oploverz'   THEN 4
-                 ELSE 99
-               END
+                WHEN 'samehadaku' THEN 1
+                WHEN 'oploverz'   THEN 2
+                WHEN 'doronime'   THEN 3
+                WHEN 'otakudesu'  THEN 4
+                ELSE 5
+               END ASC
         """,
         values={"id": anilist_id},
     )
@@ -405,14 +407,15 @@ async def get_episode_stream(anilist_id: int, ep_num: float) -> Optional[dict]:
         SELECT "episodeUrl", "providerId"
         FROM   episodes
         WHERE  "anilistId" = :anilist_id AND "episodeNumber" = :ep_num
-        ORDER  BY
-               CASE "providerId"
-                 WHEN 'otakudesu'  THEN 1
-                 WHEN 'samehadaku' THEN 2
-                 WHEN 'doronime'   THEN 3
-                 WHEN 'oploverz'   THEN 4
-                 ELSE 99
-               END
+        ORDER BY
+            CASE "providerId"
+             WHEN 'samehadaku' THEN 1
+             WHEN 'kuronime'   THEN 1
+             WHEN 'oploverz'   THEN 2
+             WHEN 'doronime'   THEN 3
+             WHEN 'otakudesu'  THEN 4
+             ELSE 5
+            END ASC
         """,
         values={"anilist_id": anilist_id, "ep_num": ep_num},
     )
@@ -433,8 +436,9 @@ async def get_episode_stream(anilist_id: int, ep_num: float) -> Optional[dict]:
 async def ensure_episodes_exist(anilist_id: int) -> bool:
     """
     Check whether we have episodes in DB for this anime.
-    If not, trigger a sync and wait for it (up to 30s).
-    Returns True if episodes now exist.
+    If not, trigger a background sync via QStash to distribute scraping load,
+    and return False immediately to avoid blocking the event loop.
+    Returns True if episodes already exist.
     """
     count_row = await database.fetch_one(
         'SELECT COUNT(*) as cnt FROM episodes WHERE "anilistId" = :id',
@@ -443,7 +447,9 @@ async def ensure_episodes_exist(anilist_id: int) -> bool:
     if count_row and count_row["cnt"] > 0:
         return True
 
-    # No episodes — sync now
-    print(f"[Pipeline] No episodes for anilist_id={anilist_id}, syncing…")
-    result = await sync_anime_episodes(anilist_id)
-    return result["synced"] > 0
+    # No episodes — enqueue async sync task (Serverless Queue)
+    print(f"[Pipeline] No episodes for anilist_id={anilist_id}, enqueuing to QStash…")
+    from services.queue import enqueue_sync
+    await enqueue_sync(anilist_id)
+    return False
+se

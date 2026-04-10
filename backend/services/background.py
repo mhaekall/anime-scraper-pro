@@ -108,11 +108,12 @@ async def background_scrape_job():
             async with lock:
                 print("[Cron] Starting Multi-Source Aggregator Scrape Job...")
                 
-                # Fetch from all providers concurrently
+                # Fetch from all providers concurrently to maximize direct wrapper discoveries (DesuDrives, 4meplayer, Wibufile)
                 results = await asyncio.gather(
-                    scrape_oploverz_home(),
-                    scrape_otakudesu_home(),
+                    scrape_kuronime_home(),
                     scrape_samehadaku_home(),
+                    scrape_otakudesu_home(),
+                    scrape_oploverz_home(),
                     scrape_doronime_home(),
                     return_exceptions=True
                 )
@@ -193,6 +194,35 @@ async def background_scrape_job():
                         top_anime.append(top_item)
                 except Exception as db_e:
                     print(f"[Cron] Error fetching top anime from DB: {db_e}")
+
+                now = int(time.time())
+                payload = {
+                    'data': {
+                        'latest_episodes': valid_items[:24],
+                        'top_anime': top_anime,
+                        'last_updated': now
+                    },
+                    'stale_at': now + 3600,
+                    'expires_at': now + 86400,
+                    'created_at': now
+                }
+                
+                await upstash_set("home_data", payload, ex=86400)
+                print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis.")
+                consecutive_failures = 0
+                
+        except TimeoutError:
+            print("[Cron] Another instance is running, skipping")
+        except Exception as e:
+            consecutive_failures += 1
+            import traceback
+            traceback.print_exc()
+            print(f"[Cron] Aggregator Error: {e}")
+            await asyncio.sleep(60)
+            continue
+            
+        await asyncio.sleep(3600)
+ from DB: {db_e}")
 
                 now = int(time.time())
                 payload = {

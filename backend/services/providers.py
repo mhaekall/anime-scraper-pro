@@ -2,6 +2,7 @@ from providers.oploverz import OploverzProvider
 from providers.otakudesu import OtakudesuProvider
 from providers.doronime import DoronimeProvider
 from providers.samehadaku import SamehadakuProvider
+from providers.kuronime.provider import KuronimeProvider
 from utils.extractor import UniversalExtractor
 from services.transport import ProviderTransport
 from utils.circuit_breaker import CircuitBreaker, CircuitBreakerOpenException
@@ -42,4 +43,5 @@ oploverz_provider = ProviderCircuitBreakerProxy(OploverzProvider(transport=share
 otakudesu_provider = ProviderCircuitBreakerProxy(OtakudesuProvider(transport=shared_transport), "otakudesu")
 doronime_provider = ProviderCircuitBreakerProxy(DoronimeProvider(transport=shared_transport), "doronime")
 samehadaku_provider = ProviderCircuitBreakerProxy(SamehadakuProvider(transport=shared_transport), "samehadaku")
+kuronime_provider = ProviderCircuitBreakerProxy(KuronimeProvider(transport=shared_transport), "kuronime")
 extractor = UniversalExtractor()
