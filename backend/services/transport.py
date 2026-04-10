@@ -34,7 +34,15 @@ class ProviderTransport:
             
             print(f"[SwarmProxy] Routing request to: {url}")
             r = await client.get(proxy_url, headers=headers)
+            r.raise_for_status()
+            return r.text
         else:
+            try:
+                from utils.tls_spoof import TLSSpoofTransport
+                return await TLSSpoofTransport.get(url)
+            except Exception:
+                pass
+                
             r = await client.get(url)
             
         r.raise_for_status()

@@ -2,18 +2,20 @@
  * Anime Scraper Pro - Serverless Swarm Proxy (2026 Edition)
  * Zero-cost globally distributed proxy via Cloudflare Edge Network.
  * Automatically rotates IPs by routing through CF's Anycast network.
+ * Now with M3U8 reverse proxy rewriting support.
  */
 
 export default {
   async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    
     // 1. Authenticate the proxy request
-    const proxyKey = request.headers.get("x-proxy-key");
+    const proxyKey = request.headers.get("x-proxy-key") || url.searchParams.get("key");
     if (proxyKey !== env.PROXY_SECRET) {
       return new Response("Unauthorized Proxy Access", { status: 401 });
     }
 
     // 2. Parse target URL
-    const url = new URL(request.url);
     const targetUrl = url.searchParams.get("url");
 
     if (!targetUrl) {
@@ -37,7 +39,6 @@ export default {
 
     try {
       // 4. Forward the request from a random Cloudflare Datacenter
-      // CF handles DNS, TLS, and egress using dynamic IPs automatically.
       const targetRequest = new Request(targetUrl, {
         method: request.method,
         headers: headers,
@@ -47,11 +48,39 @@ export default {
 
       const response = await fetch(targetRequest);
       
-      // 5. Pass response back exactly as is
+      const contentType = response.headers.get('content-type') || '';
+      
+      // If it's an M3U8 playlist, rewrite segment URLs
+      if (contentType.includes('mpegurl') || targetUrl.includes('.m3u8')) {
+        const text = await response.text();
+        const baseUrl = targetUrl.substring(0, targetUrl.lastIndexOf('/') + 1);
+        
+        const rewritten = text.split('\n').map(line => {
+          if (line.startsWith('#') || !line.trim()) return line;
+          
+          // Convert relative URL to absolute, then proxy through this worker
+          const absoluteUrl = line.startsWith('http') ? line : baseUrl + line;
+          const workerBase = new URL(request.url).origin;
+          return `${workerBase}/?url=${encodeURIComponent(absoluteUrl)}&key=${env.PROXY_SECRET}`;
+        }).join('\n');
+        
+        return new Response(rewritten, {
+          headers: {
+            'Content-Type': 'application/vnd.apple.mpegurl',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-cache',
+          }
+        });
+      }
+
+      // For video segments (.ts files) or regular pages, proxy byte-by-byte
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers
+        headers: {
+            ...Object.fromEntries(response.headers),
+            'Access-Control-Allow-Origin': '*',
+        }
       });
 
     } catch (error) {
