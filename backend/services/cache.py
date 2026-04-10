@@ -19,7 +19,7 @@ async def upstash_set(key: str, value: dict, ex: int = 3600, nx: bool = False):
         payload = json.dumps(value)
         url = f"{UPSTASH_REDIS_REST_URL}/set/{key}?EX={ex}"
         if nx:
-            url += "&NX=true"
+            url += "&NX"
         res = await client.post(url, headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}, data=payload)
         # Upstash returns 'OK' for normal SET, and for NX it returns 'OK' if set, or null if not set.
         result = res.json().get('result')

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { IconPlay, IconInfo } from "@/ui/icons";
+import { API } from "@/core/lib/api";
 
 interface Comment {
   id: number;
@@ -29,7 +30,7 @@ export function CommentSection({ anilistId, episode, currentTime, onSeek }: Prop
   const userId = "local_user_" + Math.floor(Math.random() * 1000); // MVP Mock User
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v2/social/comments?anilistId=${anilistId}&episodeNumber=${episode}`)
+    fetch(`${API}/api/v2/social/comments?anilistId=${anilistId}&episodeNumber=${episode}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setComments(data);
@@ -59,7 +60,7 @@ export function CommentSection({ anilistId, episode, currentTime, onSeek }: Prop
     setNewComment("");
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v2/social/comments`, {
+      await fetch(`${API}/api/v2/social/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,7 +79,7 @@ export function CommentSection({ anilistId, episode, currentTime, onSeek }: Prop
   const handleReact = async (commentId: number) => {
     setComments(prev => prev.map(c => c.id === commentId ? { ...c, reactions: c.reactions + 1 } : c));
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v2/social/reactions`, {
+      await fetch(`${API}/api/v2/social/reactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -10,8 +10,9 @@ import { useWatchHistory } from "@/core/hooks/use-watch-history";
 import { useVideoGestures } from "@/core/hooks/use-video-gestures";
 import { SkipIntroButton } from "./SkipIntroButton";
 import type { VideoSource } from "@/core/types/anime";
+import { API } from "@/core/lib/api";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "";
+const BACKEND = API;
 const QUALITY_ORDER = ["1080p", "720p", "480p", "360p", "Auto"];
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -51,7 +52,6 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
     .map((s) => ({ ...s, url: proxyUrl(s.url ?? s.resolved ?? "") }))
     .sort((a, b) => QUALITY_ORDER.indexOf(a.quality) - QUALITY_ORDER.indexOf(b.quality));
   
-  const iframes = sources.filter((s) => s.type === "iframe" && (s.url || s.resolved)).map(s => ({ ...s, url: s.url ?? s.resolved ?? "" }));
   const defaultSrc = direct.find((s) => s.quality === "720p") ?? direct.find((s) => s.quality === "1080p") ?? direct.find((s) => s.quality === "Auto") ?? direct[0] ?? null;
 
   const [current, setCurrent] = useState(defaultSrc);
@@ -65,7 +65,6 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const [showSettings, setShowSettings] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [useIframe, setUseIframe] = useState(direct.length === 0 && iframes.length > 0);
   const [hasTriggeredAutoNext, setHasTriggeredAutoNext] = useState(false);
   const [volume, setVolume] = useState(1);
 
@@ -234,24 +233,17 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const bufPct = duration > 0 ? (buffered / duration) * 100 : 0;
 
   // No sources
-  if (direct.length === 0 && iframes.length === 0) return (
+  if (direct.length === 0) return (
     <div className="w-full aspect-video bg-[#0a0c10] md:rounded-2xl flex flex-col items-center justify-center text-[#8e8e93] gap-2 border border-white/5">
       <p className="text-sm font-semibold">Video tidak tersedia</p>
       <p className="text-xs text-[#48484a]">Coba kembali nanti</p>
     </div>
   );
 
-  // Iframe fallback
-  if (useIframe && iframes.length > 0) return (
-    <div className="w-full aspect-video bg-black md:rounded-2xl overflow-hidden border border-white/5 relative">
-      <iframe src={iframes[0].url} className="w-full h-full border-none" sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-popups" allow="autoplay; fullscreen" referrerPolicy="no-referrer" title={title} />
-      {direct.length > 0 && <button onClick={() => setUseIframe(false)} className="absolute bottom-3 right-3 z-20 px-3 py-1.5 bg-white/10 text-white text-xs font-bold rounded-full border border-white/20">Player Native</button>}
-    </div>
-  );
-
   return (
     <div ref={containerRef} tabIndex={-1} className="relative w-full aspect-video bg-black md:rounded-2xl overflow-hidden outline-none select-none border border-white/5 group" onMouseMove={reveal} onMouseLeave={() => playing && setControls(false)} onClick={togglePlay} onTouchStart={handleTouchStart}>
-      <video ref={videoRef} poster={poster} className="w-full h-full object-contain" playsInline muted={muted} preload="auto" onContextMenu={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()} onDoubleClick={toggleFS} />
+      {/* @ts-ignore */}
+      <video ref={videoRef} poster={poster} className="w-full h-full object-contain" playsInline muted={muted} preload="auto" onContextMenu={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()} onDoubleClick={toggleFS} referrerPolicy="no-referrer" />
 
       {/* Ripple effect for double tap */}
       {ripple && (
@@ -272,7 +264,6 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           <p className="text-white/80 text-sm font-bold">{error}</p>
           <div className="flex gap-2">
             {direct.filter((s) => s !== current).slice(0, 2).map((s) => <button key={s.quality + s.provider} onClick={(e) => { e.stopPropagation(); switchQ(s); }} className="px-4 py-2 bg-white text-black text-xs font-bold rounded-full">Coba {s.quality}</button>)}
-            {iframes.length > 0 && <button onClick={(e) => { e.stopPropagation(); setUseIframe(true); }} className="px-4 py-2 bg-white/10 text-white text-xs font-bold rounded-full border border-white/20">Embed</button>}
           </div>
         </div>
       )}

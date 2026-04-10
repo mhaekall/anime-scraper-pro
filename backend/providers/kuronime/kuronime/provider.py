@@ -1,0 +1,123 @@
+import base64
+import json
+import hashlib
+import urllib.parse
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+from services.transport import ProviderTransport
+from providers.base_provider import BaseProvider
+from providers.kuronime.parser import KuronimeParser
+from providers.base_parser import AnimeDetail, EpisodeSource
+
+BASE_URL = "https://kuronime.sbs"
+API_URL = "https://animeku.org/api/v9/sources"
+DECRYPT_KEY = "3&!Z0M,VIZ;dZW=="
+
+class KuronimeProvider(BaseProvider):
+    def __init__(self, transport: ProviderTransport):
+        self._t = transport
+        self._p = KuronimeParser()
+        
+    def _decrypt_cryptojs_aes(self, encrypted_text: str, password: str) -> str:
+        try:
+            data = json.loads(base64.b64decode(encrypted_text).decode("utf-8"))
+            ct = base64.b64decode(data['ct'])
+            salt = bytes.fromhex(data.get('s', ''))
+        except Exception:
+            return ""
+            
+        key_iv = b""
+        prev = b""
+        while len(key_iv) < 48:
+            prev = hashlib.md5(prev + password.encode() + salt).digest()
+            key_iv += prev
+            
+        key = key_iv[:32]
+        iv = key_iv[32:48]
+        
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        try:
+            decrypted_data = unpad(cipher.decrypt(ct), AES.block_size)
+            return decrypted_data.decode("utf-8")
+        except Exception:
+            return ""
+
+    async def get_anime_detail(self, series_url: str) -> AnimeDetail:
+        html = await self._t.get_html(series_url)
+        return self._p.parse_episode_list(html, BASE_URL)
+
+    async def get_episode_sources(self, episode_url: str) -> list[dict]:
+        html = await self._t.get_html(episode_url)
+        req_id = self._p.extract_req_id(html)
+        
+        sources = []
+        if not req_id:
+            return sources
+            
+        client = self._t.get_client()
+        try:
+            res = await client.post(
+                API_URL,
+                json={"id": req_id},
+                headers={"Referer": BASE_URL, "User-Agent": "Mozilla/5.0"}
+            )
+            data = res.json()
+        except Exception as e:
+            print(f"[Kuronime] API error: {e}")
+            return sources
+            
+        # Parse src and src_sd (Direct streams)
+        for q_key, quality in [("src", "1080p"), ("src_sd", "480p")]:
+            encrypted_val = data.get(q_key)
+            if encrypted_val:
+                decrypted_str = self._decrypt_cryptojs_aes(encrypted_val, DECRYPT_KEY)
+                try:
+                    decrypted_json = json.loads(decrypted_str)
+                    src_url = decrypted_json.get("src")
+                    if src_url:
+                        sources.append({
+                            "provider": "KuroPlayer",
+                            "quality": quality,
+                            "url": src_url,
+                            "type": "direct" if src_url.endswith((".mp4", ".m3u8")) else "iframe"
+                        })
+                except Exception:
+                    pass
+        
+        # Parse mirror (Embeds)
+        mirror_enc = data.get("mirror")
+        if mirror_enc:
+            decrypted_str = self._decrypt_cryptojs_aes(mirror_enc, DECRYPT_KEY)
+            try:
+                mirror_json = json.loads(decrypted_str)
+                embeds = mirror_json.get("embed", {})
+                for res_key, res_providers in embeds.items():
+                    quality = res_key.replace("v", "")
+                    for provider_name, provider_url in res_providers.items():
+                        if provider_url:
+                            sources.append({
+                                "provider": provider_name.capitalize(),
+                                "quality": quality,
+                                "url": provider_url,
+                                "type": "iframe"
+                            })
+            except Exception:
+                pass
+                            
+        return sources
+
+    async def search(self, query: str) -> list[dict]:
+        try:
+            url = f"{BASE_URL}/?s={urllib.parse.quote_plus(query)}"
+            html = await self._t.get_html(url)
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, "lxml")
+            results = []
+            for article in soup.select("main article"):
+                a = article.select_one("h3 a")
+                if a:
+                    results.append({"title": a.text.strip(), "url": a.get("href")})
+            return results
+        except Exception as e:
+            print(f"[Kuronime] Search error: {e}")
+            return []
