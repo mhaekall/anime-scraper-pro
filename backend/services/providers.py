@@ -11,7 +11,7 @@ class ProviderCircuitBreakerProxy:
     def __init__(self, provider, name):
         self.provider = provider
         self.name = name
-        self.cb = CircuitBreaker(failure_threshold=3, cooldown_seconds=300)
+        self.cb = CircuitBreaker(name=name, failure_threshold=3, cooldown_seconds=300)
     
     async def get_anime_detail(self, *args, **kwargs):
         try:
