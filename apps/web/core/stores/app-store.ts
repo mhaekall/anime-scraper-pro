@@ -18,6 +18,7 @@ export const ACCENT_COLORS = [
 
 // ── Settings Slice ─────────────────────────────────────────────
 interface Settings {
+  theme: "dark" | "light";
   accentColor: string;
   videoQuality: string;
   subtitleLang: string;
@@ -35,6 +36,7 @@ export const useSettings = create<SettingsSlice>()(
   persist(
     (set) => ({
       settings: {
+        theme: "dark",
         accentColor: "#0A84FF",
         videoQuality: "Auto",
         subtitleLang: "Indonesia",

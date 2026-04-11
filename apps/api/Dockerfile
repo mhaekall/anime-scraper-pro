@@ -3,13 +3,17 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy requirements
-COPY requirements.txt .
+COPY apps/api/requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the backend code
-COPY . .
+# Copy backend and services
+COPY apps/api/ .
+COPY services/scraper/ /services/scraper/
+
+# Set environment variable for python path
+ENV PYTHONPATH="${PYTHONPATH}:/services/scraper"
 
 # Expose port
 EXPOSE 7860

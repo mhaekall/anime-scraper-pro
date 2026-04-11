@@ -83,11 +83,20 @@ export default {
 async function handleProxy(upstream, request, env, payload, match) {
   const isM3U8 = upstream.split('?')[0].endsWith('.m3u8') || upstream.includes('.m3u8');
   
-  // Forward Range header untuk MP4 seek
+  // Dynamic Referer based on provider
+  let referer = new URL(upstream).origin;
+  if (payload && payload.p === "kuronime") {
+    referer = "https://kuronime.sbs/";
+  } else if (payload && payload.p === "samehadaku") {
+    referer = "https://samehadaku.mov/";
+  }
+
   const headers = { 
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-    "Referer": new URL(upstream).origin
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    "Referer": referer,
+    "Origin": new URL(referer).origin
   };
+  
   const range = request.headers.get("Range");
   if (range) headers["Range"] = range;
   
@@ -100,17 +109,26 @@ async function handleProxy(upstream, request, env, payload, match) {
 
     const resp = await fetch(targetRequest);
     
+    // Jika upstream mengembalikan error, teruskan error tersebut
+    if (!resp.ok && !isM3U8) {
+       return new Response(resp.body, { status: resp.status, headers: { "Access-Control-Allow-Origin": "*" } });
+    }
+
     if (isM3U8) {
-      // Rewrite .ts segment URLs agar juga lewat proxy
       let body = await resp.text();
+      // Verifikasi apakah body benar-benar M3U8 atau malah HTML error
+      if (body.includes("<!DOCTYPE html>") || body.includes("<html")) {
+         return new Response(`Upstream returned HTML instead of M3U8. Status: ${resp.status}`, { status: 502, headers: { "Access-Control-Allow-Origin": "*" } });
+      }
+
       const baseUrl = upstream.substring(0, upstream.lastIndexOf('/'));
       const workerBase = new URL(request.url).origin;
       
       const rewrittenLines = [];
       const lines = body.split('\n');
       for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
-        if (line.startsWith('#') || !line.trim()) {
+        let line = lines[i].trim();
+        if (!line || line.startsWith('#')) {
           rewrittenLines.push(line);
           continue;
         }
@@ -121,7 +139,7 @@ async function handleProxy(upstream, request, env, payload, match) {
             const upOrigin = new URL(upstream).origin;
             segUrl = upOrigin + line;
           } else {
-            segUrl = `${baseUrl}/${line.trim()}`;
+            segUrl = `${baseUrl}/${line}`;
           }
         }
         
