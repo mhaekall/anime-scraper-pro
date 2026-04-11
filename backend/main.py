@@ -25,15 +25,21 @@ async def lifespan(app: FastAPI):
             
             # Run migrations after successful connection
             try:
-                print("[DB] Running Alembic migrations programmatically...")
-                from alembic import command
-                from alembic.config import Config
-                alembic_cfg = Config("alembic.ini")
-                command.upgrade(alembic_cfg, "head")
-                print("[DB] Alembic migrations completed successfully.")
+                print("[DB] Running SQLAlchemy create_all as fallback for missing tables...")
+                from db.connection import metadata
+                from db.models import users, comments, comment_reactions, follows, notifications, watch_events
+                import sqlalchemy
+                import os
+                db_url = os.getenv("DATABASE_URL")
+                if db_url and db_url.startswith("postgresql://"):
+                    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+                if db_url:
+                    engine = sqlalchemy.create_engine(db_url.replace("+asyncpg", ""))
+                    metadata.create_all(engine)
+                    print("[DB] Missing tables created successfully via metadata.")
             except Exception as e:
                 import traceback
-                print(f"[DB] Alembic migration failed: {e}")
+                print(f"[DB] Table creation fallback failed: {e}")
                 traceback.print_exc()
                 
             break
