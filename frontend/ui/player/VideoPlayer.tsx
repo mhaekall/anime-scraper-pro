@@ -50,7 +50,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
 
   const direct = sources
     .filter((s) => s.type !== "iframe" && (s.url || s.resolved) && s.quality !== "360p" && s.quality !== "480p")
-    .map((s) => ({ ...s, url: proxyUrl(s.url ?? s.resolved ?? "") }))
+    .map((s) => ({ ...s, url: s.url ?? s.resolved ?? "" }))
     .sort((a, b) => QUALITY_ORDER.indexOf(a.quality) - QUALITY_ORDER.indexOf(b.quality));
   
   const defaultSrc = direct.find((s) => s.quality === "720p") ?? direct.find((s) => s.quality === "1080p") ?? direct.find((s) => s.quality === "Auto") ?? direct[0] ?? null;

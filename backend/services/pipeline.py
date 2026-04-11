@@ -341,6 +341,13 @@ async def resolve_episode_sources(episode_url: str, provider_id: str) -> dict:
         quality_rank = {"1080p": 5, "720p": 4, "480p": 3, "360p": 2, "Auto": 1}
         final_sources.sort(key=lambda x: quality_rank.get(x["quality"], 0), reverse=True)
 
+        from utils.signed_url import sign_stream_url
+        for source in final_sources:
+            if source.get("type") in ("hls", "mp4", "direct"):
+                source["raw_url"] = source["url"]
+                source["url"] = sign_stream_url(source["raw_url"], provider_id, source["quality"])
+                source["proxied"] = True
+
         payload = {"sources": final_sources, "downloads": downloads}
 
         # 5. Cache
