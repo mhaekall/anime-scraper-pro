@@ -282,7 +282,6 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           onContextMenu={(e) => e.preventDefault()} 
           onClick={(e) => e.stopPropagation()} 
           onDoubleClick={toggleFS} 
-          referrerPolicy="no-referrer" 
         />
       )}
 
