@@ -69,30 +69,41 @@ export default function AppShell() {
           {tab === 3 && <ProfileView />}
         </main>
 
-        {/* Mobile Bottom Nav - Floating Dock style */}
-        <nav className="fixed bottom-3 left-4 right-4 z-[100] sm:hidden bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/10 rounded-[28px] shadow-2xl overflow-hidden shadow-black/50">
-          <div className="flex justify-between items-center px-1 h-[54px]">
+        {/* Mobile Bottom Nav - Refined Floating Dock */}
+        <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent z-[90] pointer-events-none sm:hidden" />
+        
+        <nav className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[300px] z-[100] sm:hidden bg-[#1c1c1e]/60 backdrop-blur-3xl border border-white/10 rounded-[24px] shadow-2xl overflow-hidden shadow-black/80">
+          <div className="flex justify-around items-center px-2 h-[50px]">
             {TABS.map((t, i) => {
               const active = tab === i;
               const Icon = t.icon;
+              const isProfile = t.id === "profile";
+              
               return (
                 <button 
                   key={t.id} 
                   onClick={() => setTab(i)}
-                  className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 bg-transparent border-none outline-none relative group"
+                  className="flex flex-col items-center justify-center h-full aspect-square bg-transparent border-none outline-none relative"
                 >
-                  <div className={`relative flex items-center justify-center transition-all duration-300 ${active ? "scale-110 -translate-y-0.5" : "scale-100"}`}>
-                    <Icon 
-                      className={`w-[20px] h-[20px] transition-colors duration-300 ${active ? "text-[#0A84FF]" : "text-white/50"}`} 
-                      filled={active}
-                    />
+                  <div className={`relative flex items-center justify-center transition-all duration-300 ${active ? "scale-110" : "scale-100 opacity-60"}`}>
+                    {isProfile ? (
+                      <div className={`w-5 h-5 rounded-full overflow-hidden border ${active ? "border-white" : "border-transparent"}`}>
+                        <img 
+                          src="https://ui-avatars.com/api/?name=User&background=random" 
+                          alt="Profile" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <Icon 
+                        className={`w-[20px] h-[20px] transition-colors duration-300 ${active ? "text-white" : "text-white/80"}`} 
+                        filled={active}
+                      />
+                    )}
                   </div>
-                  <span className={`text-[9px] tracking-tight transition-colors duration-300 ${active ? "text-white font-semibold" : "text-white/40 font-medium"}`}>
+                  <span className={`text-[8px] mt-0.5 tracking-tight transition-colors duration-300 ${active ? "text-white font-bold" : "text-white/40 font-medium"}`}>
                     {t.label}
                   </span>
-                  {active && (
-                    <div className="absolute bottom-1 w-1 h-1 bg-[#0A84FF] rounded-full shadow-[0_0_8px_#0A84FF]" />
-                  )}
                 </button>
               );
             })}
