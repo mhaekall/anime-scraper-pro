@@ -13,8 +13,6 @@
     "hls.js": "^1.6.15",
     "lucide-react": "^1.7.0",
     "next": "^15.0.0",
-    "p2p-media-loader-core": "^2.2.2",
-    "p2p-media-loader-hlsjs": "^2.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "swr": "^2.4.1",

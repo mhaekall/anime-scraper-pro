@@ -27,7 +27,18 @@ export function useVideoGestures(videoRef: MutableRefObject<HTMLVideoElement | n
       
       // Hitung lompatan waktu (10 detik)
       const skipAmount = isRightSide ? 10 : -10;
-      videoRef.current.currentTime = Math.max(0, Math.min(videoRef.current.duration, videoRef.current.currentTime + skipAmount));
+      let newTime = videoRef.current.currentTime + skipAmount;
+      
+      // Prevent setting to NaN if duration is not fully loaded
+      if (isFinite(videoRef.current.duration) && videoRef.current.duration > 0) {
+        newTime = Math.max(0, Math.min(videoRef.current.duration, newTime));
+      } else {
+        newTime = Math.max(0, newTime);
+      }
+      
+      if (isFinite(newTime)) {
+        videoRef.current.currentTime = newTime;
+      }
       
       // Trigger animasi ripple
       setRipple({ side: isRightSide ? 'right' : 'left', id: now });

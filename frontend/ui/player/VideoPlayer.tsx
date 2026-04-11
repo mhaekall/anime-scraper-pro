@@ -8,7 +8,6 @@ import { IconPlay, IconPause, IconFullscreen, IconVolume, IconSettings } from "@
 import { useSettings } from "@/core/stores/app-store";
 import { useWatchHistory } from "@/core/hooks/use-watch-history";
 import { useVideoGestures } from "@/core/hooks/use-video-gestures";
-import { SkipIntroButton } from "./SkipIntroButton";
 import type { VideoSource } from "@/core/types/anime";
 import { API } from "@/core/lib/api";
 
@@ -88,18 +87,11 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
         const { default: Hls } = await import("hls.js");
         
         if (Hls.isSupported()) {
-          const { HlsJsP2PEngine } = await import("p2p-media-loader-hlsjs");
-          const HlsWithP2P = HlsJsP2PEngine.injectMixin(Hls as any);
-          
-          const hls = new HlsWithP2P({ 
+          const hls = new Hls({ 
             startLevel: -1, 
-            maxMaxBufferLength: 60, 
+            maxMaxBufferLength: 30,
+            backBufferLength: 30,
             enableWorker: true,
-            p2p: {
-              core: {
-                swarmId: animeSlug && episodeNum ? `${animeSlug}-ep${episodeNum}` : undefined,
-              }
-            }
           });
           hlsRef.current = hls;
           hls.loadSource(src.url);
@@ -282,8 +274,6 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           <div className="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center border border-white/10"><IconPlay className="w-8 h-8 ml-0.5" /></div>
         </div>
       )}
-
-      <SkipIntroButton currentTime={progress} onSkip={(t) => { if (videoRef.current) { videoRef.current.currentTime = t; } }} />
 
       {/* Settings Menu */}
       {showSettings && (
