@@ -69,9 +69,9 @@ export default function AppShell() {
           {tab === 3 && <ProfileView />}
         </main>
 
-        {/* Mobile Bottom Nav */}
-        <nav className="fixed bottom-0 left-0 right-0 z-[100] sm:hidden bg-[#0a0a0a]/90 backdrop-blur-xl border-t border-white/10 pb-safe">
-          <div className="flex justify-between items-center px-2 h-[60px] pb-1">
+        {/* Mobile Bottom Nav - Floating Dock style */}
+        <nav className="fixed bottom-3 left-4 right-4 z-[100] sm:hidden bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/10 rounded-[28px] shadow-2xl overflow-hidden shadow-black/50">
+          <div className="flex justify-between items-center px-1 h-[54px]">
             {TABS.map((t, i) => {
               const active = tab === i;
               const Icon = t.icon;
@@ -79,17 +79,20 @@ export default function AppShell() {
                 <button 
                   key={t.id} 
                   onClick={() => setTab(i)}
-                  className="flex flex-col items-center justify-center flex-1 h-full gap-1 pt-1 bg-transparent border-none outline-none"
+                  className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 bg-transparent border-none outline-none relative group"
                 >
-                  <div className="relative flex items-center justify-center">
+                  <div className={`relative flex items-center justify-center transition-all duration-300 ${active ? "scale-110 -translate-y-0.5" : "scale-100"}`}>
                     <Icon 
-                      className={`w-[22px] h-[22px] transition-colors ${active ? "text-white" : "text-white/60"}`} 
+                      className={`w-[20px] h-[20px] transition-colors duration-300 ${active ? "text-[#0A84FF]" : "text-white/50"}`} 
                       filled={active}
                     />
                   </div>
-                  <span className={`text-[10px] tracking-tight transition-colors ${active ? "text-white font-medium" : "text-white/60 font-normal"}`}>
+                  <span className={`text-[9px] tracking-tight transition-colors duration-300 ${active ? "text-white font-semibold" : "text-white/40 font-medium"}`}>
                     {t.label}
                   </span>
+                  {active && (
+                    <div className="absolute bottom-1 w-1 h-1 bg-[#0A84FF] rounded-full shadow-[0_0_8px_#0A84FF]" />
+                  )}
                 </button>
               );
             })}

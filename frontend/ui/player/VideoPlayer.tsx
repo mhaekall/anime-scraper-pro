@@ -48,13 +48,29 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const saveTimer = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const direct = sources
-    .filter((s) => s.type !== "iframe" && (s.url || s.resolved) && s.quality !== "360p" && s.quality !== "480p")
+    .filter((s) => (s.url || s.resolved))
     .map((s) => ({ ...s, url: s.url ?? s.resolved ?? "" }))
-    .sort((a, b) => QUALITY_ORDER.indexOf(a.quality) - QUALITY_ORDER.indexOf(b.quality));
+    .sort((a, b) => {
+      // Sort: direct (hls/mp4) first, then quality
+      if (a.type !== "iframe" && b.type === "iframe") return -1;
+      if (a.type === "iframe" && b.type !== "iframe") return 1;
+      return QUALITY_ORDER.indexOf(a.quality) - QUALITY_ORDER.indexOf(b.quality);
+    });
   
-  const defaultSrc = direct.find((s) => s.quality === "720p") ?? direct.find((s) => s.quality === "1080p") ?? direct.find((s) => s.quality === "Auto") ?? direct[0] ?? null;
+  const defaultSrc = direct.find((s) => s.type !== "iframe" && s.quality === "720p") ?? 
+                    direct.find((s) => s.type !== "iframe" && s.quality === "1080p") ?? 
+                    direct.find((s) => s.type !== "iframe") ?? 
+                    direct[0] ?? null;
 
   const [current, setCurrent] = useState(defaultSrc);
+
+  // Sync current source when sources arrive for the first time
+  useEffect(() => {
+    if (!current && defaultSrc) {
+      setCurrent(defaultSrc);
+    }
+  }, [defaultSrc, current]);
+
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -246,10 +262,32 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   return (
     <div ref={containerRef} tabIndex={-1} className="relative w-full aspect-video bg-black md:rounded-2xl overflow-hidden outline-none select-none border border-white/5 group" onMouseMove={reveal} onMouseLeave={() => playing && setControls(false)} onClick={togglePlay} onTouchStart={handleTouchStart}>
       {/* @ts-ignore */}
-      <video ref={videoRef} autoPlay={true} poster={poster} className="w-full h-full object-contain" playsInline muted={muted} preload="auto" onContextMenu={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()} onDoubleClick={toggleFS} referrerPolicy="no-referrer" />
+      {current?.type === "iframe" ? (
+        <iframe 
+          src={current.url} 
+          className="w-full h-full border-none z-10" 
+          allowFullScreen 
+          allow="autoplay; encrypted-media"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <video 
+          ref={videoRef} 
+          autoPlay={true} 
+          poster={poster} 
+          className="w-full h-full object-contain" 
+          playsInline 
+          muted={muted} 
+          preload="auto" 
+          onContextMenu={(e) => e.preventDefault()} 
+          onClick={(e) => e.stopPropagation()} 
+          onDoubleClick={toggleFS} 
+          referrerPolicy="no-referrer" 
+        />
+      )}
 
       {/* Ripple effect for double tap */}
-      {ripple && (
+      {ripple && current?.type !== "iframe" && (
         <div className={`absolute top-0 bottom-0 w-1/2 pointer-events-none flex items-center justify-center overflow-hidden z-30 ${ripple.side === 'left' ? 'left-0' : 'right-0'}`}>
           <div className="absolute inset-0 bg-white/10 opacity-0 animate-[ripple_0.5s_ease-out]" />
           <div className="flex flex-col items-center justify-center gap-2 bg-black/40 rounded-full p-4 animate-in fade-in zoom-in duration-200">
@@ -322,42 +360,44 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
       )}
 
       {/* Controls overlay */}
-      <div className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-200 z-20 pointer-events-none ${controls ? "opacity-100" : "opacity-0"}`} onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-b from-black/70 to-transparent p-3 pointer-events-auto">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-white font-bold text-xs truncate max-w-[70%]">{title}</p>
-          </div>
-        </div>
-
-        <div className="flex-1" />
-
-        <div className="bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 pointer-events-auto">
-          <div ref={barRef} className="relative h-1 cursor-pointer rounded-full bg-white/20 mb-3 group/bar hover:h-2 transition-all" onClick={seek}>
-            <div className="absolute inset-y-0 left-0 bg-white/25 rounded-full pointer-events-none" style={{ width: `${bufPct}%` }} />
-            <div className="absolute inset-y-0 left-0 rounded-full pointer-events-none" style={{ width: `${pct}%`, background: accent }} />
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white">{playing ? <IconPause /> : <IconPlay />}</button>
-              <span className="text-white text-[11px] font-mono tabular-nums">{fmt(progress)} / {fmt(duration)}</span>
+      {current?.type !== "iframe" && (
+        <div className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-200 z-20 pointer-events-none ${controls ? "opacity-100" : "opacity-0"}`} onClick={(e) => e.stopPropagation()}>
+          <div className="bg-gradient-to-b from-black/70 to-transparent p-3 pointer-events-auto">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-white font-bold text-xs truncate max-w-[70%]">{title}</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 group/vol">
-                <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); if (!v.muted && volume === 0) { v.volume = 1; setVolume(1); } } }} className="text-white"><IconVolume muted={muted || volume === 0} /></button>
-                <div className="w-0 group-hover/vol:w-16 overflow-hidden transition-all duration-200 hidden md:block">
-                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => { const val = Number(e.target.value); setVolume(val); if (videoRef.current) { videoRef.current.volume = val; videoRef.current.muted = val === 0; setMuted(val === 0); } }} className="w-full h-1 cursor-pointer accent-white" />
-                </div>
+          </div>
+
+          <div className="flex-1" />
+
+          <div className="bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 pointer-events-auto">
+            <div ref={barRef} className="relative h-1 cursor-pointer rounded-full bg-white/20 mb-3 group/bar hover:h-2 transition-all" onClick={seek}>
+              <div className="absolute inset-y-0 left-0 bg-white/25 rounded-full pointer-events-none" style={{ width: `${bufPct}%` }} />
+              <div className="absolute inset-y-0 left-0 rounded-full pointer-events-none" style={{ width: `${pct}%`, background: accent }} />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white">{playing ? <IconPause /> : <IconPlay />}</button>
+                <span className="text-white text-[11px] font-mono tabular-nums">{fmt(progress)} / {fmt(duration)}</span>
               </div>
-              
-              <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }} className={`transition-transform duration-200 ${showSettings ? 'rotate-90 text-white' : 'text-[#8e8e93] hover:text-white'}`}>
-                <IconSettings />
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 group/vol">
+                  <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); if (!v.muted && volume === 0) { v.volume = 1; setVolume(1); } } }} className="text-white"><IconVolume muted={muted || volume === 0} /></button>
+                  <div className="w-0 group-hover/vol:w-16 overflow-hidden transition-all duration-200 hidden md:block">
+                    <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => { const val = Number(e.target.value); setVolume(val); if (videoRef.current) { videoRef.current.volume = val; videoRef.current.muted = val === 0; setMuted(val === 0); } }} className="w-full h-1 cursor-pointer accent-white" />
+                  </div>
+                </div>
+                
+                <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }} className={`transition-transform duration-200 ${showSettings ? 'rotate-90 text-white' : 'text-[#8e8e93] hover:text-white'}`}>
+                  <IconSettings />
+                </button>
 
-              <button onClick={(e) => { e.stopPropagation(); toggleFS(); }} className="text-white hover:scale-110 transition-transform"><IconFullscreen /></button>
+                <button onClick={(e) => { e.stopPropagation(); toggleFS(); }} className="text-white hover:scale-110 transition-transform"><IconFullscreen /></button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

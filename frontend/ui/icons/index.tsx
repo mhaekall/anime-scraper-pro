@@ -34,7 +34,7 @@ IconSearch.displayName = "IconSearch";
 export const IconHome = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
   <Home 
     className={className} 
-    strokeWidth={filled ? 2.5 : 2} 
+    strokeWidth={1.5} 
     fill={filled ? "currentColor" : "none"} 
   />
 ));
@@ -43,7 +43,7 @@ IconHome.displayName = "IconHome";
 export const IconExplore = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
   <Compass 
     className={className} 
-    strokeWidth={filled ? 2.5 : 2} 
+    strokeWidth={1.5} 
     fill={filled ? "currentColor" : "none"} 
   />
 ));
@@ -52,7 +52,7 @@ IconExplore.displayName = "IconExplore";
 export const IconCollection = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
   <Library 
     className={className} 
-    strokeWidth={filled ? 2.5 : 2} 
+    strokeWidth={1.5} 
     fill={filled ? "currentColor" : "none"} 
   />
 ));
@@ -61,7 +61,7 @@ IconCollection.displayName = "IconCollection";
 export const IconUser = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
   <User 
     className={className} 
-    strokeWidth={filled ? 2.5 : 2} 
+    strokeWidth={1.5} 
     fill={filled ? "currentColor" : "none"} 
   />
 ));
