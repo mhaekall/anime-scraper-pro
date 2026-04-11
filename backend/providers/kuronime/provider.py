@@ -48,7 +48,13 @@ class KuronimeProvider(BaseProvider):
 
     async def get_episode_sources(self, episode_url: str) -> list[dict]:
         from utils.tls_spoof import TLSSpoofTransport
-        html = await self._t.get_html(episode_url)
+        try:
+            # Gunakan TLSSpoof untuk mendapatkan HTML (bypass CF)
+            html = await TLSSpoofTransport.get(episode_url)
+        except Exception as e:
+            print(f"[Kuronime] HTML fetch error via TLSSpoof: {e}")
+            return []
+
         req_id = self._p.extract_req_id(html)
         
         sources = []

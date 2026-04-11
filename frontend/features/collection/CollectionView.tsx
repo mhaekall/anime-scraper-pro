@@ -1,4 +1,4 @@
-// features/collection/CollectionView.tsx — Watchlist management
+// features/collection/CollectionView.tsx — Minimalist Watchlist (Apple HIG)
 
 "use client";
 
@@ -9,9 +9,9 @@ import { IconBookmark, IconCheck, IconTrash } from "@/ui/icons";
 import { useMounted } from "@/core/hooks/use-mounted";
 
 const TABS = [
-  { id: "watching" as const, label: "Ditonton" },
-  { id: "plan_to_watch" as const, label: "Disimpan" },
-  { id: "completed" as const, label: "Selesai" },
+  { id: "watching" as const, label: "Sedang Ditonton" },
+  { id: "plan_to_watch" as const, label: "Daftar Tunggu" },
+  { id: "completed" as const, label: "Telah Selesai" },
 ];
 
 export default function CollectionView() {
@@ -25,52 +25,115 @@ export default function CollectionView() {
   const filtered = items.filter((w) => w.status === tab).sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
-    <div className="min-h-screen pb-24">
-      <div className="pt-10 px-5 md:px-8 mb-5 sticky top-0 bg-black/90 backdrop-blur-xl z-20 pb-3 border-b border-white/5">
-        <h1 className="text-3xl font-black text-white mb-5">Ruang Tonton</h1>
-        <div className="flex bg-[#1c1c1e] p-1 rounded-2xl border border-white/5 relative">
-          {TABS.map((t, i) => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`flex-1 py-2 text-[13px] font-bold rounded-xl z-10 transition-colors ${tab === t.id ? "text-white" : "text-[#8e8e93]"}`}>
-              {t.label} <span className="ml-1 text-[10px] bg-black/30 px-1.5 py-0.5 rounded-full">{items.filter((w) => w.status === t.id).length}</span>
-            </button>
-          ))}
-          <div className="absolute top-1 bottom-1 bg-[#2c2c2e] rounded-xl transition-all duration-300" style={{ width: `calc(33.333% - 4px)`, transform: `translateX(calc(${TABS.findIndex((t) => t.id === tab) * 100}% + ${TABS.findIndex((t) => t.id === tab) * 4}px))` }} />
+    <div className="min-h-screen pb-32">
+      {/* Sticky Tab Header — Zero padding top, ultra slim */}
+      <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-2xl px-5 md:px-8 pt-4 pb-4 border-b border-white/5">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex bg-[#1c1c1e] p-1 rounded-[16px] border border-white/5 relative shadow-inner">
+            {TABS.map((t) => (
+              <button 
+                key={t.id} 
+                onClick={() => setTab(t.id)} 
+                className={`flex-1 py-2 text-[12px] font-bold rounded-[12px] z-10 transition-all duration-300 ${tab === t.id ? "text-white" : "text-white/40 hover:text-white/60"}`}
+              >
+                {t.label}
+                <span className={`ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${tab === t.id ? "bg-white/20 text-white" : "bg-white/5 text-white/30"}`}>
+                  {items.filter((w) => w.status === t.id).length}
+                </span>
+              </button>
+            ))}
+            {/* Animated Background Slider */}
+            <div 
+              className="absolute top-1 bottom-1 bg-[#2c2c2e] rounded-[12px] shadow-lg transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]" 
+              style={{ 
+                width: `calc(33.333% - 4px)`, 
+                transform: `translateX(calc(${TABS.findIndex((t) => t.id === tab) * 100}% + ${TABS.findIndex((t) => t.id === tab) * 2}px))` 
+              }} 
+            />
+          </div>
         </div>
       </div>
 
-      <div className="px-5 md:px-8">
+      <div className="px-5 md:px-8 pt-6 max-w-4xl mx-auto">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center pt-20 text-center anim-fade">
-            <IconBookmark className="w-10 h-10 text-[#48484a]" />
-            <h3 className="text-white font-black text-lg mt-4">Masih Kosong</h3>
-            <p className="text-[#8e8e93] text-sm">Tambahkan anime ke kategori ini.</p>
+          <div className="flex flex-col items-center pt-24 text-center anim-fade">
+            <div className="w-20 h-20 bg-[#1c1c1e] rounded-full flex items-center justify-center mb-6 border border-white/5">
+              <IconBookmark className="w-10 h-10 text-white/20" />
+            </div>
+            <h3 className="text-white font-bold text-xl">Belum ada koleksi</h3>
+            <p className="text-white/40 text-sm mt-2 max-w-[200px]">Simpan anime yang ingin Anda tonton di sini.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 anim-fade mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 anim-fade">
             {filtered.map((item) => (
-              <div key={item.id} className="flex gap-4 p-3 bg-[#1c1c1e] rounded-3xl border border-white/5 group hover:border-white/10 transition-colors">
-                <Link href={`/anime/${item.id}`} className="w-[80px] h-[110px] rounded-2xl bg-[#2c2c2e] bg-cover bg-center shrink-0 border border-white/10" style={item.img ? { backgroundImage: `url(${item.img})` } : undefined} />
-                <div className="flex-1 min-w-0 py-1 flex flex-col">
-                  <Link href={`/anime/${item.id}`} className="text-white font-bold text-[15px] line-clamp-2 mb-1">{item.title}</Link>
-
-                  {tab === "watching" && item.totalEps && item.totalEps > 0 && (
-                    <div className="mt-auto mb-2">
-                      <div className="flex justify-between items-end mb-1">
-                        <span className="text-[11px] font-bold text-[#0A84FF]">Ep {item.progress || 0} <span className="text-[#8e8e93]">/ {item.totalEps}</span></span>
-                        <div className="flex gap-1">
-                          <button onClick={() => updateStatus(item.id, undefined, Math.max(0, (item.progress || 0) - 1))} className="w-6 h-6 bg-[#2c2c2e] rounded text-white font-bold active:scale-90">-</button>
-                          <button onClick={() => updateStatus(item.id, undefined, Math.min(item.totalEps!, (item.progress || 0) + 1))} className="w-6 h-6 bg-[#0A84FF] rounded text-white font-bold active:scale-90">+</button>
-                        </div>
-                      </div>
-                      <div className="h-1 bg-[#2c2c2e] rounded-full overflow-hidden"><div className="h-full bg-[#0A84FF] rounded-full transition-all" style={{ width: `${((item.progress || 0) / item.totalEps) * 100}%` }} /></div>
+              <div 
+                key={item.id} 
+                className="flex gap-4 p-4 bg-[#1c1c1e]/40 rounded-[28px] border border-white/5 hover:bg-[#1c1c1e]/60 hover:border-white/10 transition-all group overflow-hidden"
+              >
+                <Link href={`/anime/${item.id}`} className="w-[85px] h-[120px] rounded-[18px] bg-[#2c2c2e] overflow-hidden shrink-0 border border-white/10 relative">
+                   <img 
+                    src={item.img} 
+                    alt={item.title} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                    loading="lazy"
+                  />
+                  {tab === "completed" && (
+                    <div className="absolute top-1 right-1 bg-[#30D158] p-1 rounded-full shadow-lg">
+                      <IconCheck className="w-2.5 h-2.5 text-black" />
                     </div>
                   )}
-                  {tab === "completed" && <p className="text-[#30D158] text-[11px] font-bold mt-auto flex items-center gap-1"><IconCheck className="w-3 h-3" /> Tamat</p>}
+                </Link>
 
-                  <div className="flex gap-2 mt-2 pt-2 border-t border-[#2c2c2e]">
-                    {tab !== "watching" && <button onClick={() => { updateStatus(item.id, "watching"); toast("Dipindahkan ke Ditonton", "success"); }} className="flex-1 py-1 bg-[#2c2c2e] rounded-lg text-[10px] font-bold text-white">Tonton</button>}
-                    {tab !== "completed" && <button onClick={() => { updateStatus(item.id, "completed", item.totalEps); toast("Ditandai Tamat", "success"); }} className="flex-1 py-1 bg-[#2c2c2e] rounded-lg text-[10px] font-bold text-[#30D158]">Tamat</button>}
-                    <button onClick={() => { remove(item.id); toast("Dihapus", "error"); }} className="px-3 py-1 bg-[#FF453A]/10 text-[#FF453A] rounded-lg"><IconTrash className="w-3 h-3" /></button>
+                <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
+                  <div>
+                    <Link href={`/anime/${item.id}`} className="text-white font-bold text-[16px] leading-tight line-clamp-2 hover:text-[#0A84FF] transition-colors">{item.title}</Link>
+                    
+                    {tab === "watching" && item.totalEps && item.totalEps > 0 && (
+                      <div className="mt-3">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[11px] font-bold text-[#0A84FF] tracking-wide uppercase">Kemajuan: {item.progress || 0}/{item.totalEps}</span>
+                        </div>
+                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-[#0A84FF] to-[#64D2FF] rounded-full transition-all duration-700" 
+                            style={{ width: `${((item.progress || 0) / item.totalEps) * 100}%` }} 
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 mt-4">
+                    {tab === "watching" ? (
+                      <div className="flex gap-1.5">
+                        <button 
+                          onClick={() => updateStatus(item.id, undefined, Math.max(0, (item.progress || 0) - 1))} 
+                          className="w-8 h-8 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center text-white/60 active:scale-90 transition-all border border-white/5"
+                        >
+                          <span className="text-lg leading-none">-</span>
+                        </button>
+                        <button 
+                          onClick={() => updateStatus(item.id, undefined, Math.min(item.totalEps || 999, (item.progress || 0) + 1))} 
+                          className="w-8 h-8 bg-[#0A84FF] hover:bg-[#0070E0] rounded-full flex items-center justify-center text-white active:scale-90 transition-all shadow-lg shadow-[#0A84FF]/20"
+                        >
+                          <span className="text-lg leading-none">+</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => { updateStatus(item.id, "watching"); toast("Dipindahkan ke Ditonton", "success"); }} 
+                        className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-full text-[11px] font-bold text-white transition-all border border-white/5"
+                      >
+                        Tonton Sekarang
+                      </button>
+                    )}
+                    
+                    <button 
+                      onClick={() => { remove(item.id); toast("Dihapus", "error"); }} 
+                      className="w-8 h-8 ml-auto bg-white/5 hover:bg-[#FF453A]/10 rounded-full flex items-center justify-center text-white/20 hover:text-[#FF453A] transition-all border border-white/5"
+                    >
+                      <IconTrash className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
