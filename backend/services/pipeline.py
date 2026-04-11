@@ -393,6 +393,7 @@ async def get_anime_detail(anilist_id: int) -> Optional[dict]:
                "episodeNumber" DESC,
                CASE "providerId"
                 WHEN 'samehadaku' THEN 1
+                WHEN 'kuronime'   THEN 1
                 WHEN 'oploverz'   THEN 2
                 WHEN 'doronime'   THEN 3
                 WHEN 'otakudesu'  THEN 4

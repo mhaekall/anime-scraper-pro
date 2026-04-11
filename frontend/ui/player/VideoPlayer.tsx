@@ -88,13 +88,11 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
         
         if (Hls.isSupported()) {
           const hls = new Hls({ 
-            startLevel: -1, // Auto start level
-            capLevelToPlayerSize: true, // Don't download 1080p if player is small (saves bandwidth, makes it light)
-            maxMaxBufferLength: 30, // Lower max buffer to save memory
-            backBufferLength: 30, // Don't keep old segments
-            maxBufferLength: 10, // Buffer aggressively up to 10s then slow down
+            startLevel: -1, 
+            capLevelToPlayerSize: true, 
+            maxMaxBufferLength: 60, 
+            backBufferLength: 30, 
             enableWorker: true,
-            lowLatencyMode: true, // Faster startup
           });
           hlsRef.current = hls;
           hls.loadSource(src.url);
