@@ -29,7 +29,6 @@ class ProviderTransport:
                     keepalive_expiry=30.0,
                 ),
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
-                http2=True,  # Enable HTTP/2 untuk multiplexing
             )
         return cls._client
 
