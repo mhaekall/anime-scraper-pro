@@ -24,13 +24,17 @@ async def lifespan(app: FastAPI):
             print(f"[DB] Connected to Neon DB (attempt {i+1})")
             
             # Run migrations after successful connection
-            import subprocess
             try:
-                print("[DB] Running Alembic migrations...")
-                subprocess.run(["alembic", "upgrade", "head"], check=True, capture_output=True, text=True)
+                print("[DB] Running Alembic migrations programmatically...")
+                from alembic import command
+                from alembic.config import Config
+                alembic_cfg = Config("alembic.ini")
+                command.upgrade(alembic_cfg, "head")
                 print("[DB] Alembic migrations completed successfully.")
-            except subprocess.CalledProcessError as e:
-                print(f"[DB] Alembic migration failed: {e.stderr}")
+            except Exception as e:
+                import traceback
+                print(f"[DB] Alembic migration failed: {e}")
+                traceback.print_exc()
                 
             break
         except Exception as e:
