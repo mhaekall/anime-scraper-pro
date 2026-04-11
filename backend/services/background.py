@@ -95,6 +95,29 @@ async def scrape_doronime_home():
         print(f"[Cron] Doronime scrape error: {e}")
         return []
 
+async def scrape_kuronime_home():
+    """Fetch latest from Kuronime"""
+    try:
+        r = await scraping_client.get('https://kuronime.sbs/')
+        soup = BeautifulSoup(r.text, 'lxml')
+        items = []
+        for article in soup.select('.bsx'):
+            a = article.select_one('a')
+            if a:
+                title = a.get('title', '').strip()
+                url = a.get('href', '')
+                slug = url.strip('/').split('/')[-1]
+                items.append({
+                    'title': title, 'url': url,
+                    'provider_id': 'kuronime',
+                    'provider_slug': slug,
+                    'raw_img': None
+                })
+        return items
+    except Exception as e:
+        print(f"[Cron] Kuronime scrape error: {e}")
+        return []
+
 async def background_scrape_job():
     consecutive_failures = 0
     while True:

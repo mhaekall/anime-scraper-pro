@@ -113,10 +113,10 @@ class KuronimeProvider(BaseProvider):
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(html, "lxml")
             results = []
-            for article in soup.select("main article"):
-                a = article.select_one("h3 a")
+            for article in soup.select(".bsx"):
+                a = article.select_one("a")
                 if a:
-                    results.append({"title": a.text.strip(), "url": a.get("href")})
+                    results.append({"title": a.get("title", "").strip(), "url": a.get("href")})
             return results
         except Exception as e:
             print(f"[Kuronime] Search error: {e}")

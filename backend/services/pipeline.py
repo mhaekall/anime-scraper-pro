@@ -88,6 +88,7 @@ def build_provider_series_url(provider_id: str, provider_slug: str) -> str:
         "otakudesu": "https://otakudesu.blog/anime/{slug}/",
         "samehadaku": "https://v2.samehadaku.how/anime/{slug}/",
         "doronime":  "https://doronime.id/{slug}/",
+        "kuronime": "https://kuronime.sbs/anime/{slug}/",
     }
     template = bases.get(provider_id, "")
     return template.format(slug=provider_slug) if template else ""

@@ -16,17 +16,15 @@ class KuronimeParser(BaseParser):
         synopsis = synopsis_el.text.strip() if synopsis_el else "No synopsis available."
         
         episodes = []
-        for li in soup.select(".eplister ul li"):
-            a = li.select_one("a")
+        for li in soup.select(".bxcl ul li"):
+            a = li.select_one(".lchx a")
             if not a: continue
             ep_url = a.get("href")
-            ep_title_el = li.select_one(".epl-title")
-            ep_title = ep_title_el.text.strip() if ep_title_el else ""
-            ep_num_el = li.select_one(".epl-num")
+            ep_title = a.text.strip()
             
-            num_text = ep_num_el.text.strip() if ep_num_el else "0"
+            num_text = ep_title
             try:
-                ep_number = float(re.sub(r'[^0-9.]', '', num_text))
+                ep_number = float(re.sub(r'[^0-9.]', '', num_text.split('Episode')[-1]))
             except:
                 ep_number = 0.0
                 
