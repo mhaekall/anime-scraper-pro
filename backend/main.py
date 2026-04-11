@@ -25,18 +25,19 @@ async def lifespan(app: FastAPI):
             
             # Run migrations after successful connection
             try:
-                print("[DB] Running SQLAlchemy create_all as fallback for missing tables...")
+                print("[DB] Running SQLAlchemy async create_all as fallback for missing tables...")
                 from db.connection import metadata
                 from db.models import users, comments, comment_reactions, follows, notifications, watch_events
-                import sqlalchemy
+                from sqlalchemy.ext.asyncio import create_async_engine
                 import os
                 db_url = os.getenv("DATABASE_URL")
                 if db_url and db_url.startswith("postgresql://"):
                     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
                 if db_url:
-                    engine = sqlalchemy.create_engine(db_url.replace("+asyncpg", ""))
-                    metadata.create_all(engine)
-                    print("[DB] Missing tables created successfully via metadata.")
+                    engine = create_async_engine(db_url)
+                    async with engine.begin() as conn:
+                        await conn.run_sync(metadata.create_all)
+                    print("[DB] Missing tables created successfully via async metadata.")
             except Exception as e:
                 import traceback
                 print(f"[DB] Table creation fallback failed: {e}")
