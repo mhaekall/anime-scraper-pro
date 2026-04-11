@@ -33,6 +33,8 @@ async def lifespan(app: FastAPI):
                 db_url = os.getenv("DATABASE_URL")
                 if db_url and db_url.startswith("postgresql://"):
                     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+                if db_url and "?sslmode=" in db_url:
+                    db_url = db_url.split("?sslmode=")[0]
                 if db_url:
                     engine = create_async_engine(db_url)
                     async with engine.begin() as conn:
@@ -79,6 +81,8 @@ async def force_db_setup():
         db_url = os.getenv("DATABASE_URL")
         if db_url and db_url.startswith("postgresql://"):
             db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if db_url and "?sslmode=" in db_url:
+            db_url = db_url.split("?sslmode=")[0]
         if not db_url:
             return {"error": "DATABASE_URL is missing"}
         engine = create_async_engine(db_url)
