@@ -146,9 +146,6 @@ class UniversalExtractor:
                 token_match = re.search(r"(//streamtape\.com/get_video\?id=[^&'\"]+&expires=[^&'\"]+&ip=[^&'\"]+&token=[^&'\"]+)", html)
                 if token_match:
                     return 'https:' + token_match.group(1)
-                link_match = re.search(r'get_video\?id=(.+?)&token=(.+?)(?:&|\'|")', html)
-                if link_match:
-                    return f"https://streamtape.com/get_video?id={link_match.group(1)}&token={link_match.group(2)}&stream=1"
                 
                 # Fallback ke curl_cffi
                 try:
@@ -156,9 +153,10 @@ class UniversalExtractor:
                     token_match = re.search(r"(//streamtape\.com/get_video\?id=[^&'\"]+&expires=[^&'\"]+&ip=[^&'\"]+&token=[^&'\"]+)", html)
                     if token_match:
                         return 'https:' + token_match.group(1)
-                    link_match = re.search(r'get_video\?id=(.+?)&token=(.+?)(?:&|\'|")', html)
-                    if link_match:
-                        return f"https://streamtape.com/get_video?id={link_match.group(1)}&token={link_match.group(2)}&stream=1"
+                    
+                    smart_ex = SmartExtractor()
+                    res_smart = smart_ex.extract_from_html(html)
+                    if res_smart: return res_smart
                 except Exception as e:
                     print(f"[Extractor] TLS fallback error for streamtape: {e}")
 
@@ -171,16 +169,16 @@ class UniversalExtractor:
                 
                 match = re.search(r'"file":"(https?://[^"]+\.mp4[^"]*)"', html)
                 if match: return match.group(1).replace('\\/', '/')
-                match2 = re.search(r'file:\s*"(https?://[^"]+)"', html)
-                if match2: return match2.group(1)
                 
                 # Fallback ke curl_cffi
                 try:
                     html = await self._tls.get(url)
                     match = re.search(r'"file":"(https?://[^"]+\.mp4[^"]*)"', html)
                     if match: return match.group(1).replace('\\/', '/')
-                    match2 = re.search(r'file:\s*"(https?://[^"]+)"', html)
-                    if match2: return match2.group(1)
+                    
+                    smart_ex = SmartExtractor()
+                    res_smart = smart_ex.extract_from_html(html)
+                    if res_smart: return res_smart
                 except Exception as e:
                     print(f"[Extractor] TLS fallback error for mp4upload: {e}")
             elif 'dood' in url or 'doodstream' in url:

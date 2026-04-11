@@ -310,20 +310,21 @@ async def resolve_episode_sources(episode_url: str, provider_id: str) -> dict:
                 resolved = await extractor.extract_raw_video(raw_url)
 
             # Accept as-is if it looks like a direct video already
+            resolved_lower = resolved.lower()
             is_direct = (
                 any(resolved.split("?")[0].endswith(ext) for ext in (".m3u8", ".mp4", ".webm"))
-                or "googlevideo.com/videoplayback" in resolved
-                or ".mp4" in resolved
-                or ".m3u8" in resolved
+                or "googlevideo.com/videoplayback" in resolved_lower
+                or "kuroplayer.xyz" in resolved_lower
+                or ".mp4" in resolved_lower
+                or ".m3u8" in resolved_lower
             )
             
             if not is_direct:
-                # If extraction failed to get a direct video link, keep it as an iframe
-                # provided it's a known embed domain
                 video_type = "iframe"
                 final_url = raw_url
             else:
-                video_type = "hls" if ".m3u8" in resolved else "mp4"
+                # Use HLS for .m3u8 or KuroPlayer, else MP4
+                video_type = "hls" if (".m3u8" in resolved_lower or "kuroplayer" in resolved_lower) else "mp4"
                 final_url = resolved
 
             return {
