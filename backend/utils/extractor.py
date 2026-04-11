@@ -6,6 +6,32 @@ import random
 import string
 import asyncio
 from utils.ssrf_guard import SSRFSafeTransport
+from utils.tls_spoof import TLSSpoofTransport
+
+class SmartExtractor:
+    """Generic fallback: cari .m3u8 / .mp4 URL dari HTML apapun"""
+    
+    PATTERNS = [
+        # HLS manifest
+        r'(?:file|src|source|url)\s*[:=]\s*["\']?(https?://[^/]+/[^\s"\'<>]+\.m3u8[^\s"\'<>]*)',
+        # Direct MP4
+        r'(?:file|src|source|url)\s*[:=]\s*["\']?(https?://[^/]+/[^\s"\'<>]+\.mp4[^\s"\'<>]*)',
+        # Google Video
+        r'(https?://[a-z0-9\-]+\.googlevideo\.com/videoplayback[^\s"\'<>]+)',
+        # Source tag
+        r'<source[^>]+src=["\']([^"\']+(?:\.m3u8|\.mp4)[^"\']*)["\']',
+        # JWPlayer / VideoJS sources array
+        r'sources\s*:\s*\[\s*\{[^}]*(?:file|src)\s*:\s*["\']([^"\']+)["\']',
+    ]
+    
+    def extract_from_html(self, html: str) -> str | None:
+        for pattern in self.PATTERNS:
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                url = match.group(1).replace('&amp;', '&')
+                if any(ext in url for ext in ['.m3u8', '.mp4', '.webm', 'videoplayback']):
+                    return url
+        return None
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -24,6 +50,7 @@ class UniversalExtractor:
             limits=httpx.Limits(max_connections=50, max_keepalive_connections=20)
         )
         self.semaphore = asyncio.Semaphore(concurrency_limit)
+        self._tls = TLSSpoofTransport
 
     async def extract_raw_video(self, embed_url: str) -> str:
         async with self.semaphore:
@@ -110,21 +137,52 @@ class UniversalExtractor:
                     print(f"[Extractor] 4meplayer fallback error: {e}")
                 return url
             elif 'streamtape' in url:
-                res = await self.client.get(url)
-                html = res.text
+                try:
+                    res = await self.client.get(url)
+                    html = res.text
+                except Exception:
+                    html = ""
+                
                 token_match = re.search(r"(//streamtape\.com/get_video\?id=[^&'\"]+&expires=[^&'\"]+&ip=[^&'\"]+&token=[^&'\"]+)", html)
                 if token_match:
                     return 'https:' + token_match.group(1)
                 link_match = re.search(r'get_video\?id=(.+?)&token=(.+?)(?:&|\'|")', html)
                 if link_match:
                     return f"https://streamtape.com/get_video?id={link_match.group(1)}&token={link_match.group(2)}&stream=1"
+                
+                # Fallback ke curl_cffi
+                try:
+                    html = await self._tls.get(url)
+                    token_match = re.search(r"(//streamtape\.com/get_video\?id=[^&'\"]+&expires=[^&'\"]+&ip=[^&'\"]+&token=[^&'\"]+)", html)
+                    if token_match:
+                        return 'https:' + token_match.group(1)
+                    link_match = re.search(r'get_video\?id=(.+?)&token=(.+?)(?:&|\'|")', html)
+                    if link_match:
+                        return f"https://streamtape.com/get_video?id={link_match.group(1)}&token={link_match.group(2)}&stream=1"
+                except Exception as e:
+                    print(f"[Extractor] TLS fallback error for streamtape: {e}")
+
             elif 'mp4upload' in url:
-                res = await self.client.get(url)
-                html = res.text
+                try:
+                    res = await self.client.get(url)
+                    html = res.text
+                except Exception:
+                    html = ""
+                
                 match = re.search(r'"file":"(https?://[^"]+\.mp4[^"]*)"', html)
                 if match: return match.group(1).replace('\\/', '/')
                 match2 = re.search(r'file:\s*"(https?://[^"]+)"', html)
                 if match2: return match2.group(1)
+                
+                # Fallback ke curl_cffi
+                try:
+                    html = await self._tls.get(url)
+                    match = re.search(r'"file":"(https?://[^"]+\.mp4[^"]*)"', html)
+                    if match: return match.group(1).replace('\\/', '/')
+                    match2 = re.search(r'file:\s*"(https?://[^"]+)"', html)
+                    if match2: return match2.group(1)
+                except Exception as e:
+                    print(f"[Extractor] TLS fallback error for mp4upload: {e}")
             elif 'dood' in url or 'doodstream' in url:
                 res = await self.client.get(url)
                 html = res.text

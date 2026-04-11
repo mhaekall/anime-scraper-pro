@@ -6,11 +6,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { VideoPlayer } from "@/ui/player/VideoPlayer";
 import { AutoNextOverlay } from "@/ui/player/AutoNextOverlay";
-import { IconBack, IconPlay, IconCheck } from "@/ui/icons";
-import { Heart, Share2, Download, Bookmark, BookmarkCheck } from "lucide-react";
+import { IconBack, IconPlay, IconCheck, IconStar, IconShare, IconBookmark } from "@/ui/icons";
 import { CommentSection } from "./CommentSection";
 import { useWatchlist } from "@/core/stores/app-store";
 import { API } from "@/core/lib/api";
+
+// Helper SVG icons for those missing in ui/icons
+const HeartIcon = ({ size = 16, fill = "none" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+);
+const DownloadIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+);
 
 interface Props {
   id: string;
@@ -152,7 +159,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
                 onClick={handleLike}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${liked ? 'bg-[#ff453a]/20 text-[#ff453a]' : 'bg-white/10 text-white hover:bg-white/20'}`}
               >
-                <Heart size={16} fill={liked ? "currentColor" : "none"} />
+                <HeartIcon size={16} fill={liked ? "currentColor" : "none"} />
                 {likes}
               </button>
               
@@ -160,7 +167,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
                 onClick={handleShare}
                 className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 font-bold text-sm text-white transition-colors"
               >
-                <Share2 size={16} />
+                <IconShare className="w-4 h-4" />
                 Bagikan
               </button>
               
@@ -168,7 +175,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
                 onClick={handleSave}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${isSaved ? 'bg-[#30d158]/20 text-[#30d158]' : 'bg-white/10 text-white hover:bg-white/20'}`}
               >
-                {isSaved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                <IconBookmark className="w-4 h-4" filled={isSaved} />
                 {isSaved ? 'Disimpan' : 'Simpan'}
               </button>
 
@@ -177,7 +184,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
                   onClick={() => document.getElementById('downloads-section')?.scrollIntoView({ behavior: 'smooth' })}
                   className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 font-bold text-sm text-white transition-colors"
                 >
-                  <Download size={16} />
+                  <DownloadIcon size={16} />
                   Unduh
                 </button>
               )}

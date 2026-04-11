@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Home, PlaySquare, FolderDot, User } from "lucide-react";
+import { IconHome, IconExplore, IconCollection, IconUser } from "@/ui/icons";
 import { Toaster } from "@/ui/overlays/Toaster";
 import { useKonami } from "@/core/hooks/use-konami";
 import { SnakeGame } from "@/ui/games/SnakeGame";
@@ -16,10 +16,10 @@ const CollectionView = dynamic(() => import("@/features/collection/CollectionVie
 const ProfileView = dynamic(() => import("@/features/profile/ProfileView"), { ssr: false, loading: loadingSkeleton });
 
 const TABS = [
-  { id: "home", label: "Beranda", icon: Home },
-  { id: "explore", label: "Eksplor", icon: PlaySquare },
-  { id: "collection", label: "Koleksi", icon: FolderDot },
-  { id: "profile", label: "Anda", icon: User },
+  { id: "home", label: "Beranda", icon: IconHome },
+  { id: "explore", label: "Eksplor", icon: IconExplore },
+  { id: "collection", label: "Koleksi", icon: IconCollection },
+  { id: "profile", label: "Anda", icon: IconUser },
 ];
 
 export default function AppShell() {

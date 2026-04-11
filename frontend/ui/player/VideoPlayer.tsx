@@ -88,10 +88,13 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
         
         if (Hls.isSupported()) {
           const hls = new Hls({ 
-            startLevel: -1, 
-            maxMaxBufferLength: 30,
-            backBufferLength: 30,
+            startLevel: -1, // Auto start level
+            capLevelToPlayerSize: true, // Don't download 1080p if player is small (saves bandwidth, makes it light)
+            maxMaxBufferLength: 30, // Lower max buffer to save memory
+            backBufferLength: 30, // Don't keep old segments
+            maxBufferLength: 10, // Buffer aggressively up to 10s then slow down
             enableWorker: true,
+            lowLatencyMode: true, // Faster startup
           });
           hlsRef.current = hls;
           hls.loadSource(src.url);
@@ -106,12 +109,13 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
               if (allowedLevels.length > 0) {
                 // Find the index of the first 720p level
                 const firstHDIndex = allowedLevels[0].index;
-                hls.startLevel = firstHDIndex;
+                // Force lowest quality first for INSTANT playback, then let it ramp up to HD
+                hls.startLevel = data.levels[0]?.index ?? -1;
                 
-                // Override the level controller to only pick from HD levels
+                // Override the level controller to only pick from HD levels eventually
                 hls.on("hlsLevelLoading" as any, () => {
                   if (hls.autoLevelEnabled) {
-                    if (hls.nextLevel < firstHDIndex) {
+                    if (hls.nextLevel < firstHDIndex && hls.nextLevel !== hls.startLevel) {
                       hls.nextLevel = firstHDIndex;
                     }
                   }
@@ -244,7 +248,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   return (
     <div ref={containerRef} tabIndex={-1} className="relative w-full aspect-video bg-black md:rounded-2xl overflow-hidden outline-none select-none border border-white/5 group" onMouseMove={reveal} onMouseLeave={() => playing && setControls(false)} onClick={togglePlay} onTouchStart={handleTouchStart}>
       {/* @ts-ignore */}
-      <video ref={videoRef} poster={poster} className="w-full h-full object-contain" playsInline muted={muted} preload="auto" onContextMenu={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()} onDoubleClick={toggleFS} referrerPolicy="no-referrer" />
+      <video ref={videoRef} autoPlay={true} poster={poster} className="w-full h-full object-contain" playsInline muted={muted} preload="auto" onContextMenu={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()} onDoubleClick={toggleFS} referrerPolicy="no-referrer" />
 
       {/* Ripple effect for double tap */}
       {ripple && (
