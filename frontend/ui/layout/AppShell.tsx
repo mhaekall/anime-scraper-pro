@@ -52,7 +52,7 @@ export default function AppShell() {
                 onClick={() => setTab(i)}
                 className={`flex items-center gap-4 px-4 py-3.5 rounded-[16px] transition-all font-bold text-[14px] ${active ? 'bg-[#1C1C1E] border border-white/10 text-white shadow-lg' : 'border border-transparent text-[#8E8E93] hover:bg-white/5 hover:text-[#D1D1D6]'}`}
               >
-                <Icon size={20} strokeWidth={active ? 2.5 : 2} />
+                <Icon className="w-5 h-5" filled={active} />
                 {t.label}
               </button>
             );
@@ -83,10 +83,8 @@ export default function AppShell() {
                 >
                   <div className="relative flex items-center justify-center">
                     <Icon 
-                      size={22}
-                      className={`transition-colors ${active ? "text-white" : "text-white/60"}`} 
-                      strokeWidth={active ? 2 : 1.5}
-                      fill={active ? "currentColor" : "none"}
+                      className={`w-[22px] h-[22px] transition-colors ${active ? "text-white" : "text-white/60"}`} 
+                      filled={active}
                     />
                   </div>
                   <span className={`text-[10px] tracking-tight transition-colors ${active ? "text-white font-medium" : "text-white/60 font-normal"}`}>
