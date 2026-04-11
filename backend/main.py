@@ -69,6 +69,26 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+@app.get("/api/v2/admin/force-db-setup")
+async def force_db_setup():
+    try:
+        from db.connection import metadata
+        from db.models import users, comments, comment_reactions, follows, notifications, watch_events
+        from sqlalchemy.ext.asyncio import create_async_engine
+        import os
+        db_url = os.getenv("DATABASE_URL")
+        if db_url and db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if not db_url:
+            return {"error": "DATABASE_URL is missing"}
+        engine = create_async_engine(db_url)
+        async with engine.begin() as conn:
+            await conn.run_sync(metadata.create_all)
+        return {"success": True, "message": "Tables created successfully"}
+    except Exception as e:
+        import traceback
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     print(f"GLOBAL ERROR: {exc}")
