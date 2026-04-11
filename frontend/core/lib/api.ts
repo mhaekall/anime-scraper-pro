@@ -9,9 +9,14 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = path.startsWith("http") ? path : `${API}${path}`;
+  // If path starts with /api/anilist or /api/history, it's a local Next.js route.
+  // We use relative path so it hits the same origin.
+  const isLocalNextRoute = path.startsWith("/api/anilist") || path.startsWith("/api/history");
+  const url = (path.startsWith("http") || isLocalNextRoute) ? path : `${API}${path}`;
+
   const res = await fetch(url, {
-    ...init,
+...
+init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);

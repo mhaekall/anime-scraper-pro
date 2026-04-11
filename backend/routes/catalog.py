@@ -46,6 +46,16 @@ from services.cache import swr_cache_get
 router = APIRouter()
 
 
+@router.get("/v2/debug/kuronime")
+async def debug_kuronime(url: str = Query(...)):
+    from services.pipeline import resolve_episode_sources
+    try:
+        result = await resolve_episode_sources(url, "kuronime")
+        return result
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "trace": traceback.format_exc()}
+
 # ── GET /api/v2/anime/{anilist_id} ─────────────────────────────────────────────
 
 @router.get("/v2/anime/{anilist_id}")

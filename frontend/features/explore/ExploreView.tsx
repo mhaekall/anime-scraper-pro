@@ -1,7 +1,4 @@
 // features/explore/ExploreView.tsx — Search-first explore with AniList proxy
-// KEY FIX: Uses debounced search, genre filter from AniList,
-// but NO per-card image fetching. Images come from search results.
-
 "use client";
 
 import { useState, useEffect, useCallback, memo } from "react";
@@ -11,18 +8,18 @@ import { IconSearch, IconClose, IconClock } from "@/ui/icons";
 import { useSettings } from "@/core/stores/app-store";
 
 const GENRES = [
-  { name: "Action", gradient: "from-[#FF3B30] to-[#FF2D55]" },
-  { name: "Romance", gradient: "from-[#FF2D55] to-[#FF375F]" },
-  { name: "Fantasy", gradient: "from-[#5856D6] to-[#AF52DE]" },
-  { name: "Sci-Fi", gradient: "from-[#007AFF] to-[#5AC8FA]" },
-  { name: "Comedy", gradient: "from-[#FFCC00] to-[#FFD60A]" },
-  { name: "Drama", gradient: "from-[#FF9500] to-[#FFAC33]" },
-  { name: "Horror", gradient: "from-[#1C1C1E] to-[#2C2C2E]" },
-  { name: "Sports", gradient: "from-[#34C759] to-[#30D158]" },
-  { name: "Mecha", gradient: "from-[#64D2FF] to-[#5AC8FA]" },
-  { name: "Slice of Life", gradient: "from-[#FF9500] to-[#FFD60A]" },
-  { name: "Mystery", gradient: "from-[#AF52DE] to-[#BF5AF2]" },
-  { name: "Psychological", gradient: "from-[#5E5CE6] to-[#66d2ff]" },
+  { name: "Action", gradient: "from-[#FF3B30] to-[#FF2D55]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx21-6895.jpg" },
+  { name: "Romance", gradient: "from-[#FF2D55] to-[#FF375F]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx124080-mFmDofO0KkE3.jpg" },
+  { name: "Fantasy", gradient: "from-[#5856D6] to-[#AF52DE]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-p2v7VSt9Xp4G.jpg" },
+  { name: "Sci-Fi", gradient: "from-[#007AFF] to-[#5AC8FA]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx16498-739Z7ot7i1uC.jpg" },
+  { name: "Comedy", gradient: "from-[#FFCC00] to-[#FFD60A]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx114129-9vH0X9667C26.jpg" },
+  { name: "Drama", gradient: "from-[#FF9500] to-[#FFAC33]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101759-S9uV53YOfm96.jpg" },
+  { name: "Horror", gradient: "from-[#1C1C1E] to-[#2C2C2E]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-W9SeY9v9vVv9.jpg" },
+  { name: "Sports", gradient: "from-[#34C759] to-[#30D158]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx20992-9vH0X9667C26.jpg" },
+  { name: "Mecha", gradient: "from-[#64D2FF] to-[#5AC8FA]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx21051-9vH0X9667C26.jpg" },
+  { name: "Slice of Life", gradient: "from-[#FF9500] to-[#FFD60A]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx100166-mFmDofO0KkE3.jpg" },
+  { name: "Mystery", gradient: "from-[#AF52DE] to-[#BF5AF2]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx11061-9vH0X9667C26.jpg" },
+  { name: "Psychological", gradient: "from-[#5E5CE6] to-[#66d2ff]", image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx21519-9vH0X9667C26.jpg" },
 ];
 
 const SEARCH_Q = `
@@ -42,7 +39,6 @@ function useDebounce(val: string, ms: number) {
   return d;
 }
 
-// Search history stored locally
 function getSearchHist(): string[] {
   try { return JSON.parse(localStorage.getItem("ani-search-v2") || "[]"); } catch { return []; }
 }
@@ -51,7 +47,6 @@ function saveSearchHist(terms: string[]) {
 }
 
 export default function ExploreView() {
-  const accent = useSettings((s) => s.settings.accentColor);
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
   const [results, setResults] = useState<any[]>([]);
@@ -62,7 +57,6 @@ export default function ExploreView() {
   useEffect(() => setSearchHist(getSearchHist()), []);
 
   useEffect(() => {
-    // CASE A: Initial state or user cleared search/genre
     if (!dq && !genre) {
       setResults([]);
       setLoading(false);
@@ -70,11 +64,9 @@ export default function ExploreView() {
     }
 
     setLoading(true);
-    
-    // CASE B: Search mode (AniList Proxy)
-    const vars: any = { page: 1, perPage: 24, search: dq || undefined };
+    const vars: any = { page: 1, perPage: 30, search: dq || undefined };
     if (genre) vars.genres = [genre];
-    vars.sort = ["POPULARITY_DESC"];
+    vars.sort = dq ? ["SEARCH_MATCH"] : ["POPULARITY_DESC"];
 
     api.anilist(SEARCH_Q, vars)
       .then((data) => {
@@ -88,20 +80,23 @@ export default function ExploreView() {
           status: m.status,
           seasonYear: m.seasonYear,
         })));
+        
         if (dq && media.length > 0) {
           const updated = [dq, ...getSearchHist().filter((t) => t.toLowerCase() !== dq.toLowerCase())].slice(0, 10);
           saveSearchHist(updated);
           setSearchHist(updated);
         }
       })
-      .catch(() => setResults([]))
+      .catch((err) => {
+        console.error("AniList Fetch Error:", err);
+        setResults([]);
+      })
       .finally(() => setLoading(false));
 
   }, [dq, genre]);
 
   return (
     <div className="w-full pb-32">
-      {/* Sticky Search Header */}
       <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-2xl px-5 md:px-8 pt-4 pb-4 border-b border-white/5">
         <div className="relative max-w-2xl mx-auto">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40"><IconSearch className="w-5 h-5" /></div>
@@ -135,7 +130,7 @@ export default function ExploreView() {
                 <span className="text-white/40 text-[11px] font-medium">{results.length} item</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
-                {results.map((a, i) => <AnimeCard key={a.id} id={a.id} title={a.title} img={a.img} score={a.score} color={a.color} />)}
+                {results.map((a) => <AnimeCard key={a.id} id={a.id} title={a.title} img={a.img} score={a.score} color={a.color} />)}
               </div>
             </div>
           ) : (
@@ -172,12 +167,16 @@ export default function ExploreView() {
                   <button 
                     key={g.name} 
                     onClick={() => setGenre(g.name)} 
-                    className="relative overflow-hidden h-24 rounded-[20px] transition-all active:scale-95 group shadow-lg shadow-black/20"
+                    className="relative overflow-hidden h-28 rounded-[24px] transition-all active:scale-95 group shadow-lg shadow-black/20"
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${g.gradient} opacity-90 group-hover:opacity-100 transition-opacity`} />
+                    <img 
+                      src={g.image} 
+                      alt={g.name} 
+                      className="absolute -right-2 top-0 w-24 h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity rotate-[12deg] translate-x-4 scale-125"
+                    />
                     <div className="absolute inset-0 bg-black/10 group-active:bg-black/30 transition-colors" />
-                    <span className="absolute bottom-4 left-4 text-white font-black text-lg tracking-tight drop-shadow-sm">{g.name}</span>
-                    <div className="absolute -right-2 -top-2 w-12 h-12 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
+                    <span className="absolute bottom-5 left-5 text-white font-black text-xl tracking-tight drop-shadow-md z-10">{g.name}</span>
                   </button>
                 ))}
               </div>
