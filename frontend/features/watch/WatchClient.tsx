@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { VideoPlayer } from "@/ui/player/VideoPlayer";
 import { AutoNextOverlay } from "@/ui/player/AutoNextOverlay";
-import { IconBack, IconPlay } from "@/ui/icons";
+import { IconBack, IconPlay, IconCheck } from "@/ui/icons";
+import { Heart, Share2, Download, Bookmark, BookmarkCheck } from "lucide-react";
 import { CommentSection } from "./CommentSection";
+import { useWatchlist } from "@/core/stores/app-store";
 import { API } from "@/core/lib/api";
 
 interface Props {
@@ -25,7 +27,39 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
   const [showAutoNext, setShowAutoNext] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [showAllEpisodes, setShowAllEpisodes] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [likes, setLikes] = useState(Math.floor(Math.random() * 500) + 120); // Dummy for now
+  const [views] = useState(Math.floor(Math.random() * 100) + 10); // Dummy
   const epNum = parseFloat(episode) || 1;
+  const [showSynopsis, setShowSynopsis] = useState(false);
+
+  const { items, addItem, removeItem } = useWatchlist();
+  const isSaved = items.some(i => i.id === id);
+
+  const handleSave = () => {
+    if (isSaved) {
+      removeItem(id);
+    } else {
+      addItem({ id, title, image: poster });
+    }
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: `${title} - Episode ${episode}`,
+        url: window.location.href
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert("Link disalin!");
+    }
+  };
+
+  const handleLike = () => {
+    setLiked(!liked);
+    setLikes(prev => liked ? prev - 1 : prev + 1);
+  };
 
   // Fetch stream secara async setelah halaman render
   const { data: streamData, isLoading: streamLoading } = useSWR(
@@ -38,6 +72,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
   );
 
   const sources = streamData?.sources ?? initialSources;
+  const downloads = streamData?.downloads ?? [];
 
   // Assuming episodes are sorted ascending by number
   const sortedEpisodes = [...allEpisodes].sort((a, b) => a.number - b.number);
@@ -101,12 +136,70 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
       {/* Main Content Column */}
       <div className="w-full max-w-[1200px] p-4 lg:p-6 space-y-6 lg:space-y-8 flex flex-col min-w-0 pb-10">
         
-        {/* Info */}
-        <div>
+        {/* Title & Social Bar */}
+        <div className="border-b border-white/10 pb-4">
           <h1 className="text-white font-black text-xl md:text-2xl leading-tight line-clamp-2">{title}</h1>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[#0a84ff] font-bold text-sm bg-[#0a84ff]/10 px-2 py-0.5 rounded-md">Episode {episode}</span>
+          <div className="flex flex-wrap items-center justify-between gap-4 mt-4">
+            <div className="flex items-center gap-3">
+              <span className="text-[#8e8e93] font-medium text-sm">{views}K views</span>
+              <span className="w-1 h-1 rounded-full bg-[#8e8e93]" />
+              <span className="text-[#0a84ff] font-bold text-sm bg-[#0a84ff]/10 px-2 py-0.5 rounded-md">Episode {episode}</span>
+            </div>
+            
+            {/* Action Buttons (YouTube Style) */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+              <button 
+                onClick={handleLike}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${liked ? 'bg-[#ff453a]/20 text-[#ff453a]' : 'bg-white/10 text-white hover:bg-white/20'}`}
+              >
+                <Heart size={16} fill={liked ? "currentColor" : "none"} />
+                {likes}
+              </button>
+              
+              <button 
+                onClick={handleShare}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 font-bold text-sm text-white transition-colors"
+              >
+                <Share2 size={16} />
+                Bagikan
+              </button>
+              
+              <button 
+                onClick={handleSave}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${isSaved ? 'bg-[#30d158]/20 text-[#30d158]' : 'bg-white/10 text-white hover:bg-white/20'}`}
+              >
+                {isSaved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                {isSaved ? 'Disimpan' : 'Simpan'}
+              </button>
+
+              {downloads.length > 0 && (
+                <button 
+                  onClick={() => document.getElementById('downloads-section')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 font-bold text-sm text-white transition-colors"
+                >
+                  <Download size={16} />
+                  Unduh
+                </button>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* Synopsis & Metadata Box */}
+        <div 
+          onClick={() => setShowSynopsis(!showSynopsis)}
+          className={`bg-[#1c1c1e] rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors ${showSynopsis ? '' : 'line-clamp-2'}`}
+        >
+          <div className="text-sm text-[#e5e5ea] leading-relaxed">
+            <span className="font-bold mr-2 text-white">Detail Anime:</span>
+            Nikmati tontonan ini dengan kualitas terbaik. Jika ada masalah video, silakan ganti server atau resolusi melalui tombol pengaturan di pojok kanan bawah video player.
+          </div>
+          {showSynopsis && (
+            <div className="mt-3 pt-3 border-t border-white/5 flex gap-4 text-xs text-[#8e8e93]">
+              <div><span className="font-bold text-[#d1d1d6]">Studio:</span> Unknown</div>
+              <div><span className="font-bold text-[#d1d1d6]">Tahun:</span> 2026</div>
+            </div>
+          )}
         </div>
 
         {/* Episode List */}
@@ -148,6 +241,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
                 const isActive = ep.number === epNum;
                 return (
                   <Link 
+
                     key={ep.number} 
                     href={`/watch/${id}/${ep.number}`}
                     data-active={isActive}

@@ -22,6 +22,16 @@ async def lifespan(app: FastAPI):
         try:
             await database.connect()
             print(f"[DB] Connected to Neon DB (attempt {i+1})")
+            
+            # Run migrations after successful connection
+            import subprocess
+            try:
+                print("[DB] Running Alembic migrations...")
+                subprocess.run(["alembic", "upgrade", "head"], check=True, capture_output=True, text=True)
+                print("[DB] Alembic migrations completed successfully.")
+            except subprocess.CalledProcessError as e:
+                print(f"[DB] Alembic migration failed: {e.stderr}")
+                
             break
         except Exception as e:
             print(f"[DB] Connection attempt {i+1} failed: {e}")
