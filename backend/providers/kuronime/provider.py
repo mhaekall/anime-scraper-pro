@@ -47,6 +47,7 @@ class KuronimeProvider(BaseProvider):
         return self._p.parse_episode_list(html, BASE_URL)
 
     async def get_episode_sources(self, episode_url: str) -> list[dict]:
+        from utils.tls_spoof import TLSSpoofTransport
         html = await self._t.get_html(episode_url)
         req_id = self._p.extract_req_id(html)
         
@@ -54,16 +55,15 @@ class KuronimeProvider(BaseProvider):
         if not req_id:
             return sources
             
-        client = self._t.get_client()
         try:
-            res = await client.post(
+            # Gunakan TLSSpoofTransport untuk bypass Cloudflare pada API Kuronime
+            data = await TLSSpoofTransport.post(
                 API_URL,
                 json={"id": req_id},
                 headers={"Referer": BASE_URL, "User-Agent": "Mozilla/5.0"}
             )
-            data = res.json()
         except Exception as e:
-            print(f"[Kuronime] API error: {e}")
+            print(f"[Kuronime] API error via TLSSpoof: {e}")
             return sources
             
         # Parse src and src_sd (Direct streams)
