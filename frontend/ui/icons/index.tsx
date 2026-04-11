@@ -2,6 +2,7 @@
 // Each icon is ~200 bytes vs lucide-react's 40KB+ bundle impact.
 
 import { memo } from "react";
+import { Home, Compass, Library, User, Info } from "lucide-react";
 
 type P = { className?: string };
 
@@ -21,7 +22,7 @@ export const IconBack = memo(({ className = "w-5 h-5" }: P) => (
 IconBack.displayName = "IconBack";
 
 export const IconInfo = memo(({ className = "w-5 h-5" }: P) => (
-  <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 00.92.953l.043-.013A8.25 8.25 0 1012 20.25a8.25 8.25 0 00-.75-16.5z" /></svg>
+  <Info className={className} strokeWidth={2} />
 ));
 IconInfo.displayName = "IconInfo";
 
@@ -31,22 +32,38 @@ export const IconSearch = memo(({ className = "w-5 h-5" }: P) => (
 IconSearch.displayName = "IconSearch";
 
 export const IconHome = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
-  <svg className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 0 : 1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+  <Home 
+    className={className} 
+    strokeWidth={filled ? 2.5 : 2} 
+    fill={filled ? "currentColor" : "none"} 
+  />
 ));
 IconHome.displayName = "IconHome";
 
 export const IconExplore = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
-  <svg className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 0 : 1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>
+  <Compass 
+    className={className} 
+    strokeWidth={filled ? 2.5 : 2} 
+    fill={filled ? "currentColor" : "none"} 
+  />
 ));
 IconExplore.displayName = "IconExplore";
 
 export const IconCollection = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
-  <svg className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 0 : 1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" /></svg>
+  <Library 
+    className={className} 
+    strokeWidth={filled ? 2.5 : 2} 
+    fill={filled ? "currentColor" : "none"} 
+  />
 ));
 IconCollection.displayName = "IconCollection";
 
 export const IconUser = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
-  <svg className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 0 : 1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+  <User 
+    className={className} 
+    strokeWidth={filled ? 2.5 : 2} 
+    fill={filled ? "currentColor" : "none"} 
+  />
 ));
 IconUser.displayName = "IconUser";
 
