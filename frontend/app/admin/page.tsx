@@ -51,28 +51,6 @@ export default function AdminDashboard() {
     if (auth) fetchData();
   }, [auth]);
 
-  if (!auth) {
-    return (
-      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center font-sans">
-        <div className="bg-[#1c1c1e] p-8 rounded-2xl border border-white/10 w-full max-w-sm">
-          <h1 className="text-2xl font-black text-white mb-4">Admin Access</h1>
-          <form onSubmit={(e) => { e.preventDefault(); if (password === 'admin123') setAuth(true); else alert('Wrong password'); }}>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password..." 
-              className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white mb-4 focus:outline-none focus:border-[#0a84ff]"
-            />
-            <button type="submit" className="w-full bg-[#0a84ff] text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition-colors">
-              Login
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   const handleSync = async (idToSync: string) => {
     if (!idToSync) return;
     setLoading(true);
@@ -149,6 +127,28 @@ export default function AdminDashboard() {
       return matchSearch && matchGenre && matchEps;
     });
   }, [dbData, search, filterGenre, filterEps]);
+
+  if (!auth) {
+    return (
+      <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center font-sans">
+        <div className="bg-[#1c1c1e] p-8 rounded-2xl border border-white/10 w-full max-w-sm">
+          <h1 className="text-2xl font-black text-white mb-4">Admin Access</h1>
+          <form onSubmit={(e) => { e.preventDefault(); if (password === 'admin123') setAuth(true); else alert('Wrong password'); }}>
+            <input 
+              type="password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password..." 
+              className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white mb-4 focus:outline-none focus:border-[#0a84ff]"
+            />
+            <button type="submit" className="w-full bg-[#0a84ff] text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition-colors">
+              Login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0c10] text-white p-4 md:p-8 font-sans">
