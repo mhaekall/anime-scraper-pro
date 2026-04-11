@@ -40,15 +40,11 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
   const epNum = parseFloat(episode) || 1;
   const [showSynopsis, setShowSynopsis] = useState(false);
 
-  const { items, addItem, removeItem } = useWatchlist();
-  const isSaved = items.some(i => i.id === id);
+  const { items, toggle } = useWatchlist();
+  const isSaved = items.some(i => String(i.id) === id);
 
   const handleSave = () => {
-    if (isSaved) {
-      removeItem(id);
-    } else {
-      addItem({ id, title, image: poster });
-    }
+    toggle({ id, title, img: poster, totalEps: allEpisodes.length });
   };
 
   const handleShare = () => {
