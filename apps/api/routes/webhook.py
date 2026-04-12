@@ -5,6 +5,19 @@ from services.config import QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY
 from services.pipeline import sync_anime_episodes
 from services.cleanup import cleanup_expired_cache, vacuum_old_episodes
 from db.connection import database
+import sys
+import os
+
+# Import ingestion engine
+try:
+    from services.ingestion.main import IngestionEngine
+except ImportError:
+    # Fallback for different environment structures
+    sys.path.append(os.path.join(os.getcwd(), "services"))
+    try:
+        from ingestion.main import IngestionEngine
+    except ImportError:
+        IngestionEngine = None # Handle missing engine gracefully if needed
 
 router = APIRouter()
 
