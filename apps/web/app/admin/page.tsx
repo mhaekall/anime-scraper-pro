@@ -153,7 +153,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center font-sans">
         <div className="bg-[#1c1c1e] p-8 rounded-2xl border border-white/10 w-full max-w-sm">
           <h1 className="text-2xl font-black text-white mb-4">Admin Access</h1>
-          <form onSubmit={(e) => { e.preventDefault(); if (password === 'admin123') setAuth(true); else alert('Wrong password'); }}>
+          <form onSubmit={handleLogin}>
             <input 
               type="password" 
               value={password}
@@ -332,6 +332,26 @@ export default function AdminDashboard() {
                       <button 
                         onClick={() => handleSync(String(item.anilistId))}
                         className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-white text-black text-[10px] font-bold rounded-lg hover:scale-105"
+                      >
+                        Force Scrape
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredData.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-[#8e8e93]">Tidak ada data anime.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}1.5 bg-white text-black text-[10px] font-bold rounded-lg hover:scale-105"
                       >
                         Force Scrape
                       </button>
