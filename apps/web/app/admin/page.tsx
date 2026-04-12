@@ -331,12 +331,4 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
-}body>
-            </table>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
 }
