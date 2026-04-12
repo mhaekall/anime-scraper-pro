@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from qstash import Receiver
 from services.config import QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY
 from services.pipeline import sync_anime_episodes
+from services.cleanup import cleanup_expired_cache, vacuum_old_episodes
 from db.connection import database
 
 router = APIRouter()

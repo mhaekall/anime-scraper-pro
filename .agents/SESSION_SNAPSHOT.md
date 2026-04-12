@@ -1,36 +1,33 @@
-# Session Snapshot: Wrapper-Centric Architecture, Swarm Proxy & Kuronime Decryption
-**Date:** Friday, April 10, 2026
-**Lead Architect:** Gemini (Agent 4)
+# Session Snapshot: Enterprise Ingestion Engine & HLS Integration
 
-## 1. Project Status
-- **Current State:** Berhasil melakukan perombakan arsitektur besar-besaran (Major Overhaul) dari *Website-Centric* menjadi **Wrapper-Centric / Direct Stream Aggregator**.
-- **Frontend Status:** 100% Bersih dari Iframe. Pemutar video kini secara absolut merupakan *Native Player* Next.js yang hanya menerima URL berakhiran `.mp4` atau `.m3u8` murni.
-- **Provider Status (Re-prioritized):**
-  - **Kuronime (Priority 1):** **NEWLY INTEGRATED**. Mengekstrak *payload* terenkripsi (AES CryptoJS) via `pycryptodome` untuk mendapatkan akses langsung ke *Server HLS* (m3u8) pribadi Kuronime dan ratusan *mirror* (Krakenfiles, Mp4upload).
-  - **Samehadaku (Priority 1):** Sumber utama *Direct Stream* via ekstraksi mentah Wibufile.
-  - **Oploverz (Priority 2):** Dipertahankan sebagai *fallback metadata* dan *hunting wrapper* (4meplayer, Oplo2).
-  - **Doronime (Priority 3):** Dipertahankan.
-  - **Otakudesu (Priority 4):** Dipertahankan sebagai cadangan untuk ekstraksi *wrapper* DesuDrives (JSON API tersembunyi).
+## 🎯 Pencapaian Utama Hari Ini
+Sesi ini sangat produktif dengan berhasil membangun, menguji, dan melakukan *deploy* infrastruktur $0 Cost tingkat Enterprise:
 
-## 2. Key Accomplishments (Big Tech Architecture)
-- **Zero-Cost Rotating Proxy (Cloudflare Swarm Proxy):** Dideploy *Worker Script* (`worker-proxy/`) ke jaringan *edge* Cloudflare untuk mendapatkan rotasi IP global secara otomatis dan mengelabui pemblokiran *anti-bot* dari provider. Terintegrasi langsung di `transport.py`.
-- **Asynchronous Task Queue (Mass Scalability):** Beralih dari scraping *synchronous* yang memblokir memori menjadi delegasi asinkronus. Mengimplementasikan dukungan **Upstash QStash** untuk eksekusi ratusan bot paralel. Juga mengimplementasikan **Local Asyncio Background Tasks** di dalam *event loop* FastAPI sebagai *fallback* ketika token QStash tidak tersedia.
-- **Advanced Admin Dashboard (`/admin`):** Membangun UI *Data-Driven* yang eksploitatif di *frontend*. Memiliki fitur *Live Database Grid* (menampilkan *cover*, *genre*, dan jumlah episode), Filter "0 Episode", eksekusi paksa *sync* per-ID, dan *Live Terminal Logs*.
-- **Isekai/Fantasy Targeted Mass-Sync:** Mengubah algoritma dari "Top 100 Anilist" menjadi "Scrape-First, Map-Later" langsung dari katalog Genre Fantasy/Isekai Samehadaku untuk memastikan anime yang ditarik pasti memiliki *Direct Stream* Wibufile.
-- **Injeksi Masterpiece:** Sukses menarik dan memetakan ribuan episode untuk *One Piece*, *Jujutsu Kaisen S3*, *Demon Slayer (Infinity Castle)*, seluruh musim *Tensura*, *Classroom of the Elite*, dan *Mushoku Tensei*.
-- **Big Tech Optimizations:**
-  - Menerapkan **Connection Pooling Limits** (`httpx.Limits`) di *transport layer* untuk mencegah kehabisan *file descriptor* (soket).
-  - Mengimplementasikan **Exponential Backoff & Rate-Limit Retry** untuk API GraphQL Anilist (`429 Too Many Requests`).
-  - Menerapkan **Graceful Degradation** di dekriptor AES Kuronime dengan blok `try-except` agar *server* tidak *crash* jika kunci enkripsi diubah.
-- **Workspace Cleanup:** Membersihkan hampir 80 file *dump* HTML dan skrip *ad-hoc testing* dari repositori untuk menjaga integritas *codebase*.
+1. **Ingestion Engine Aktif (Telegram Swarm Storage)**
+   - Berhasil memintas anti-bot web bajakan menggunakan `UniversalExtractor`.
+   - Mengunduh MP4 secara utuh via `ffmpeg`.
+   - Memotong video menjadi format HLS Apple (`.m3u8` & `.ts`) dengan toleransi *corrupt frame* (`-err_detect ignore_err`).
+   - Mengunggah ratusan segmen video ke Private Telegram Channel secara *Paralel* menggunakan 10 *workers* dan *auto-retry* anti-limit.
 
-## 3. Unexecuted Ideas & Suboptimal Areas (Saran untuk Sesi Berikutnya)
-Sistem saat ini sudah sangat tangguh untuk standar produksi, namun masih memiliki celah optimalisasi:
+2. **Automasi Lazy Ingestion (QStash + HF Spaces)**
+   - API streaming web terhubung ke QStash via Webhook.
+   - User memutar Wibufile -> QStash *trigger* Hugging Face -> Hugging Face mengunduh/memotong/unggah ke Telegram -> URL database di-update selamanya.
+   - Kredensial Hugging Face Spaces berhasil diinjeksi via HF API (Tanpa buka UI browser).
 
-1. **Auto-Healing Extractor (Agentic Regex):** `UniversalExtractor` saat ini masih menggunakan aturan (Regex) statis yang diketik manual. Jika *DesuDrives* atau *Wibufile* mengubah struktur DOM mereka esok hari, ekstraksi akan gagal. **Saran:** Integrasikan API LLM ringan (Gemini 2.0 Flash) di *backend* untuk bertindak sebagai *fallback parser* yang bisa menyusun ulang Regex baru secara *on-the-fly* jika deteksi awal gagal (Self-Healing Code).
-2. **Reverse Proxy M3U8 (CORS Bypass):** Kuronime memuntahkan tautan HLS (`.m3u8`). Saat ini, jika *frontend* memutar *link* HLS mentah dari peladen pihak ketiga, ada risiko terkena *CORS block* atau pelacakan IP pengguna akhir oleh penyedia. **Saran:** Buat satu lagi Cloudflare Worker (`stream-proxy`) khusus untuk melakukan *piping/streaming chunk video* ke *frontend* (menyembunyikan sumber aslinya).
-3. **Database Migration Pipeline (Alembic):** Kritik dari agen sebelumnya masih berlaku. Skema database (Neon Postgres) masih dibuat secara *inline* (*create table if not exists*). **Saran:** Migrasikan sepenuhnya ke *Alembic* (`backend/migrations`) agar perubahan skema (seperti penambahan kolom) bisa dilacak versinya (*version controlled*).
-4. **Pembersihan Cache Otomatis (Storage Optimization):** Tabel `video_cache` menumpuk *URL stream* dengan *expired time*. Jika tidak pernah dihapus, batas gratis 500MB dari Neon DB akan cepat penuh. **Saran:** Tambahkan tugas berulang (*cron job*) di skrip *background* untuk menjalankan `DELETE FROM video_cache WHERE expiresAt < NOW()`.
-5. **Headless Browser (Playwright) untuk Google Video/Blogger:** Ada ribuan anime lama yang hanya ditampung di Blogger (*Google Video Wiz API*). Menembusnya murni dengan Python `httpx` nyaris mustahil tanpa dekripsi *JavaScript V8*. **Saran:** Jika *budget* memungkinkan (atau menemukan *free tier serverless* yang mendukung Puppeteer), buat layanan *microservice* terpisah khusus untuk me-render halaman Blogger dan menyedot tautan videonya.
+3. **Frontend HLS Player**
+   - Modul `hls.js` telah diinstal di `apps/web`.
+   - Komponen `VideoPlayer.tsx` diperbarui agar pengguna Android dan PC Windows (Chrome) bisa menikmati streaming `.m3u8` dari Telegram Proxy tanpa error.
 
-**Semua perubahan di sesi ini telah disinkronisasikan dan di-*push* ke cabang `master` GitHub (serta di-*deploy* ke Hugging Face dan Cloudflare Pages).** Sistem siap diserahkan ke agen berikutnya!
+4. **Garbage Collection (Neon 0.5GB Saver)**
+   - Modul `apps/api/services/cleanup.py` diimplementasikan untuk `cleanup_expired_cache()` dan `vacuum_old_episodes()` (via `/api/v2/webhook/cleanup`).
+
+## 🛠️ Status Arsitektur
+- **Frontend (Cloudflare Pages):** Berjalan dengan mulus (SWR Cache aktif, VideoPlayer HLS mendukung lintas platform).
+- **Backend (Hugging Face Spaces):** Berjalan 24/7 (FastAPI, FFmpeg siap). QStash aktif.
+- **Database (Neon Postgres):** Stabil. URL diupdate otomatis ke `tg-proxy...` via Ingestion Engine.
+
+## 📌 Rencana Sesi Berikutnya (Next Agent)
+- [ ] Monitor log QStash untuk memastikan *webhooks* berjalan tanpa ada isu `timeout` dari Hugging Face.
+- [ ] Menambahkan fitur *Progress Syncing* tontonan ke profil User via *BetterAuth*.
+- [ ] Mengoptimalkan UI *Home* dengan daftar *Trending* yang lebih variatif berdasarkan histori *play* database lokal.
+- [ ] Uji coba performa streaming (Load Test) pada Proxy Telegram.

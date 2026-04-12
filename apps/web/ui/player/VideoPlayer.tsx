@@ -93,8 +93,10 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           const hls = new Hls({ 
             startLevel: -1, 
             capLevelToPlayerSize: true, 
-            maxMaxBufferLength: 30, 
+            maxMaxBufferLength: 60, 
+            maxBufferSize: 60 * 1000 * 1000,
             enableWorker: true,
+            lowLatencyMode: true,
           });
           hlsRef.current = hls;
           hls.loadSource(src.url);
@@ -107,8 +109,19 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           hls.on("hlsError" as any, (_: any, data: any) => {
             if (data.fatal) { 
               console.error("Fatal HLS Error:", data);
-              setError("Gagal memuat video."); 
-              setLoading(false); 
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  hls.startLoad();
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  setError("Gagal memuat video stream."); 
+                  setLoading(false);
+                  hls.destroy();
+                  break;
+              }
             }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -116,7 +129,8 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           video.onloadedmetadata = () => { setLoading(false); if (seekTo != null) video.currentTime = seekTo; video.play().catch(() => {}); };
         }
       } catch (e) {
-        setError("Gagal memuat player.");
+        console.error("HLS Initialization Error:", e);
+        setError("Gagal memuat player video.");
         setLoading(false);
       }
     } else {
