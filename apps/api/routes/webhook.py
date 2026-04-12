@@ -40,10 +40,15 @@ async def _verify_qstash(request: Request):
         raise HTTPException(status_code=400, detail="Missing Upstash-Signature header")
 
     try:
+        # Hugging Face Spaces uses reverse proxies, so request.url contains internal IP (10.x.x.x)
+        # QStash requires the exact public URL it sent the request to for signature verification.
+        api_public_url = os.getenv("API_PUBLIC_URL", "https://jonyyyyyyyu-anime-scraper-api.hf.space").rstrip("/")
+        public_url = f"{api_public_url}{request.url.path}"
+        
         receiver.verify(
             body=body.decode("utf-8"),
             signature=signature,
-            url=str(request.url)
+            url=public_url
         )
     except Exception as e:
         print(f"[QStash] Invalid Signature: {e}")
