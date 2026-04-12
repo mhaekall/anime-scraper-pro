@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "AnimeScraper Pro",
   description: "Nonton anime subtitle Indonesia — cepat, gratis, tanpa iklan.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "AnimeScraper Pro",
+  },
 };
 
 export const viewport: Viewport = {
