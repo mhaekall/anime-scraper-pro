@@ -8,15 +8,26 @@ from db.connection import database
 import sys
 import os
 
+# Add paths to try and resolve the ingestion engine
+sys.path.append(os.path.join(os.getcwd(), "services"))
+try:
+    # Try local dev environment path
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../services")))
+except Exception:
+    pass
+
 # Import ingestion engine
 try:
-    from services.ingestion.main import IngestionEngine
-except ImportError:
-    # Fallback for different environment structures
-    sys.path.append(os.path.join(os.getcwd(), "services"))
+    from ingestion.main import IngestionEngine
+except Exception as e1:
+    import traceback
+    print(f"[Webhook Init] Failed to import ingestion.main: {e1}")
+    traceback.print_exc()
     try:
-        from ingestion.main import IngestionEngine
-    except ImportError:
+        from services.ingestion.main import IngestionEngine
+    except Exception as e2:
+        print(f"[Webhook Init] Fallback import failed: {e2}")
+        traceback.print_exc()
         IngestionEngine = None # Handle missing engine gracefully if needed
 
 router = APIRouter()
