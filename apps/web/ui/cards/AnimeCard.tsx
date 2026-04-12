@@ -45,11 +45,6 @@ function AnimeCardInner({ id, title, img, score, color, epId, rank }: Props) {
     const href = epId ? `/watch/${id}/${epId}` : `/anime/${id}`;
     // Prefetch route Next.js
     router.prefetch(href);
-    
-    // Warm up backend cache (only if going to anime detail, watch metadata will be fetched client side soon)
-    if (!epId) {
-      fetch(`${API}/api/v2/anime/${id}`, { method: "GET" }).catch(() => {});
-    }
   };
 
   const c = color || accent;
