@@ -429,7 +429,7 @@ async def get_episode_stream(anilist_id: int, ep_num: float) -> Optional[dict]:
     # Get all providers for this episode, ordered by priority
     rows = await database.fetch_all(
         """
-        SELECT "episodeUrl", "providerId"
+        SELECT id, "episodeUrl", "providerId"
         FROM   episodes
         WHERE  "anilistId" = :anilist_id AND "episodeNumber" = :ep_num
         ORDER BY
@@ -449,10 +449,43 @@ async def get_episode_stream(anilist_id: int, ep_num: float) -> Optional[dict]:
         return None
 
     for row in rows:
-        result = await resolve_episode_sources(row["episodeUrl"], row["providerId"])
+        ep_url = row["episodeUrl"]
+        # Jika URL di database sudah diubah menjadi Telegram Proxy (hasil Ingestion Engine)
+        if "tg-proxy" in ep_url or "workers.dev" in ep_url:
+            return {
+                "sources": [{
+                    "provider": "Swarm Storage (Telegram)",
+                    "quality": "1080p",
+                    "url": ep_url,
+                    "type": "hls" if ep_url.endswith(".m3u8") or "tg-proxy" in ep_url else "mp4",
+                }],
+                "downloads": [],
+                "episodeUrl": ep_url,
+                "usedProvider": "telegram_swarm"
+            }
+
+        result = await resolve_episode_sources(ep_url, row["providerId"])
         if result.get("sources"):
-            result["episodeUrl"] = row["episodeUrl"]
+            result["episodeUrl"] = ep_url
             result["usedProvider"] = row["providerId"]
+            
+            # Fire and forget: trigger QStash ingestion if the best source is a direct link
+            # so the next user gets the 0ms Telegram stream.
+            direct_sources = [s for s in result["sources"] if s.get("type") in ("direct", "mp4", "hls")]
+            if direct_sources:
+                best_source = direct_sources[0]
+                raw_direct_url = best_source.get("raw_url") or best_source.get("url")
+                # Avoid triggering if it's already a proxy URL
+                if "workers.dev" not in raw_direct_url and "tg-proxy" not in raw_direct_url:
+                    from services.queue import enqueue_ingest
+                    asyncio.create_task(enqueue_ingest(
+                        episode_id=row["id"],
+                        anilist_id=anilist_id,
+                        provider_id=row["providerId"],
+                        episode_number=ep_num,
+                        direct_url=raw_direct_url
+                    ))
+            
             return result
 
     return {"sources": [], "downloads": [], "error": "No sources resolved from any provider"}
