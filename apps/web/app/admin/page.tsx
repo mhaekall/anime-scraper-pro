@@ -63,7 +63,17 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (auth) fetchData();
+    if (!auth) return;
+    
+    // Initial fetch
+    fetchData();
+    
+    // Auto refresh data every 5 seconds to simulate real-time
+    const interval = setInterval(() => {
+      fetchData();
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, [auth]);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -195,7 +205,7 @@ export default function AdminDashboard() {
         {/* Header & Stats */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div>
-            <h1 className="text-3xl font-black mb-2 tracking-tight">Kuronime Database Explorer</h1>
+            <h1 className="text-3xl font-black mb-2 tracking-tight">Anime Scraper Pro Dashboard</h1>
             <p className="text-[#8e8e93] text-sm">Sistem eksploitasi data (Data-Driven Dashboard) dengan Direct Stream Resolver & Ingestion Engine.</p>
           </div>
           <div className="flex gap-4">
@@ -250,10 +260,10 @@ export default function AdminDashboard() {
           {/* Terminal */}
           <div className="bg-black border border-white/10 rounded-2xl p-5 h-[200px] flex flex-col">
             <h2 className="text-sm font-bold text-[#8e8e93] uppercase tracking-widest mb-3 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#30d158] animate-pulse" /> Live Terminal Logs
+              <div className="w-2 h-2 rounded-full bg-[#30d158] animate-pulse" /> Dispatched Background Jobs
             </h2>
-            <div className="flex-1 overflow-y-auto font-mono text-[10px] text-[#30d158] space-y-1">
-              {logs.length === 0 ? <span className="text-white/30">Menunggu komandan...</span> : logs.map((log, i) => <div key={i}>{log}</div>)}
+            <div className="flex-1 overflow-y-auto font-mono text-[10px] text-[#30d158] space-y-1 flex flex-col-reverse">
+              {logs.length === 0 ? <span className="text-white/30">Sistem Automasi Menunggu Perintah...</span> : logs.map((log, i) => <div key={i}>{log}</div>)}
             </div>
           </div>
         </div>
