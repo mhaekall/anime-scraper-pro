@@ -10,8 +10,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from core.fetcher import VideoFetcher
 from core.slicer import VideoSlicer
 from uploader.telegram import TelegramUploader
-from apps.api.db.connection import database
-from apps.api.db.models import episodes
+try:
+    from db.connection import database
+    from db.models import episodes
+except ImportError:
+    from apps.api.db.connection import database
+    from apps.api.db.models import episodes
 from sqlalchemy import update
 
 logging.basicConfig(level=logging.INFO)
