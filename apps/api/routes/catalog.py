@@ -130,7 +130,75 @@ async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks, re
     return {"success": True, "data": [dict(r) for r in rows]}
 
 
-# ── GET /api/v2/anime/{anilist_id}/episodes/{ep_num}/stream ────────────────────
+# ── ADMIN ENDPOINTS ────────────────────────────────────────────────────────────
+
+@router.get("/v2/admin/stats")
+async def admin_get_stats():
+    """Get ingestion and database stats for the admin dashboard"""
+    stats = await get_ingestion_stats()
+    return {"success": True, **stats}
+
+@router.post("/v2/admin/trigger-prefetch")
+async def admin_trigger_prefetch():
+    """Manually trigger the smart pre-fetch job instead of waiting for cron"""
+    # Import here to avoid circular imports if any
+    from services.prefetch import smart_prefetch_episodes
+    import asyncio
+    
+    # We trigger it in the background so the request doesn't timeout
+    asyncio.create_task(smart_prefetch_episodes())
+    
+    return {"success": True, "message": "Smart Pre-fetch job started in the background."}
+
+@router.get("/v2/admin/database")
+async def admin_get_database():
+    """Return all anime in database with episode counts"""
+    try:
+        query = '''
+            SELECT a."anilistId", a.title, a.genres, a.status, a.year, a.cover,
+                   COUNT(e.id) as episode_count,
+                   MAX(e."providerId") as "providerId"
+            FROM anime_metadata a
+            LEFT JOIN episodes e ON a."anilistId" = e."anilistId"
+            GROUP BY a."anilistId", a.title, a.genres, a.status, a.year, a.cover
+            ORDER BY a.year DESC, a.title ASC
+        '''
+        rows = await database.fetch_all(query)
+        data = [dict(row) for row in rows]
+        return {"success": True, "data": data}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.post("/v2/admin/mass-sync")
+async def admin_mass_sync():
+    """Trigger a mass sync via QStash or local background task"""
+    # Trigger script via subprocess or queue
+    import subprocess
+    import os
+    script_path = os.path.join(os.path.dirname(__file__), "../scripts/mass_sync.py")
+    subprocess.Popen(["python", script_path])
+    return {"success": True, "message": "Mass sync process started in background."}
+
+@router.post("/v2/admin/sync-missing")
+async def admin_sync_missing():
+    """Find animes with 0 episodes and queue them for sync"""
+    try:
+        query = '''
+            SELECT a."anilistId"
+            FROM anime_metadata a
+            LEFT JOIN episodes e ON a."anilistId" = e."anilistId"
+            GROUP BY a."anilistId"
+            HAVING COUNT(e.id) = 0
+        '''
+        rows = await database.fetch_all(query)
+        count = 0
+        for row in rows:
+            await enqueue_sync(row["anilistId"])
+            count += 1
+            
+        return {"success": True, "message": f"Queued {count} missing anime for syncing."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @router.get("/v2/anime/{anilist_id}/episodes/{ep_num}/stream")
 async def get_episode_stream_v2(
