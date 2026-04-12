@@ -148,6 +148,16 @@ export default function AdminDashboard() {
     });
   }, [dbData, search, filterGenre, filterEps]);
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === 'admin123') {
+      setAuth(true);
+      localStorage.setItem("adminAuth", "true");
+    } else {
+      alert('Wrong password');
+    }
+  };
+
   if (!auth) {
     return (
       <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center font-sans">
@@ -332,26 +342,6 @@ export default function AdminDashboard() {
                       <button 
                         onClick={() => handleSync(String(item.anilistId))}
                         className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-white text-black text-[10px] font-bold rounded-lg hover:scale-105"
-                      >
-                        Force Scrape
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {filteredData.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-[#8e8e93]">Tidak ada data anime.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}1.5 bg-white text-black text-[10px] font-bold rounded-lg hover:scale-105"
                       >
                         Force Scrape
                       </button>
