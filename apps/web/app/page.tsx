@@ -1,13 +1,5 @@
-"use client";
+import HomeView from "@/features/home/HomeView";
 
-import dynamic from "next/dynamic";
-
-const AppShell = dynamic(() => import("@/ui/layout/AppShell"), { ssr: false });
-
-export default function Home() {
-  return (
-    <main className="w-full min-h-[100dvh] bg-black text-white flex flex-col min-w-0">
-      <AppShell />
-    </main>
-  );
+export default function Page() {
+  return <HomeView />;
 }
