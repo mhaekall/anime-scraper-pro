@@ -22,6 +22,14 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [ingestionStats, setIngestionStats] = useState<any>(null);
+
+  useEffect(() => {
+    // Cek localStorage saat komponen dimuat
+    const savedAuth = localStorage.getItem("adminAuth");
+    if (savedAuth === "true") {
+      setAuth(true);
+    }
+  }, []);
   
   // Database explorer states
   const [dbData, setDbData] = useState<AnimeRow[]>([]);
@@ -34,7 +42,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       // 1. Fetch quick stats
-      const resStats = await fetch(`${API}/api/v2/admin/stats`);
+      const resStats = await fetch(`${API}/api/v2/admin/stats`, { cache: 'no-store' });
       const dataStats = await resStats.json();
       if (dataStats.success) {
         setStats({ total_anime: dataStats.total_anime, total_episodes: dataStats.total_episodes });
@@ -45,7 +53,7 @@ export default function AdminDashboard() {
       }
 
       // 2. Fetch full database
-      const resDb = await fetch(`${API}/api/v2/admin/database`);
+      const resDb = await fetch(`${API}/api/v2/admin/database`, { cache: 'no-store' });
       const dataDb = await resDb.json();
       if (dataDb.success) setDbData(dataDb.data);
       
@@ -57,6 +65,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (auth) fetchData();
   }, [auth]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === 'admin123') {
+      setAuth(true);
+      localStorage.setItem("adminAuth", "true");
+    } else {
+      alert('Wrong password');
+    }
+  };
 
   const handlePrefetch = async () => {
     setLoading(true);
@@ -147,16 +165,6 @@ export default function AdminDashboard() {
       return matchSearch && matchGenre && matchEps;
     });
   }, [dbData, search, filterGenre, filterEps]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === 'admin123') {
-      setAuth(true);
-      localStorage.setItem("adminAuth", "true");
-    } else {
-      alert('Wrong password');
-    }
-  };
 
   if (!auth) {
     return (
