@@ -31,7 +31,7 @@ class IngestionEngine:
         
         # 1. Fetch (Synchronous)
         filename = f"{provider_id}_{anilist_id}_{episode_number}.mp4"
-        mp4_path = self.fetcher.fetch(direct_video_url, filename)
+        mp4_path = self.fetcher.fetch(direct_video_url, filename, provider_id=provider_id)
         if not mp4_path:
             logger.error("Failed to fetch video.")
             return False
@@ -42,8 +42,8 @@ class IngestionEngine:
             logger.error("Failed to slice video.")
             return False
 
-        # 3. Upload to Telegram (Synchronous)
-        cloud_m3u8_path = self.uploader.process_hls_playlist(m3u8_path)
+        # 3. Upload to Telegram (Parallel)
+        cloud_m3u8_path = self.uploader.process_hls_playlist_parallel(m3u8_path, max_workers=5)
         if not cloud_m3u8_path:
             logger.error("Failed to upload segments to Telegram.")
             return False

@@ -11,7 +11,7 @@ class VideoFetcher:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def fetch(self, url: str, output_filename: str) -> Optional[str]:
+    def fetch(self, url: str, output_filename: str, provider_id: str = "") -> Optional[str]:
         """
         Fetches a video from a direct URL (m3u8 or mp4) and saves it locally as an MP4.
         Uses ffmpeg for robust handling of streams.
@@ -25,11 +25,19 @@ class VideoFetcher:
             return output_path
 
         try:
-            # We use ffmpeg to download. If it's an m3u8, ffmpeg will stitch it into an mp4.
-            # If it's an mp4, it will just download it.
+            # We use ffmpeg to download.
+            referer = f"https://{provider_id}.com" if provider_id else "https://v2.samehadaku.how/"
+            if "wibufile" in url or "samehadaku" in provider_id:
+                referer = "https://v2.samehadaku.how/"
+            elif "mp4upload" in url:
+                referer = "https://www.mp4upload.com/"
+                
+            headers = f"Referer: {referer}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
+            
             command = [
                 "ffmpeg",
                 "-y", # Overwrite output files without asking
+                "-headers", headers,
                 "-i", url,
                 "-c", "copy", # Copy codec without re-encoding
                 "-bsf:a", "aac_adtstoasc", # Fix AAC bitstream for mpegts to mp4 if needed
