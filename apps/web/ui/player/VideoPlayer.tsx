@@ -9,11 +9,12 @@ import { useSettings } from "@/core/stores/app-store";
 import { useWatchHistory } from "@/core/hooks/use-watch-history";
 import { useVideoGestures } from "@/core/hooks/use-video-gestures";
 import type { VideoSource } from "@/core/types/anime";
-import { API } from "@/core/lib/api";
 
-const BACKEND = API;
 const QUALITY_ORDER = ["1080p", "720p", "480p", "360p", "Auto"];
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+// Pre-load HLS.js promise so it starts fetching before the video source is ready
+let hlsModulePromise: Promise<typeof import("hls.js")> | null = null;
 
 function fmt(s: number): string {
   if (!s || isNaN(s) || !isFinite(s)) return "0:00";
@@ -41,6 +42,13 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const hlsRef = useRef<any>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const saveTimer = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  // Trigger HLS module download immediately when the player mounts
+  useEffect(() => {
+    if (!hlsModulePromise && typeof window !== "undefined") {
+      hlsModulePromise = import("hls.js");
+    }
+  }, []);
 
   // STRICT FILTER: Remove all iframes
   const direct = (sources || [])
@@ -75,7 +83,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
     }
   }, [defaultSrc, current]);
 
-  // Dynamic HLS.js import
+  // Dynamic HLS.js import with preloaded promise
   const loadSource = useCallback(async (src: VideoSource, seekTo?: number) => {
     const video = videoRef.current;
     if (!video || !src) return;
@@ -88,25 +96,27 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
 
     if (isHls) {
       try {
-        const { default: Hls } = await import("hls.js");
+        if (!hlsModulePromise) hlsModulePromise = import("hls.js");
+        const { default: Hls } = await hlsModulePromise;
+        
         if (Hls.isSupported()) {
           const hls = new Hls({ 
             startLevel: -1, 
             capLevelToPlayerSize: true, 
-            maxMaxBufferLength: 60, 
-            maxBufferSize: 60 * 1000 * 1000,
+            maxMaxBufferLength: 30, // Optimized for mobile (reduced from 60)
+            maxBufferSize: 30 * 1000 * 1000, // Reduced memory footprint
             enableWorker: true,
             lowLatencyMode: true,
           });
           hlsRef.current = hls;
           hls.loadSource(src.url);
           hls.attachMedia(video);
-          hls.on("hlsManifestParsed" as any, () => { 
+          hls.on(Hls.Events.MANIFEST_PARSED, () => { 
             setLoading(false); 
             if (seekTo != null) video.currentTime = seekTo; 
             video.play().catch(() => {}); 
           });
-          hls.on("hlsError" as any, (_: any, data: any) => {
+          hls.on(Hls.Events.ERROR, (_: any, data: any) => {
             if (data.fatal) { 
               console.error("Fatal HLS Error:", data);
               switch (data.type) {
