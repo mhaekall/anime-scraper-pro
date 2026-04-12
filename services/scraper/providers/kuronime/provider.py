@@ -68,6 +68,7 @@ class KuronimeProvider(BaseProvider):
                 json={"id": req_id},
                 headers={"Referer": BASE_URL, "User-Agent": "Mozilla/5.0"}
             )
+            print(f"[Kuronime Debug] API Response data keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
         except Exception as e:
             print(f"[Kuronime] API error via TLSSpoof: {e}")
             return sources
@@ -77,17 +78,29 @@ class KuronimeProvider(BaseProvider):
             encrypted_val = data.get(q_key)
             if encrypted_val:
                 decrypted_str = self._decrypt_cryptojs_aes(encrypted_val, DECRYPT_KEY)
+                print(f"[Kuronime Debug] Decrypted {q_key}: {decrypted_str}")
                 try:
-                    decrypted_json = json.loads(decrypted_str)
-                    src_url = decrypted_json.get("src")
-                    if src_url:
+                    # Kadang kuronime mereturn string langsung (URL) bukannya JSON, mari kita handle
+                    if decrypted_str.startswith("http"):
                         sources.append({
                             "provider": "KuroPlayer",
                             "quality": quality,
-                            "url": src_url,
-                            "type": "direct" if src_url.endswith((".mp4", ".m3u8")) else "iframe"
+                            "url": decrypted_str,
+                            "type": "direct" if decrypted_str.endswith((".mp4", ".m3u8")) else "iframe"
                         })
-                except Exception:
+                    else:
+                        decrypted_json = json.loads(decrypted_str)
+                        src_url = decrypted_json.get("src")
+                        print(f"[Kuronime Debug] Found src_url: {src_url}")
+                        if src_url:
+                            sources.append({
+                                "provider": "KuroPlayer",
+                                "quality": quality,
+                                "url": src_url,
+                                "type": "direct" if src_url.endswith((".mp4", ".m3u8")) else "iframe"
+                            })
+                except Exception as e:
+                    print(f"[Kuronime Debug] Parsing error for {q_key}: {e}")
                     pass
         
         # Parse mirror (Embeds)
