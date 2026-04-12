@@ -1,0 +1,13 @@
+name = "tg-proxy"
+main = "src/index.js"
+compatibility_date = "2023-10-16"
+
+# You will need to set this secret using:
+# wrangler secret put TELEGRAM_BOT_TOKEN
+# Or in the Cloudflare dashboard.
+# We also provide it here for local development.
+
+[vars]
+# Do NOT commit the actual production token here.
+# For local testing, you can use `.dev.vars` file.
+TELEGRAM_BOT_TOKEN = "8782570865:AAFlGrid6H-XFPu-jAbE26dHD_DgXHhRBpE"
