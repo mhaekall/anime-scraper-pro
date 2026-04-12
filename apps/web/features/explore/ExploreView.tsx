@@ -46,10 +46,10 @@ function saveSearchHist(terms: string[]) {
   localStorage.setItem("ani-search-v2", JSON.stringify(terms.slice(0, 10)));
 }
 
-export default function ExploreView() {
+export default function ExploreView({ initialResults = [] }: { initialResults?: any[] }) {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<any[]>(initialResults);
   const [loading, setLoading] = useState(false);
   const [searchHist, setSearchHist] = useState<string[]>([]);
   const dq = useDebounce(query, 600);
@@ -57,8 +57,9 @@ export default function ExploreView() {
   useEffect(() => setSearchHist(getSearchHist()), []);
 
   useEffect(() => {
+    // If no query and no genre, use initialResults if available
     if (!dq && !genre) {
-      setResults([]);
+      setResults(initialResults);
       setLoading(false);
       return;
     }
@@ -93,7 +94,7 @@ export default function ExploreView() {
       })
       .finally(() => setLoading(false));
 
-  }, [dq, genre]);
+  }, [dq, genre, initialResults]);
 
   return (
     <div className="w-full pb-32">
