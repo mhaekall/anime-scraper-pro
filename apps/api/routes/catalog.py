@@ -155,13 +155,13 @@ async def admin_get_database():
     """Return all anime in database with episode counts"""
     try:
         query = '''
-            SELECT a."anilistId", a.title, a.genres, a.status, a.year, a.cover,
+            SELECT a."anilistId", a."cleanTitle" as title, a.genres, a.status, a.year, a."hdImage" as cover,
                    COUNT(e.id) as episode_count,
                    MAX(e."providerId") as "providerId"
             FROM anime_metadata a
             LEFT JOIN episodes e ON a."anilistId" = e."anilistId"
-            GROUP BY a."anilistId", a.title, a.genres, a.status, a.year, a.cover
-            ORDER BY a.year DESC, a.title ASC
+            GROUP BY a."anilistId", a."cleanTitle", a.genres, a.status, a.year, a."hdImage"
+            ORDER BY a.year DESC, a."cleanTitle" ASC
         '''
         rows = await database.fetch_all(query)
         data = [dict(row) for row in rows]
