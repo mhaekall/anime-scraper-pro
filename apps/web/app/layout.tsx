@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { InstallPrompt } from "@/ui/overlays/InstallPrompt";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" className="h-full">
       <body className="min-h-full bg-black text-white">
         {children}
+        <InstallPrompt />
       </body>
     </html>
   );
 }
+
