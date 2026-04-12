@@ -76,3 +76,32 @@ async def cleanup_webhook(request: Request):
     except Exception as e:
         print(f"[Webhook] Error running cleanup: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/webhook/ingest")
+async def ingest_webhook(request: Request):
+    """
+    QStash Webhook endpoint for asynchronously ingesting anime episodes
+    to Telegram Swarm Storage.
+    """
+    body = await _verify_qstash(request)
+
+    try:
+        payload = json.loads(body)
+        episode_id = payload.get("episode_id")
+        anilist_id = payload.get("anilist_id")
+        provider_id = payload.get("provider_id")
+        episode_number = payload.get("episode_number")
+        direct_url = payload.get("direct_url")
+        
+        if not all([episode_id, anilist_id, provider_id, episode_number, direct_url]):
+            raise ValueError("Missing parameters in payload")
+            
+        print(f"[Webhook] Executing Ingestion for anilistId={anilist_id} Ep={episode_number}")
+        
+        engine = IngestionEngine()
+        await engine.process_episode(episode_id, anilist_id, provider_id, episode_number, direct_url)
+        
+        return Response(status_code=200, content="Ingestion Completed")
+    except Exception as e:
+        print(f"[Webhook] Error processing ingestion payload: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
