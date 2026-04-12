@@ -58,7 +58,11 @@ class IngestionEngine:
         final_stream_url = f"{os.getenv('TG_PROXY_BASE_URL', 'https://tg-proxy.workers.dev')}/{playlist_file_id}"
         
         try:
-            await database.connect()
+            should_disconnect = False
+            if not database.is_connected:
+                await database.connect()
+                should_disconnect = True
+                
             stmt = (
                 update(episodes)
                 .where(episodes.c.id == episode_id)
@@ -71,7 +75,8 @@ class IngestionEngine:
             logger.error(f"Database update failed: {e}")
             return False
         finally:
-            await database.disconnect()
+            if should_disconnect:
+                await database.disconnect()
 
 if __name__ == "__main__":
     # Test execution

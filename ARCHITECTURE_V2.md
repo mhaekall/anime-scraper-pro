@@ -37,13 +37,15 @@ Backend dijalankan menggunakan **Docker** di Hugging Face Spaces untuk stabilita
 ## 4. 🔗 Data Flow & Architecture
 ```mermaid
 graph TD
-    A[Provider: Oploverz/Otakudesu/Doronime] -->|Raw HTML| B(Backend: Python Aggregator)
-    B -->|Peek Validation| C{Video Exist?}
-    C -->|No| D[Drop Item]
-    C -->|Yes| E[Enrich with AniList Metadata]
-    E -->|Clean JSON| F[Upstash Redis: home_data]
-    F -->|0ms Latency| G[Frontend: Next.js on Edge]
-    G -->|Clean Player| H[User Experience]
+    A[Provider: Oploverz/Kuronime/Samehadaku] -->|Raw HTML / Iframe| B(Backend: Python Extractor)
+    B -->|Direct URL Extracted| C{Already in Telegram?}
+    C -->|Yes| D[Return Cloudflare Proxy URL]
+    C -->|No| E[Return Direct URL + Trigger QStash]
+    E --> F[User Plays Video Instantly]
+    E -->|Background| G[QStash Calls Webhook]
+    G --> H[Hugging Face: Download & Slice MP4 to HLS]
+    H -->|Parallel Upload| I[Telegram Swarm Storage]
+    I -->|Update DB| J[Next User Gets Proxy URL 0ms Latency]
 ```
 
 ---
