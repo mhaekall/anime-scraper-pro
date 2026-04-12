@@ -21,6 +21,7 @@ export default function AdminDashboard() {
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [ingestionStats, setIngestionStats] = useState<any>(null);
   
   // Database explorer states
   const [dbData, setDbData] = useState<AnimeRow[]>([]);
@@ -35,7 +36,13 @@ export default function AdminDashboard() {
       // 1. Fetch quick stats
       const resStats = await fetch(`${API}/api/v2/admin/stats`);
       const dataStats = await resStats.json();
-      if (dataStats.success) setStats(dataStats);
+      if (dataStats.success) {
+        setStats({ total_anime: dataStats.total_anime, total_episodes: dataStats.total_episodes });
+        setIngestionStats({
+           ingested: dataStats.ingested_episodes,
+           pending: dataStats.pending_episodes
+        });
+      }
 
       // 2. Fetch full database
       const resDb = await fetch(`${API}/api/v2/admin/database`);
@@ -50,6 +57,19 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (auth) fetchData();
   }, [auth]);
+
+  const handlePrefetch = async () => {
+    setLoading(true);
+    addLog(`🚀 Memicu Smart Pre-fetch (Ongoing Anime) di Background...`);
+    try {
+      const res = await fetch(`${API}/api/v2/admin/trigger-prefetch`, { method: "POST" });
+      const data = await res.json();
+      addLog(data.success ? `✅ Sukses: ${data.message}` : `❌ Gagal: ${data.error}`);
+    } catch (e: any) {
+      addLog(`❌ Error: ${e.message}`);
+    }
+    setLoading(false);
+  };
 
   const handleSync = async (idToSync: string) => {
     if (!idToSync) return;
