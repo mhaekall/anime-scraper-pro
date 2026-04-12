@@ -107,6 +107,21 @@ async def cleanup_webhook(request: Request):
         print(f"[Webhook] Error running cleanup: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/webhook/prefetch")
+async def prefetch_webhook(request: Request):
+    """
+    Cron endpoint via QStash to trigger smart pre-fetch of ongoing anime.
+    """
+    await _verify_qstash(request)
+    
+    try:
+        result = await smart_prefetch_episodes()
+        print(f"[Webhook] Completed smart pre-fetch: {result}")
+        return Response(status_code=200, content=json.dumps(result))
+    except Exception as e:
+        print(f"[Webhook] Error running prefetch: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/webhook/ingest")
 async def ingest_webhook(request: Request):
     """

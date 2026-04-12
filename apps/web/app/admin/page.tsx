@@ -158,7 +158,7 @@ export default function AdminDashboard() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div>
             <h1 className="text-3xl font-black mb-2 tracking-tight">Kuronime Database Explorer</h1>
-            <p className="text-[#8e8e93] text-sm">Sistem eksploitasi data (Data-Driven Dashboard) dengan Direct Stream Resolver.</p>
+            <p className="text-[#8e8e93] text-sm">Sistem eksploitasi data (Data-Driven Dashboard) dengan Direct Stream Resolver & Ingestion Engine.</p>
           </div>
           <div className="flex gap-4">
             <div className="text-right">
@@ -170,6 +170,11 @@ export default function AdminDashboard() {
               <p className="text-[10px] uppercase font-bold text-[#8e8e93] tracking-widest">Total Eps</p>
               <p className="text-3xl font-black text-[#0a84ff]">{stats?.total_episodes || 0}</p>
             </div>
+            <div className="w-px bg-white/10" />
+            <div className="text-right">
+              <p className="text-[10px] uppercase font-bold text-[#8e8e93] tracking-widest">Swarm Ingested</p>
+              <p className="text-3xl font-black text-[#30d158]">{ingestionStats?.ingested || 0}</p>
+            </div>
           </div>
         </div>
 
@@ -179,6 +184,9 @@ export default function AdminDashboard() {
             <h2 className="text-sm font-bold text-[#8e8e93] uppercase tracking-widest flex items-center gap-2">
               ⚡ Action Center
             </h2>
+            <button onClick={handlePrefetch} disabled={loading} className="w-full bg-[#0a84ff]/20 hover:bg-[#0a84ff]/30 text-[#0a84ff] font-bold p-3 rounded-xl border border-[#0a84ff]/50 disabled:opacity-50 transition-all text-xs">
+              🚀 Trigger Smart Pre-fetch (Ongoing Anime to Telegram)
+            </button>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={handleMassSync} disabled={loading} className="bg-[#30d158]/20 hover:bg-[#30d158]/30 text-[#30d158] font-bold p-3 rounded-xl border border-[#30d158]/50 disabled:opacity-50 transition-all text-xs">
                 1. Tarik Katalog 100 Anime Baru (Background)
@@ -316,6 +324,14 @@ export default function AdminDashboard() {
                   </tr>
                 )}
               </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}body>
             </table>
           </div>
         </div>
