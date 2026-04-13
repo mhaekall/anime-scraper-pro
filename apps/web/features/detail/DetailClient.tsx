@@ -10,6 +10,15 @@ import { useSettings, useWatchlist, useToast } from "@/core/stores/app-store";
 import { EpisodeList } from "./EpisodeList";
 import { AnimeCard } from "@/ui/cards/AnimeCard";
 
+function formatCountdown(seconds: number) {
+  const d = Math.floor(seconds / (3600 * 24));
+  const h = Math.floor((seconds % (3600 * 24)) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}H ${h}J`;
+  if (h > 0) return `${h}J ${m}M`;
+  return `${m}M`;
+}
+
 export default function DetailClient({ detail, id }: { detail: any; id: string }) {
   const router = useRouter();
   const accent = useSettings((s) => s.settings.accentColor);
@@ -44,6 +53,16 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
           <div className="pt-1 md:pt-10 flex-1 min-w-0">
             <h1 className="text-2xl md:text-4xl font-black text-white leading-[1.1] mb-1">{d.title}</h1>
             {d.nativeTitle && <h2 className="text-sm text-[#8e8e93] mb-3">{d.nativeTitle}</h2>}
+
+            {/* Countdown Pill */}
+            {d.nextAiringEpisode && (
+              <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 bg-[#1c1c1e] border border-[#0A84FF]/30 rounded-full shadow-lg shadow-[#0A84FF]/10 anim-fade">
+                <div className="w-2 h-2 rounded-full bg-[#0A84FF] animate-pulse" />
+                <span className="text-[11px] font-bold text-[#0A84FF] tracking-widest uppercase">
+                  Ep {d.nextAiringEpisode.episode} • {formatCountdown(d.nextAiringEpisode.timeUntilAiring)}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-[12px] font-semibold flex-wrap mb-4">
               {d.score && <span className="text-[#30D158] flex items-center gap-0.5"><IconStar /> {(d.score / 10).toFixed(1)}</span>}
               <span className="text-[#48484a]">•</span>

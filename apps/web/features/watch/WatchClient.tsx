@@ -35,8 +35,8 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
   const [currentTime, setCurrentTime] = useState(0);
   const [showAllEpisodes, setShowAllEpisodes] = useState(false);
   const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(Math.floor(Math.random() * 500) + 120); // Dummy for now
-  const [views] = useState(Math.floor(Math.random() * 100) + 10); // Dummy
+  const [likes, setLikes] = useState(0);
+  const [views] = useState(0);
   const epNum = parseFloat(episode) || 1;
   const [showSynopsis, setShowSynopsis] = useState(false);
 

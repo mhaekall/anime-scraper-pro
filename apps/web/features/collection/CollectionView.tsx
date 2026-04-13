@@ -12,6 +12,7 @@ const TABS = [
   { id: "watching" as const, label: "Sedang Ditonton" },
   { id: "plan_to_watch" as const, label: "Daftar Tunggu" },
   { id: "completed" as const, label: "Telah Selesai" },
+  { id: "dropped" as const, label: "Ditinggalkan" },
 ];
 
 export default function CollectionView() {

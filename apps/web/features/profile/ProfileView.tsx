@@ -1,18 +1,22 @@
 // features/profile/ProfileView.tsx — Integrated Profile & Settings
 "use client";
 
-import { useMemo, memo } from "react";
+import { useMemo, useState } from "react";
 import { useSettings, ACCENT_COLORS, useWatchlist } from "@/core/stores/app-store";
 import { useWatchHistory } from "@/core/hooks/use-watch-history";
-import { IconCheck, IconSearch } from "@/ui/icons";
+import { IconCheck } from "@/ui/icons";
 import { useMounted } from "@/core/hooks/use-mounted";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, LogOut, LogIn } from "lucide-react";
+import { authClient } from "@/core/lib/auth-client";
+import { AuthModal } from "@/ui/overlays/AuthModal";
 
 export default function ProfileView() {
   const mounted = useMounted();
   const { settings, setSetting } = useSettings();
   const { items: watchlist } = useWatchlist();
   const { history } = useWatchHistory();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { data: session, isPending } = authClient.useSession();
 
   const stats = useMemo(() => {
     const completed = watchlist.filter((w) => w.status === "completed").length;
@@ -30,16 +34,44 @@ export default function ProfileView() {
       {/* Profile Card */}
       <div className={`rounded-[32px] p-8 ${isDark ? "bg-[#1c1c1e] border-white/5" : "bg-white border-black/5 shadow-xl"} border relative overflow-hidden anim-fade`}>
         <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none" style={{ backgroundColor: settings.accentColor }} />
-        <div className="flex items-center gap-6 relative z-10">
-          <div className="w-24 h-24 rounded-[24px] overflow-hidden border-4 border-white/10 shadow-2xl">
-            <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=Guest`} alt="avatar" className="w-full h-full object-cover bg-white" loading="lazy" />
-          </div>
-          <div>
-            <h2 className={`text-3xl font-black ${isDark ? "text-white" : "text-black"} mb-1`}>Guest</h2>
-            <div className="flex gap-2 items-center">
-              <span className={`px-2 py-0.5 ${isDark ? "bg-white text-black" : "bg-black text-white"} text-[9px] font-black rounded uppercase tracking-widest`}>FREE TIER</span>
-              <span className={`text-[10px] ${isDark ? "text-white/40" : "text-black/40"} font-bold`}>ID: 80475</span>
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-6">
+            <div className="w-24 h-24 rounded-[24px] overflow-hidden border-4 border-white/10 shadow-2xl shrink-0">
+              <img 
+                src={session?.user?.image || `https://api.dicebear.com/7.x/notionists/svg?seed=Guest`} 
+                alt="avatar" 
+                className="w-full h-full object-cover bg-white" 
+                loading="lazy" 
+              />
             </div>
+            <div>
+              <h2 className={`text-2xl md:text-3xl font-black ${isDark ? "text-white" : "text-black"} mb-1 line-clamp-1`}>
+                {isPending ? "Loading..." : session?.user?.name || "Guest"}
+              </h2>
+              <div className="flex gap-2 items-center mt-1">
+                <span className={`px-2 py-0.5 ${isDark ? "bg-white text-black" : "bg-black text-white"} text-[9px] font-black rounded uppercase tracking-widest`}>
+                  {session?.user ? "PRO TIER" : "FREE TIER"}
+                </span>
+                <span className={`text-[10px] ${isDark ? "text-white/40" : "text-black/40"} font-bold`}>ID: 80475</span>
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0 ml-4">
+            {session?.user ? (
+              <button 
+                onClick={() => authClient.signOut()} 
+                className={`w-10 h-10 flex items-center justify-center rounded-full ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-black/5 hover:bg-black/10"} transition-colors`}
+              >
+                <LogOut className={`w-4 h-4 ${isDark ? "text-white" : "text-black"}`} />
+              </button>
+            ) : (
+              <button 
+                onClick={() => setIsAuthModalOpen(true)} 
+                className={`w-10 h-10 flex items-center justify-center rounded-full ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-black/5 hover:bg-black/10"} transition-colors`}
+              >
+                <LogIn className={`w-4 h-4 ${isDark ? "text-white" : "text-black"}`} />
+              </button>
+            )}
           </div>
         </div>
         
@@ -148,6 +180,8 @@ export default function ProfileView() {
           <p className={`${isDark ? "text-white/10" : "text-black/10"} text-[9px] font-bold`}>Didesain untuk efisiensi maksimal </p>
         </div>
       </div>
+      
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }

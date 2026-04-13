@@ -14,10 +14,12 @@ const greet = () => {
 
 export default function HomeView({ 
   initialHero = [], 
+  initialAiring = [],
   initialLatest = [], 
   initialPopular = [] 
 }: { 
   initialHero?: any[]; 
+  initialAiring?: any[];
   initialLatest?: any[]; 
   initialPopular?: any[]; 
 }) {
@@ -31,6 +33,7 @@ export default function HomeView({
       <div className="mb-8">{initialHero.length > 0 && <HeroCarousel items={initialHero} />}</div>
 
       <ContinueWatching />
+      {initialAiring.length > 0 && <AnimeRow title="Sedang Tayang" items={initialAiring} />}
       {initialLatest.length > 0 && <AnimeRow title="Rilis Episode Terbaru" items={initialLatest} />}
       {initialPopular.length > 0 && <AnimeRow title="Top Sepanjang Masa" items={initialPopular} showRank />}
     </div>

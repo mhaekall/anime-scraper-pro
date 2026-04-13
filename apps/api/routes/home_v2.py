@@ -20,6 +20,15 @@ async def get_home_v2(response: Response):
         LIMIT 6
     ''')
 
+    # 1.5 Currently Airing: Releasing anime
+    airing_rows = await database.fetch_all('''
+        SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score", m."nextAiringEpisode"
+        FROM anime_metadata m
+        WHERE m.status = 'RELEASING' AND EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
+        ORDER BY m.popularity DESC NULLS LAST
+        LIMIT 15
+    ''')
+
     # 2. Latest Episodes: anime with the most recently updated episodes
     latest_rows = await database.fetch_all('''
         WITH latest_eps AS (

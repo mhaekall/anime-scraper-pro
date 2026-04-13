@@ -49,6 +49,9 @@ function saveSearchHist(terms: string[]) {
 export default function ExploreView({ initialResults = [] }: { initialResults?: any[] }) {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("");
+  const [year, setYear] = useState("");
+  const [format, setFormat] = useState("");
+  const [sort, setSort] = useState("POPULARITY_DESC");
   const [results, setResults] = useState<any[]>(initialResults);
   const [loading, setLoading] = useState(false);
   const [searchHist, setSearchHist] = useState<string[]>([]);
@@ -57,8 +60,7 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
   useEffect(() => setSearchHist(getSearchHist()), []);
 
   useEffect(() => {
-    // If no query and no genre, use initialResults if available
-    if (!dq && !genre) {
+    if (!dq && !genre && !year && !format && sort === "POPULARITY_DESC") {
       setResults(initialResults);
       setLoading(false);
       return;
@@ -67,7 +69,13 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
     setLoading(true);
     const vars: any = { page: 1, perPage: 30, search: dq || undefined };
     if (genre) vars.genres = [genre];
-    vars.sort = dq ? ["SEARCH_MATCH"] : ["POPULARITY_DESC"];
+    if (year) vars.seasonYear = parseInt(year);
+    if (format) vars.format = format;
+    if (dq && sort === "POPULARITY_DESC") {
+       vars.sort = ["SEARCH_MATCH", "POPULARITY_DESC"];
+    } else {
+       vars.sort = [sort];
+    }
 
     api.anilist(SEARCH_Q, vars)
       .then((data) => {
@@ -94,7 +102,7 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
       })
       .finally(() => setLoading(false));
 
-  }, [dq, genre, initialResults]);
+  }, [dq, genre, year, format, sort, initialResults]);
 
   return (
     <div className="w-full pb-32">
@@ -115,6 +123,39 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
               <IconClose className="w-3.5 h-3.5" />
             </button>
           )}
+        </div>
+
+        {/* Advanced Filters */}
+        <div className="max-w-2xl mx-auto mt-4 flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
+           <select value={year} onChange={e => setYear(e.target.value)} className="bg-[#1c1c1e] text-white/80 text-[12px] font-bold px-4 py-2 rounded-full border border-white/10 outline-none appearance-none cursor-pointer hover:bg-white/5 transition-colors">
+              <option value="">Semua Tahun</option>
+              {Array.from({length: 10}).map((_, i) => {
+                 const y = new Date().getFullYear() - i;
+                 return <option key={y} value={y}>{y}</option>
+              })}
+           </select>
+           
+           <select value={format} onChange={e => setFormat(e.target.value)} className="bg-[#1c1c1e] text-white/80 text-[12px] font-bold px-4 py-2 rounded-full border border-white/10 outline-none appearance-none cursor-pointer hover:bg-white/5 transition-colors">
+              <option value="">Semua Format</option>
+              <option value="TV">TV</option>
+              <option value="MOVIE">Movie</option>
+              <option value="OVA">OVA</option>
+           </select>
+
+           <select value={sort} onChange={e => setSort(e.target.value)} className="bg-[#1c1c1e] text-white/80 text-[12px] font-bold px-4 py-2 rounded-full border border-white/10 outline-none appearance-none cursor-pointer hover:bg-white/5 transition-colors">
+              <option value="POPULARITY_DESC">Terpopuler</option>
+              <option value="SCORE_DESC">Rating Tertinggi</option>
+              <option value="START_DATE_DESC">Terbaru</option>
+           </select>
+
+           {(genre || year || format || sort !== "POPULARITY_DESC") && (
+              <button 
+                onClick={() => { setGenre(""); setYear(""); setFormat(""); setSort("POPULARITY_DESC"); }}
+                className="text-[12px] font-bold text-[#FF453A] px-2 py-1"
+              >
+                Reset
+              </button>
+           )}
         </div>
       </div>
 

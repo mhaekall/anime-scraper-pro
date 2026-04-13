@@ -37,7 +37,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   /** Homepage data from our DB (fast, verified) */
-  homeV2: (init?: RequestInit) => request<{ success: boolean; data: { hero: any[]; latest: any[]; popular: any[] } }>("/api/v2/home", init),
+  homeV2: (init?: RequestInit) => request<{ success: boolean; data: { hero: any[]; airing?: any[]; latest: any[]; popular: any[] } }>("/api/v2/home", init),
 
   /** Full anime detail + episodes */
   animeDetail: (id: number | string, init?: RequestInit) => request<{ success: boolean; syncing?: boolean; data: any }>(`/api/v2/anime/${id}`, init),
