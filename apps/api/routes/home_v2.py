@@ -11,26 +11,26 @@ async def get_home_v2(response: Response):
     Return homepage data exclusively from our database (datacenter).
     Ensures we only show anime that actually exist in our DB and have episodes.
     """
-    # 1. Hero / Trending: highest trending anime that have episodes
-    hero_rows = await database.fetch_all('''
+    # Run queries concurrently to save round-trips
+    import asyncio
+    
+    hero_query = '''
         SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."synopsis", m."score", m."nextAiringEpisode"
         FROM anime_metadata m
         WHERE EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
         ORDER BY m.trending DESC NULLS LAST, m.popularity DESC NULLS LAST, m.score DESC NULLS LAST
         LIMIT 6
-    ''')
-
-    # 1.5 Currently Airing: Releasing anime
-    airing_rows = await database.fetch_all('''
+    '''
+    
+    airing_query = '''
         SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score", m."nextAiringEpisode"
         FROM anime_metadata m
         WHERE m.status = 'RELEASING' AND EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
         ORDER BY m.popularity DESC NULLS LAST
         LIMIT 15
-    ''')
-
-    # 2. Latest Episodes: anime with the most recently updated episodes
-    latest_rows = await database.fetch_all('''
+    '''
+    
+    latest_query = '''
         WITH latest_eps AS (
             SELECT "anilistId", max("episodeNumber") as max_ep, max("updatedAt") as last_up
             FROM episodes
@@ -43,16 +43,22 @@ async def get_home_v2(response: Response):
         FROM anime_metadata m
         JOIN latest_eps l ON m."anilistId" = l."anilistId"
         ORDER BY l.last_up DESC
-    ''')
-
-    # 3. Popular: highest popularity anime all-time in our DB
-    popular_rows = await database.fetch_all('''
+    '''
+    
+    popular_query = '''
         SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
         FROM anime_metadata m
         WHERE EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
         ORDER BY m.popularity DESC NULLS LAST, m.score DESC NULLS LAST
         LIMIT 15
-    ''')
+    '''
+
+    hero_rows, airing_rows, latest_rows, popular_rows = await asyncio.gather(
+        database.fetch_all(hero_query),
+        database.fetch_all(airing_query),
+        database.fetch_all(latest_query),
+        database.fetch_all(popular_query)
+    )
 
     def format_anime(r):
         d = dict(r)

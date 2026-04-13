@@ -162,7 +162,10 @@ async def background_scrape_job():
                         seen_titles.add(t)
                         items.append(item)
 
+                enqueued = 0
+
                 async def process_and_validate(item):
+                    nonlocal enqueued
                     try:
                         anilist_data = await fetch_anilist_info(item['title'])
                         if anilist_data:
@@ -183,6 +186,7 @@ async def background_scrape_job():
                             print(f"[Cron] Syncing episodes for {item['title']} (ID: {anilist_data['anilistId']}) from {provider_id}...")
                             from services.queue import enqueue_sync
                             await enqueue_sync(anilist_data['anilistId'])
+                            enqueued += 1
                             
                             return {
                                 'title': clean_title,
@@ -238,7 +242,13 @@ async def background_scrape_job():
                 }
                 
                 await upstash_set("home_data", payload, ex=86400)
-                print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis.")
+                await upstash_set("bg_job:last_run", {
+                    "timestamp": now,
+                    "enqueued": enqueued,
+                    "items_found": len(items)
+                }, ex=7200)
+                
+                print(f"[Cron] Aggregator Success: {len(valid_items)} items synced to Redis. {enqueued} jobs enqueued.")
                 consecutive_failures = 0
                 
         except TimeoutError:

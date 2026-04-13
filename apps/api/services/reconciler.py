@@ -235,12 +235,36 @@ class AnimeReconciler:
                 matched_via = "difflib"
 
                 if score < DIFFLIB_THRESHOLD:
-                    alt_titles = await self._get_anilist_alt_titles(old_id)
-                    alt_titles.append(new_title)
-                    gemini_match, best = await GeminiMatcher.is_same_anime(
-                        raw_title, alt_titles
-                    )
-                    matched_via = "gemini"
+                    gemini_match = False
+                    best = ""
+                    # Check cache first
+                    try:
+                        from services.cache import upstash_get, upstash_set
+                        import hashlib
+                        
+                        cache_key = f"title_match:{hashlib.md5(raw_title.encode()).hexdigest()[:12]}"
+                        cached_match = await upstash_get(cache_key)
+                        
+                        if cached_match is not None and isinstance(cached_match, dict):
+                            gemini_match = cached_match.get("matched", False)
+                            best = cached_match.get("best_match", "")
+                            matched_via = "gemini_cache"
+                        else:
+                            alt_titles = await self._get_anilist_alt_titles(old_id)
+                            alt_titles.append(new_title)
+                            gemini_match, best = await GeminiMatcher.is_same_anime(
+                                raw_title, alt_titles
+                            )
+                            await upstash_set(cache_key, {"matched": gemini_match, "best_match": best}, ex=604800)
+                            matched_via = "gemini"
+                    except Exception as e:
+                        # Fallback without cache if it fails
+                        alt_titles = await self._get_anilist_alt_titles(old_id)
+                        alt_titles.append(new_title)
+                        gemini_match, best = await GeminiMatcher.is_same_anime(
+                            raw_title, alt_titles
+                        )
+                        matched_via = "gemini"
 
                     if gemini_match and best:
                         if _normalize(best) == _normalize(old_title):

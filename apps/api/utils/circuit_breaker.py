@@ -1,7 +1,10 @@
 import time
 import asyncio
+import json
 from typing import Callable, Any
 from services.cache import upstash_get, upstash_set
+from services.config import UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+from services.clients import client
 
 class CircuitBreakerOpenException(Exception):
     """Exception raised when the circuit breaker is open."""
@@ -22,9 +25,20 @@ class CircuitBreaker:
         return int(fails) if fails else 0
 
     async def record_failure(self):
-        fails = await self.get_failures()
-        fails += 1
+        # Atomic INCR
+        try:
+            incr_url = f"{UPSTASH_REDIS_REST_URL}/incr/cb:{self.name}:fails"
+            res = await client.post(incr_url, headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"})
+            data = res.json()
+            fails = data.get('result', 1)
+        except Exception:
+            # Fallback to normal get/set if atomic fails
+            fails = await self.get_failures() + 1
+            await upstash_set(f"cb:{self.name}:fails", fails, ex=self.cooldown_seconds)
+
+        # Ensure expiry is set on the fails key
         await upstash_set(f"cb:{self.name}:fails", fails, ex=self.cooldown_seconds)
+        
         if fails >= self.failure_threshold:
             await upstash_set(f"cb:{self.name}:open", 1, ex=self.cooldown_seconds)
             print(f"[CircuitBreaker] Tripped! Open for {self.cooldown_seconds}s for {self.name}")

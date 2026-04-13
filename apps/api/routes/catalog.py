@@ -333,7 +333,7 @@ async def search_v2(
       - providers: which providers we know about
       - hasEpisodes: whether the episode list is populated
     """
-    cache_key = f"search_v2:{q}"
+    cache_key = f"search_v2:{q.lower().strip()}"
 
     async def do_search():
         from services.anilist import fetch_anilist_info  # local import to avoid circulars

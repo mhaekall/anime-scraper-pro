@@ -65,12 +65,26 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
   };
 
   // Fetch stream secara async setelah halaman render
-  const { data: streamData, isLoading: streamLoading } = useSWR(
+  const { data: streamData, isLoading: streamLoading, mutate } = useSWR(
     `stream-${id}-${episode}`,
-    () => fetch(`${API}/api/v2/anime/${id}/episodes/${episode}/stream`).then(r => r.json()),
+    async () => {
+      const res = await fetch(`${API}/api/v2/anime/${id}/episodes/${episode}/stream`);
+      if (!res.ok) {
+        const error = new Error('An error occurred while fetching the data.') as any;
+        error.status = res.status;
+        throw error;
+      }
+      return res.json();
+    },
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 300_000, // Cache 5 menit
+      revalidateOnFocus: true,
+      revalidateIfStale: true,
+      dedupingInterval: 60000, // Cache 1 menit
+      onError: (err) => {
+        if (err.status === 403 || err.status === 410) {
+          mutate(); // Force revalidate if expired
+        }
+      }
     }
   );
 
