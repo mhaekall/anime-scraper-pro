@@ -89,6 +89,13 @@ class UniversalExtractor:
                     match = re.search(r'<source[^>]+src=["\']([^"\']+)["\']', res.text, re.IGNORECASE)
                     if match:
                         return match.group(1).replace('&amp;', '&')
+                    
+                    iframe_match = re.search(r'<iframe[^>]+src=["\']([^"\']+)["\']', res.text, re.IGNORECASE)
+                    if iframe_match:
+                        iframe_src = iframe_match.group(1).replace('&amp;', '&')
+                        if iframe_src.startswith('//'):
+                            iframe_src = 'https:' + iframe_src
+                        return await self._extract_raw_video_impl(iframe_src)
             elif 'blogger.com' in url or 'blogspot.com' in url:
                 try:
                     # Coba curl_cffi dulu untuk bypass CF
