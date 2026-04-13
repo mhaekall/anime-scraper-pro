@@ -209,6 +209,36 @@ async def admin_sync_missing():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@router.post("/v2/admin/fix-titles")
+async def admin_fix_titles(background_tasks: BackgroundTasks):
+    """Mass update nativeTitle to Romaji for all existing anime in the database"""
+    async def _process_fix():
+        try:
+            from services.anilist import fetch_anilist_info_by_id
+            rows = await database.fetch_all('SELECT "anilistId", "nativeTitle" FROM anime_metadata')
+            count = 0
+            for row in rows:
+                aid = row["anilistId"]
+                # Check if it contains non-ASCII characters (like Kanji/Kana)
+                if any(ord(c) > 127 for c in row["nativeTitle"] or ""):
+                    try:
+                        info = await fetch_anilist_info_by_id(aid)
+                        if info and info.get("romajiTitle"):
+                            await database.execute(
+                                'UPDATE anime_metadata SET "nativeTitle" = :romaji WHERE "anilistId" = :aid',
+                                values={"romaji": info["romajiTitle"], "aid": aid}
+                            )
+                            count += 1
+                    except Exception as e:
+                        print(f"Error fixing {aid}: {e}")
+                    await asyncio.sleep(0.35) # Avoid hitting AniList rate limits
+            print(f"Successfully fixed {count} Japanese titles to Romaji in DB.")
+        except Exception as e:
+            print(f"Fatal error in fix-titles: {e}")
+
+    background_tasks.add_task(_process_fix)
+    return {"success": True, "message": "Background job started to fix Japanese titles to Romaji."}
+
 @router.get("/v2/anime/{anilist_id}/episodes/{ep_num}/stream")
 async def get_episode_stream_v2(
     anilist_id: int, 
