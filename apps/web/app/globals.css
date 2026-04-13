@@ -45,6 +45,10 @@ body {
 
 /* Safe area */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.px-safe {
+  padding-left: env(safe-area-inset-left, 12px);
+  padding-right: env(safe-area-inset-right, 12px);
+}
 
 /* View Transition API */
 @keyframes slide-from-right {

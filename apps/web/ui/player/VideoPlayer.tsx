@@ -258,7 +258,58 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
     setShowSettings(false); 
     loadSource(s, t, auto); 
   }, [loadSource, current]);
-  const toggleFS = useCallback(() => { if (!document.fullscreenElement) containerRef.current?.requestFullscreen(); else document.exitFullscreen(); }, []);
+  // Deteksi iOS
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  const toggleFS = useCallback(async () => {
+    const container = containerRef.current;
+    const video = videoRef.current;
+    if (!container || !video) return;
+
+    // iOS: gunakan native video fullscreen
+    if (isIOS) {
+      if ((video as any).webkitEnterFullscreen) {
+        (video as any).webkitEnterFullscreen();
+        return;
+      }
+    }
+
+    if (!document.fullscreenElement) {
+      try {
+        await container.requestFullscreen();
+        // Lock landscape setelah fullscreen granted
+        if (screen.orientation?.lock) {
+          await screen.orientation.lock("landscape").catch(() => {});
+        }
+      } catch (e) {
+        // Fallback: coba lewat video element
+        if ((video as any).webkitRequestFullscreen) {
+          (video as any).webkitRequestFullscreen();
+        }
+      }
+    } else {
+      await document.exitFullscreen().catch(() => {});
+      screen.orientation?.unlock?.();
+    }
+  }, [isIOS]);
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      if (window.screen.orientation?.type.includes("landscape")) {
+        if (videoRef.current && !videoRef.current.paused && !document.fullscreenElement) {
+          containerRef.current?.requestFullscreen().catch(() => {});
+        }
+      }
+      if (window.screen.orientation?.type.includes("portrait")) {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    };
+
+    screen.orientation?.addEventListener("change", handleOrientationChange);
+    return () => screen.orientation?.removeEventListener("change", handleOrientationChange);
+  }, []);
+
   const changeSpeed = useCallback((s: number) => { setSpeed(s); if (videoRef.current) videoRef.current.playbackRate = s; }, []);
 
   const pct = duration > 0 ? (progress / duration) * 100 : 0;
@@ -372,7 +423,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
           <p className="text-white font-bold text-xs truncate max-w-[70%]">{title}</p>
         </div>
         <div className="flex-1" />
-        <div className="bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 pointer-events-auto">
+        <div className="bg-gradient-to-t from-black/80 to-transparent px-safe pb-3 pt-8 pointer-events-auto">
           <div 
             ref={barRef} 
             className="relative h-1 cursor-pointer rounded-full bg-white/20 mb-3 group/bar hover:h-2 transition-all" 
