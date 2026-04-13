@@ -180,7 +180,7 @@ def _title_variants(title: str, anilist_info: dict = None) -> list[str]:
                         
     return [v for v in variants if v][:6]
 
-@router.get('/v2/stream/sources')
+@router.get('/stream/sources')
 async def get_sources_v2(
     title: str = Query(..., description="Anime title"),
     ep: int = Query(..., description="Episode number"),
