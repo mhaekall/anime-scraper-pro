@@ -122,6 +122,16 @@ async def prefetch_webhook(request: Request):
         print(f"[Webhook] Error running prefetch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+async def _run_ingestion_bg(episode_id, anilist_id, provider_id, episode_number, direct_url):
+    try:
+        if IngestionEngine is None:
+            print("[Webhook] IngestionEngine is not available.")
+            return
+        engine = IngestionEngine()
+        await engine.process_episode(episode_id, anilist_id, provider_id, episode_number, direct_url)
+    except Exception as e:
+        print(f"[Webhook] Background ingestion failed: {e}")
+
 @router.post("/webhook/ingest")
 async def ingest_webhook(request: Request):
     """
@@ -143,10 +153,10 @@ async def ingest_webhook(request: Request):
             
         print(f"[Webhook] Executing Ingestion for anilistId={anilist_id} Ep={episode_number}")
         
-        engine = IngestionEngine()
-        await engine.process_episode(episode_id, anilist_id, provider_id, episode_number, direct_url)
+        # Run ingestion in background so QStash doesn't timeout
+        asyncio.create_task(_run_ingestion_bg(episode_id, anilist_id, provider_id, episode_number, direct_url))
         
-        return Response(status_code=200, content="Ingestion Completed")
+        return Response(status_code=200, content="Ingestion Queued")
     except Exception as e:
         print(f"[Webhook] Error processing ingestion payload: {e}")
         raise HTTPException(status_code=500, detail=str(e))

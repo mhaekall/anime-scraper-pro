@@ -6,8 +6,14 @@ import time
 import os
 from urllib.parse import quote
 
+import logging
+
 # 32+ char random string
-PROXY_SECRET = os.environ.get("PROXY_SECRET", "anime-pro-secure-2026")      
+PROXY_SECRET = os.environ.get("PROXY_SECRET")
+if not PROXY_SECRET:
+    logging.warning("PROXY_SECRET environment variable is not set! Using fallback for development only.")
+    PROXY_SECRET = "fallback-only-for-dev"
+    
 PROXY_BASE   = os.environ.get("PROXY_WORKER_URL", "https://scraper-proxy-swarm.moehamadhkl.workers.dev")
 TOKEN_TTL    = 6 * 3600  # 6 jam — sama dengan video_cache TTL
 

@@ -1,5 +1,5 @@
 import os
-import subprocess
+import asyncio
 import logging
 from typing import Optional, List
 
@@ -11,7 +11,7 @@ class VideoSlicer:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def slice(self, input_mp4: str, segment_time: int = 10) -> Optional[str]:
+    async def slice(self, input_mp4: str, segment_time: int = 6) -> Optional[str]:
         """
         Segments an MP4 file into HLS format (.ts chunks and .m3u8 playlist).
         Returns the path to the master .m3u8 playlist on success.
@@ -50,16 +50,21 @@ class VideoSlicer:
                 master_playlist
             ]
             
-            result = subprocess.run(command, capture_output=True, text=True)
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
             
             # Ffmpeg might exit with error at the end of slightly corrupted files,
             # but if the master playlist is there, we consider it a success.
             if not os.path.exists(master_playlist) or os.path.getsize(master_playlist) == 0:
-                logger.error(f"FFmpeg slicing failed to produce playlist. Error: {result.stderr}")
+                logger.error(f"FFmpeg slicing failed to produce playlist. Error: {stderr.decode()}")
                 return None
                 
-            if result.returncode != 0:
-                logger.warning(f"FFmpeg returned non-zero ({result.returncode}), but playlist exists. Proceeding.")
+            if process.returncode != 0:
+                logger.warning(f"FFmpeg returned non-zero ({process.returncode}), but playlist exists. Proceeding.")
                 
             logger.info(f"Successfully sliced video to {master_playlist}")
             return master_playlist

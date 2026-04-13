@@ -1,5 +1,5 @@
 import os
-import subprocess
+import asyncio
 import logging
 from typing import Optional
 
@@ -11,10 +11,10 @@ class VideoFetcher:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def fetch(self, url: str, output_filename: str, provider_id: str = "") -> Optional[str]:
+    async def fetch(self, url: str, output_filename: str, provider_id: str = "") -> Optional[str]:
         """
         Fetches a video from a direct URL (m3u8 or mp4) and saves it locally as an MP4.
-        Uses ffmpeg for robust handling of streams.
+        Uses ffmpeg for robust handling of streams asynchronously.
         """
         output_path = os.path.join(self.output_dir, output_filename)
         logger.info(f"Fetching video from {url} to {output_path}...")
@@ -44,10 +44,15 @@ class VideoFetcher:
                 output_path
             ]
             
-            result = subprocess.run(command, capture_output=True, text=True)
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
             
-            if result.returncode != 0:
-                logger.error(f"FFmpeg failed with error: {result.stderr}")
+            if process.returncode != 0:
+                logger.error(f"FFmpeg failed with error: {stderr.decode()}")
                 return None
                 
             logger.info(f"Successfully fetched video to {output_path}")

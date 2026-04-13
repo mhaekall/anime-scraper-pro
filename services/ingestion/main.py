@@ -7,9 +7,9 @@ from typing import Optional
 # Add the root directory to Python path if running independently
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from core.fetcher import VideoFetcher
-from core.slicer import VideoSlicer
-from uploader.telegram import TelegramUploader
+from .core.fetcher import VideoFetcher
+from .core.slicer import VideoSlicer
+from .uploader.telegram import TelegramUploader
 try:
     from db.connection import database
     from db.models import episodes
@@ -33,27 +33,27 @@ class IngestionEngine:
         """
         logger.info(f"Starting ingestion for Anime: {anilist_id} | Ep: {episode_number} | Provider: {provider_id}")
         
-        # 1. Fetch (Synchronous)
+        # 1. Fetch (Asynchronous)
         filename = f"{provider_id}_{anilist_id}_{episode_number}.mp4"
-        mp4_path = self.fetcher.fetch(direct_video_url, filename, provider_id=provider_id)
+        mp4_path = await self.fetcher.fetch(direct_video_url, filename, provider_id=provider_id)
         if not mp4_path:
             logger.error("Failed to fetch video.")
             return False
 
-        # 2. Slice (Synchronous)
-        m3u8_path = self.slicer.slice(mp4_path)
+        # 2. Slice (Asynchronous)
+        m3u8_path = await self.slicer.slice(mp4_path)
         if not m3u8_path:
             logger.error("Failed to slice video.")
             return False
 
         # 3. Upload to Telegram (Parallel)
-        cloud_m3u8_path = self.uploader.process_hls_playlist_parallel(m3u8_path, max_workers=5)
+        cloud_m3u8_path = await self.uploader.process_hls_playlist_parallel(m3u8_path, max_workers=5)
         if not cloud_m3u8_path:
             logger.error("Failed to upload segments to Telegram.")
             return False
             
         # 4. Upload the master playlist itself to Telegram or use it directly
-        playlist_file_id = self.uploader.upload_file(cloud_m3u8_path)
+        playlist_file_id = await self.uploader.upload_file(cloud_m3u8_path)
         if not playlist_file_id:
             logger.error("Failed to upload master playlist to Telegram.")
             return False

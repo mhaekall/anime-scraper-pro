@@ -10,4 +10,4 @@ compatibility_date = "2023-10-16"
 [vars]
 # Do NOT commit the actual production token here.
 # For local testing, you can use `.dev.vars` file.
-TELEGRAM_BOT_TOKEN = "8782570865:AAFlGrid6H-XFPu-jAbE26dHD_DgXHhRBpE"
+TELEGRAM_BOT_TOKEN = ""

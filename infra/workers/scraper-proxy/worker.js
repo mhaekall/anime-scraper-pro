@@ -147,7 +147,7 @@ async function handleProxy(upstream, request, env, payload, match) {
           const signed = await signSegmentUrl(segUrl, payload.p, match[1], match[2], env.PROXY_SECRET, workerBase);
           rewrittenLines.push(signed);
         } else {
-          rewrittenLines.push(`${workerBase}/?url=${encodeURIComponent(segUrl)}&key=${env.PROXY_SECRET || "anime-pro-secure-2026"}`);
+          rewrittenLines.push(`${workerBase}/?url=${encodeURIComponent(segUrl)}&key=${env.PROXY_SECRET || FALLBACK_SECRET}`);
         }
       }
       
@@ -174,5 +174,11 @@ async function handleProxy(upstream, request, env, payload, match) {
     });
   } catch (error) {
     return new Response(`Proxy Error: ${error.message}`, { status: 502 });
+  }
+}
+ });
+  }
+}
+rn new Response(`Proxy Error: ${error.message}`, { status: 502 });
   }
 }

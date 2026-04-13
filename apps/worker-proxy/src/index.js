@@ -66,12 +66,20 @@ export default {
       }
 
       // If it's a .ts or .m3u8 file, we ensure the correct content type
-      if (filePath.endsWith('.ts')) {
+      const originalName = url.searchParams.get('name') || '';
+      if (filePath.endsWith('.ts') || originalName.endsWith('.ts')) {
         responseHeaders.set('Content-Type', 'video/mp2t');
-      } else if (filePath.endsWith('.m3u8')) {
+      } else if (filePath.endsWith('.m3u8') || originalName.endsWith('.m3u8')) {
         responseHeaders.set('Content-Type', 'application/vnd.apple.mpegurl');
-      } else if (filePath.endsWith('.mp4')) {
+      } else if (filePath.endsWith('.mp4') || originalName.endsWith('.mp4')) {
         responseHeaders.set('Content-Type', 'video/mp4');
+      } else {
+        const upstreamCT = fileResponse.headers.get('Content-Type');
+        if (upstreamCT) {
+          responseHeaders.set('Content-Type', upstreamCT);
+        } else {
+          responseHeaders.set('Content-Type', 'video/mp2t'); // fallback for HLS
+        }
       }
 
       return new Response(fileResponse.body, {

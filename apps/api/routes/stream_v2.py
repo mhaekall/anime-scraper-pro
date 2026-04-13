@@ -62,6 +62,25 @@ async def _resolve_embed(embed: dict, source_tag: str) -> Optional[dict]:
         }
     except: return None
 
+async def _scrape_samehadaku(title: str, episode_num: float) -> Dict[str, Any]:
+    try:
+        async with asyncio.timeout(PROVIDER_TIMEOUT):
+            s = await samehadaku_provider.search(title)
+            if not s: return {'sources': [], 'provider': 'samehadaku'}
+            details = await samehadaku_provider.get_anime_detail(s[0]['url'])
+            if not details: return {'sources': [], 'provider': 'samehadaku'}
+            target_url = next(
+                (e['url'] for e in details.get('episodes', [])
+                 if re.search(fr'\b{episode_num}\b', e['title'])), None
+            )
+            if not target_url: return {'sources': [], 'provider': 'samehadaku'}
+            raw = await samehadaku_provider.get_episode_sources(target_url)
+            embeds = raw if isinstance(raw, list) else raw.get('sources', [])
+            resolved = await asyncio.gather(*[_resolve_embed(e, 'samehadaku') for e in embeds])
+            return {'sources': [s for s in resolved if s], 'provider': 'samehadaku'}
+    except:
+        return {'sources': [], 'provider': 'samehadaku'}
+
 async def _scrape_oploverz(episode_url: str) -> Dict[str, Any]:
     try:
         async with asyncio.timeout(PROVIDER_TIMEOUT):
