@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import asyncio
+import shutil
 from typing import Optional
 
 # Add the root directory to Python path if running independently
@@ -74,6 +75,10 @@ class IngestionEngine:
             )
             await database.execute(stmt)
             logger.info(f"Successfully updated DB for episode ID {episode_id} with new stream URL: {final_stream_url}")
+            
+            # 6. Cleanup (After successful sync)
+            self._cleanup_temp_files(mp4_path, m3u8_path)
+            
             return True
         except Exception as e:
             logger.error(f"Database update failed: {e}")
@@ -81,6 +86,21 @@ class IngestionEngine:
         finally:
             if should_disconnect:
                 await database.disconnect()
+
+    def _cleanup_temp_files(self, mp4_path: str, m3u8_path: str):
+        """Removes local temporary files to save disk space."""
+        try:
+            if mp4_path and os.path.exists(mp4_path):
+                os.remove(mp4_path)
+                logger.info(f"Removed raw MP4: {mp4_path}")
+            
+            if m3u8_path:
+                hls_dir = os.path.dirname(m3u8_path)
+                if os.path.exists(hls_dir):
+                    shutil.rmtree(hls_dir)
+                    logger.info(f"Removed HLS directory: {hls_dir}")
+        except Exception as e:
+            logger.warning(f"Failed to cleanup temp files: {e}")
 
 if __name__ == "__main__":
     # Test execution

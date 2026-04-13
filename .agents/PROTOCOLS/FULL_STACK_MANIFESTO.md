@@ -1,4 +1,4 @@
-# 📜 Full Stack Manifesto: Anime Scraper Pro v2
+# 📜 Full Stack Manifesto: Anime Scraper Pro v2.1
 **Vision:** Zero Friction, Near 0ms Latency, $0 Cost Infrastructure.
 **Architecture:** Wrapper-Centric / Distributed Edge Streaming.
 
@@ -22,7 +22,13 @@
 
 ### Streaming Pipeline
 - **Video Player:** Custom Native React Player with `Hls.js` (Dynamic Import).
-- **Strict Mode:** 100% Iframe-free. Only `.m3u8` and `.mp4` allowed.
+- **Strict Mode:** 100% Iframe-free policy. Only `.m3u8` and `.mp4` allowed.
+- **Resilient Ladder (Tiered Access):**
+    - **Tier 0 (Swarm):** Check DB for Telegram-cached segments (0ms latency).
+    - **Tier 1 (Reconciler):** Match cached provider direct URLs via Redis.
+    - **Tier 2 (On-the-fly):** Resolve provider URLs with title variants.
+    - **Tier 3 (Last Resort):** Direct HTML search per provider.
+    - **Tier 4 (Background Ingest):** If a new direct URL is found, auto-enqueue to QStash for Telegram Swarm processing.
 - **Edge Proxy:** Cloudflare Workers for Referer Rewriting & M3U8 Segment Rewriting.
 
 ---
@@ -53,4 +59,4 @@
 4. **ABR Standard:** Transition all "Hot" content to Adaptive Bitrate (HLS) for best UX.
 
 ---
-*Created by Gemini (Agent 4) - Saturday, April 11, 2026*
+*Updated by Gemini (Agent 4) - Monday, April 13, 2026*

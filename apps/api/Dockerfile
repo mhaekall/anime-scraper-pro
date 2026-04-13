@@ -15,10 +15,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend and services
 COPY apps/api/ .
-COPY services/scraper/ /services/scraper/
+COPY services/ /app/services/
 
 # Set environment variable for python path
-ENV PYTHONPATH="${PYTHONPATH}:/services/scraper"
+ENV PYTHONPATH="${PYTHONPATH}:/app:/app/services"
 
 # Expose port
 EXPOSE 7860

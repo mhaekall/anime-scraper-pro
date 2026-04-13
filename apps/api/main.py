@@ -3,7 +3,7 @@ import os
 import traceback
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Response, BackgroundTasks
+from fastapi import FastAPI, Request, Response, BackgroundTasks, Header, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -12,6 +12,13 @@ from services.background import background_scrape_job
 from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook, social
 
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://anime-scraper-pro.pages.dev")
+
+async def verify_admin_key(x_admin_key: str = Header(None)):
+    expected_key = os.getenv("ADMIN_API_KEY")
+    if not expected_key:
+        return
+    if not x_admin_key or x_admin_key != expected_key:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid Admin Key")
 
 
 @asynccontextmanager
@@ -71,7 +78,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-@app.get("/api/v2/admin/force-db-setup")
+@app.get("/api/v2/admin/force-db-setup", dependencies=[Depends(verify_admin_key)])
 async def force_db_setup():
     try:
         from db.connection import metadata
@@ -123,21 +130,21 @@ app.include_router(webhook.router, prefix="/api/v2", tags=["Webhook"])
 app.include_router(social.router, prefix="/api/v2/social", tags=["Social"])
 
 
-@app.post("/admin/sync-popular", tags=["Admin"])
+@app.post("/admin/sync-popular", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 async def trigger_popular_sync(background_tasks: BackgroundTasks):
     from scripts.sync_popular import sync_popular_anime
     background_tasks.add_task(sync_popular_anime)
     return {"success": True, "message": "Popular anime sync started in background"}
 
 
-@app.post("/admin/resync-missing", tags=["Admin"])
+@app.post("/admin/resync-missing", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 async def trigger_resync_missing(background_tasks: BackgroundTasks):
     from scripts.resync_missing import resync_missing_episodes
     background_tasks.add_task(resync_missing_episodes)
     return {"success": True, "message": "Resync missing episodes started in background"}
 
 
-@app.get("/debug/columns/{table_name}", tags=["Debug"])
+@app.get("/debug/columns/{table_name}", tags=["Debug"], dependencies=[Depends(verify_admin_key)])
 async def get_columns(table_name: str):
     try:
         rows = await database.fetch_all(f"""

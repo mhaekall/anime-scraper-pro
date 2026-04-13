@@ -32,7 +32,7 @@ import httpx
 from utils.ssrf_guard import validate_scrape_url, SSRFError
 from utils.helpers import extract_domain, determine_quality
 from services.config import HEADERS
-from services.providers import oploverz_provider, otakudesu_provider, samehadaku_provider, extractor
+from services.providers import oploverz_provider, otakudesu_provider, samehadaku_provider, kuronime_provider, extractor
 from services.reconciler import reconciler
 from db.connection import database
 

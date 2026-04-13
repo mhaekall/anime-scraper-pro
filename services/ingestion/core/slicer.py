@@ -11,7 +11,7 @@ class VideoSlicer:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-    async def slice(self, input_mp4: str, segment_time: int = 6) -> Optional[str]:
+    async def slice(self, input_mp4: str, segment_time: int = 4) -> Optional[str]:
         """
         Segments an MP4 file into HLS format (.ts chunks and .m3u8 playlist).
         Returns the path to the master .m3u8 playlist on success.
@@ -32,7 +32,7 @@ class VideoSlicer:
             logger.info(f"HLS playlist {master_playlist} already exists. Skipping slicing.")
             return master_playlist
 
-        logger.info(f"Slicing video {input_mp4} to {master_playlist}...")
+        logger.info(f"Slicing video {input_mp4} to {master_playlist} with {segment_time}s segments...")
 
         try:
             # Fast passthrough to HLS segments without re-encoding
@@ -65,6 +65,17 @@ class VideoSlicer:
                 
             if process.returncode != 0:
                 logger.warning(f"FFmpeg returned non-zero ({process.returncode}), but playlist exists. Proceeding.")
+
+            # --- VALIDATION: Ensure no segment exceeds Telegram's 20MB getFile limit ---
+            max_size_mb = 18.0 # Safety margin
+            for f in os.listdir(hls_dir):
+                if f.endswith('.ts'):
+                    file_path = os.path.join(hls_dir, f)
+                    size_mb = os.path.getsize(file_path) / (1024 * 1024)
+                    if size_mb > max_size_mb:
+                        logger.error(f"FATAL: Segment {f} is too large ({size_mb:.2f}MB). Exceeds Telegram 20MB limit.")
+                        # Future improvement: recursively call slice with smaller segment_time
+                        return None
                 
             logger.info(f"Successfully sliced video to {master_playlist}")
             return master_playlist
