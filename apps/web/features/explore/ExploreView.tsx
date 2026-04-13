@@ -185,9 +185,9 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
             </div>
           )
         ) : (
-          <div className="anim-up max-w-2xl mx-auto">
+          <div className="anim-up max-w-5xl mx-auto space-y-10">
             {searchHist.length > 0 && (
-              <div className="mb-10">
+              <div className="px-5 md:px-0">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-bold text-white">Terakhir dicari</h2>
                   <button onClick={() => { saveSearchHist([]); setSearchHist([]); }} className="text-[#0A84FF] text-[13px] font-medium active:opacity-50 transition-opacity">Hapus Semua</button>
@@ -202,9 +202,27 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
               </div>
             )}
 
-            <div>
+            {/* Trending & Popular Rows */}
+            {initialResults.length > 0 && (
+              <div className="space-y-8">
+                <div>
+                  <div className="px-5 md:px-0 flex justify-between items-center mb-3">
+                    <h2 className="text-lg font-bold text-white">Populer Saat Ini</h2>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 px-5 md:px-0 snap-x">
+                    {initialResults.slice(0, 15).map((a) => (
+                      <div key={a.id} className="min-w-[140px] md:min-w-[160px] snap-start">
+                        <AnimeCard id={a.id} title={a.title} img={a.img} score={a.score} color={a.color} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="px-5 md:px-0">
               <h2 className="text-lg font-bold text-white mb-5">Telusuri Genre</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 {GENRES.map((g) => (
                   <button 
                     key={g.name} 

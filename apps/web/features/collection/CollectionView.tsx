@@ -47,7 +47,7 @@ export default function CollectionView() {
             <div 
               className="absolute top-1 bottom-1 bg-[#2c2c2e] rounded-[12px] shadow-lg transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]" 
               style={{ 
-                width: `calc(33.333% - 4px)`, 
+                width: `calc(${100 / TABS.length}% - 4px)`, 
                 transform: `translateX(calc(${TABS.findIndex((t) => t.id === tab) * 100}% + ${TABS.findIndex((t) => t.id === tab) * 2}px))` 
               }} 
             />
