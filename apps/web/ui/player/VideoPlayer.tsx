@@ -40,8 +40,10 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const videoRef = useRef<HTMLVideoElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<any>(null);
-  const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const saveTimer = useRef<ReturnType<typeof setInterval>>(undefined);
+  const rafRef = useRef<number>();
+  const progressRef = useRef(0);
+  const durationRef = useRef(0);
+  const isDragging = useRef(false);
 
   // Trigger HLS module download immediately when the player mounts
   useEffect(() => {
@@ -158,7 +160,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
     const v = videoRef.current;
     if (!v) return;
     const onTime = () => {
-      setProgress(v.currentTime);
+      progressRef.current = v.currentTime;
       if (v.buffered.length > 0) setBuffered(v.buffered.end(v.buffered.length - 1));
       const dur = v.duration;
       if (dur > 0 && (v.currentTime / dur) >= 0.9 && autoPlayNext && !hasTriggeredAutoNext && onRequireAutoNext) {
@@ -166,7 +168,10 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
         setHasTriggeredAutoNext(true);
       }
     };
-    const onDur = () => setDuration(v.duration);
+    const onDur = () => {
+      setDuration(v.duration);
+      durationRef.current = v.duration;
+    };
     const onPlay = () => { setPlaying(true); setLoading(false); };
     const onPause = () => setPlaying(false);
     const onWait = () => setLoading(true);
@@ -199,14 +204,60 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const reveal = useCallback(() => { setControls(true); clearTimeout(hideTimer.current); if (videoRef.current && !videoRef.current.paused) hideTimer.current = setTimeout(() => setControls(false), 3000); }, []);
   const togglePlay = useCallback(() => { const v = videoRef.current; if (!v) return; v.paused ? v.play() : v.pause(); reveal(); }, [reveal]);
   const skip = useCallback((s: number) => { const v = videoRef.current; if (!v || !duration) return; v.currentTime = Math.max(0, Math.min(duration, v.currentTime + s)); reveal(); }, [duration, reveal]);
-  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => { const b = barRef.current; const v = videoRef.current; if (!b || !v || !duration) return; v.currentTime = Math.max(0, Math.min(1, (e.clientX - b.getBoundingClientRect().left) / b.offsetWidth)) * duration; }, [duration]);
+  const getSeekPercent = (e: MouseEvent | React.MouseEvent) => {
+    const b = barRef.current;
+    if (!b) return 0;
+    return Math.max(0, Math.min(1, (e.clientX - b.getBoundingClientRect().left) / b.offsetWidth));
+  };
+
+  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => { 
+    const v = videoRef.current; 
+    if (!v || !duration) return; 
+    v.currentTime = getSeekPercent(e) * duration; 
+  }, [duration]);
+
+  useEffect(() => {
+    const onUp = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      if (videoRef.current && duration) {
+        videoRef.current.currentTime = getSeekPercent(e) * duration;
+      }
+    };
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      setProgress(getSeekPercent(e) * duration); // Preview posisi
+    };
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('mousemove', onMove);
+    return () => {
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('mousemove', onMove);
+    };
+  }, [duration]);
   const switchQ = useCallback((s: VideoSource, auto = false) => { 
+    if (hlsRef.current && s.url === current?.url) {
+      if (auto) {
+        hlsRef.current.currentLevel = -1; // Auto ABR
+      } else {
+        const levelIndex = hlsRef.current.levels.findIndex(
+          (l: any) => l.height === parseInt(s.quality)
+        );
+        if (levelIndex !== -1) {
+          hlsRef.current.currentLevel = levelIndex; // Switch tanpa rebuild
+          setIsAuto(false);
+          setCurrent(s);
+          setShowSettings(false);
+          return;
+        }
+      }
+    }
     const t = videoRef.current?.currentTime ?? 0; 
     setIsAuto(auto);
     setCurrent(s); 
     setShowSettings(false); 
     loadSource(s, t, auto); 
-  }, [loadSource]);
+  }, [loadSource, current]);
   const toggleFS = useCallback(() => { if (!document.fullscreenElement) containerRef.current?.requestFullscreen(); else document.exitFullscreen(); }, []);
   const changeSpeed = useCallback((s: number) => { setSpeed(s); if (videoRef.current) videoRef.current.playbackRate = s; }, []);
 
@@ -322,7 +373,15 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
         </div>
         <div className="flex-1" />
         <div className="bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-8 pointer-events-auto">
-          <div ref={barRef} className="relative h-1 cursor-pointer rounded-full bg-white/20 mb-3 group/bar hover:h-2 transition-all" onClick={seek}>
+          <div 
+            ref={barRef} 
+            className="relative h-1 cursor-pointer rounded-full bg-white/20 mb-3 group/bar hover:h-2 transition-all" 
+            onMouseDown={(e) => {
+              isDragging.current = true;
+              const pct = getSeekPercent(e);
+              setProgress(pct * duration); // Visual update dulu
+            }}
+          >
             <div className="absolute inset-y-0 left-0 bg-white/25 rounded-full pointer-events-none" style={{ width: `${bufPct}%` }} />
             <div className="absolute inset-y-0 left-0 rounded-full pointer-events-none" style={{ width: `${pct}%`, background: accent }} />
           </div>
@@ -334,7 +393,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 group/vol">
                 <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); if (!v.muted && volume === 0) { v.volume = 1; setVolume(1); } } }} className="text-white"><IconVolume muted={muted || volume === 0} /></button>
-                <div className="w-0 group-hover/vol:w-16 overflow-hidden transition-all duration-200 hidden md:block">
+                <div className="w-16 hidden md:block">
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => { const val = Number(e.target.value); setVolume(val); if (videoRef.current) { videoRef.current.volume = val; videoRef.current.muted = val === 0; setMuted(val === 0); } }} className="w-full h-1 cursor-pointer accent-white" />
                 </div>
               </div>
