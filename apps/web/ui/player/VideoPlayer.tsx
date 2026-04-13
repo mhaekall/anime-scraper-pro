@@ -21,6 +21,13 @@ function fmt(s: number): string {
   return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
 }
 
+const SkipBackwardIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
+);
+const SkipForwardIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+);
+
 interface Props {
   title: string;
   poster?: string;
@@ -40,7 +47,9 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const videoRef = useRef<HTMLVideoElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<any>(null);
-  const rafRef = useRef<number>();
+  const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const saveTimer = useRef<ReturnType<typeof setInterval>>(undefined);
+  const rafRef = useRef<number | undefined>(undefined);
   const progressRef = useRef(0);
   const durationRef = useRef(0);
   const isDragging = useRef(false);
@@ -204,10 +213,18 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   const reveal = useCallback(() => { setControls(true); clearTimeout(hideTimer.current); if (videoRef.current && !videoRef.current.paused) hideTimer.current = setTimeout(() => setControls(false), 3000); }, []);
   const togglePlay = useCallback(() => { const v = videoRef.current; if (!v) return; v.paused ? v.play() : v.pause(); reveal(); }, [reveal]);
   const skip = useCallback((s: number) => { const v = videoRef.current; if (!v || !duration) return; v.currentTime = Math.max(0, Math.min(duration, v.currentTime + s)); reveal(); }, [duration, reveal]);
-  const getSeekPercent = (e: MouseEvent | React.MouseEvent) => {
+  const getSeekPercent = (e: MouseEvent | React.MouseEvent | TouchEvent | React.TouchEvent) => {
     const b = barRef.current;
     if (!b) return 0;
-    return Math.max(0, Math.min(1, (e.clientX - b.getBoundingClientRect().left) / b.offsetWidth));
+    let clientX = 0;
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+    } else if ('clientX' in e) {
+      clientX = (e as any).clientX;
+    } else {
+      return 0;
+    }
+    return Math.max(0, Math.min(1, (clientX - b.getBoundingClientRect().left) / b.offsetWidth));
   };
 
   const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => { 
@@ -217,22 +234,26 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   }, [duration]);
 
   useEffect(() => {
-    const onUp = (e: MouseEvent) => {
+    const onUp = (e: MouseEvent | TouchEvent) => {
       if (!isDragging.current) return;
       isDragging.current = false;
       if (videoRef.current && duration) {
         videoRef.current.currentTime = getSeekPercent(e) * duration;
       }
     };
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: MouseEvent | TouchEvent) => {
       if (!isDragging.current) return;
       setProgress(getSeekPercent(e) * duration); // Preview posisi
     };
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp as any);
+    window.addEventListener('mousemove', onMove as any);
+    window.addEventListener('touchend', onUp as any);
+    window.addEventListener('touchmove', onMove as any);
     return () => {
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp as any);
+      window.removeEventListener('mousemove', onMove as any);
+      window.removeEventListener('touchend', onUp as any);
+      window.removeEventListener('touchmove', onMove as any);
     };
   }, [duration]);
   const switchQ = useCallback((s: VideoSource, auto = false) => { 
@@ -278,8 +299,8 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
       try {
         await container.requestFullscreen();
         // Lock landscape setelah fullscreen granted
-        if (screen.orientation?.lock) {
-          await screen.orientation.lock("landscape").catch(() => {});
+        if ((screen.orientation as any)?.lock) {
+          await (screen.orientation as any).lock("landscape").catch(() => {});
         }
       } catch (e) {
         // Fallback: coba lewat video element
@@ -289,7 +310,7 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
       }
     } else {
       await document.exitFullscreen().catch(() => {});
-      screen.orientation?.unlock?.();
+      (screen.orientation as any)?.unlock?.();
     }
   }, [isIOS]);
   useEffect(() => {
@@ -349,14 +370,23 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
         preload="auto" 
         onContextMenu={(e) => e.preventDefault()} 
         onClick={(e) => e.stopPropagation()} 
-        onDoubleClick={toggleFS} 
       />
 
       {ripple && (
         <div className={`absolute top-0 bottom-0 w-1/2 pointer-events-none flex items-center justify-center overflow-hidden z-30 ${ripple.side === 'left' ? 'left-0' : 'right-0'}`}>
           <div className="absolute inset-0 bg-white/10 opacity-0 animate-[ripple_0.5s_ease-out]" />
-          <div className="flex flex-col items-center justify-center gap-2 bg-black/40 rounded-full p-4 animate-in fade-in zoom-in duration-200">
-             <span className="text-white font-bold text-sm">{ripple.side === 'left' ? '⏪ -10s' : '+10s ⏩'}</span>
+          <div className="flex flex-col items-center justify-center gap-1 bg-black/40 rounded-full w-20 h-20 animate-in fade-in zoom-in duration-200">
+             {ripple.side === 'left' ? (
+               <>
+                 <SkipBackwardIcon className="w-6 h-6 text-white" />
+                 <span className="text-white font-bold text-xs">10s</span>
+               </>
+             ) : (
+               <>
+                 <SkipForwardIcon className="w-6 h-6 text-white" />
+                 <span className="text-white font-bold text-xs">10s</span>
+               </>
+             )}
           </div>
         </div>
       )}
@@ -419,37 +449,47 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
       )}
 
       <div className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-200 z-20 pointer-events-none ${controls ? "opacity-100" : "opacity-0"}`} onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-b from-black/70 to-transparent p-3 pointer-events-auto">
-          <p className="text-white font-bold text-xs truncate max-w-[70%]">{title}</p>
+        <div className="bg-gradient-to-b from-black/80 to-transparent p-4 md:p-6 pointer-events-auto">
+          <p className="text-white font-bold text-sm md:text-base lg:text-lg truncate max-w-[80%] drop-shadow-md">{title}</p>
         </div>
         <div className="flex-1" />
-        <div className="bg-gradient-to-t from-black/80 to-transparent px-safe pb-3 pt-8 pointer-events-auto">
-          <div 
-            ref={barRef} 
-            className="relative h-1 cursor-pointer rounded-full bg-white/20 mb-3 group/bar hover:h-2 transition-all" 
+        <div className="bg-gradient-to-t from-black/90 to-transparent px-safe pb-4 pt-12 pointer-events-auto">
+          <div className="py-2 -my-2 group/bar cursor-pointer" 
             onMouseDown={(e) => {
               isDragging.current = true;
               const pct = getSeekPercent(e);
               setProgress(pct * duration); // Visual update dulu
             }}
+            onTouchStart={(e) => {
+              isDragging.current = true;
+              const pct = getSeekPercent(e);
+              setProgress(pct * duration); // Visual update dulu
+            }}
           >
-            <div className="absolute inset-y-0 left-0 bg-white/25 rounded-full pointer-events-none" style={{ width: `${bufPct}%` }} />
-            <div className="absolute inset-y-0 left-0 rounded-full pointer-events-none" style={{ width: `${pct}%`, background: accent }} />
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white">{playing ? <IconPause /> : <IconPlay />}</button>
-              <span className="text-white text-[11px] font-mono tabular-nums">{fmt(progress)} / {fmt(duration)}</span>
+            <div ref={barRef} className="relative h-1 md:h-1.5 rounded-full bg-white/30 transition-all group-hover/bar:h-2 md:group-hover/bar:h-2.5">
+              <div className="absolute inset-y-0 left-0 bg-white/40 rounded-full pointer-events-none" style={{ width: `${bufPct}%` }} />
+              <div className="absolute inset-y-0 left-0 rounded-full pointer-events-none flex items-center justify-end" style={{ width: `${pct}%`, background: accent }}>
+                <div className="w-3.5 h-3.5 md:w-4 md:h-4 bg-white rounded-full shadow translate-x-2 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+          </div>
+          <div className="flex items-center justify-between gap-2 mt-3">
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white p-1.5 hover:bg-white/10 rounded-full transition-colors">{playing ? <IconPause className="w-6 h-6 md:w-7 md:h-7" /> : <IconPlay className="w-6 h-6 md:w-7 md:h-7" />}</button>
+              
               <div className="flex items-center gap-2 group/vol">
-                <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); if (!v.muted && volume === 0) { v.volume = 1; setVolume(1); } } }} className="text-white"><IconVolume muted={muted || volume === 0} /></button>
-                <div className="w-16 hidden md:block">
+                <button onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { v.muted = !v.muted; setMuted(v.muted); if (!v.muted && volume === 0) { v.volume = 1; setVolume(1); } } }} className="text-white p-1.5 hover:bg-white/10 rounded-full transition-colors"><IconVolume muted={muted || volume === 0} className="w-5 h-5 md:w-6 md:h-6" /></button>
+                <div className="w-0 group-hover/vol:w-16 overflow-hidden transition-all duration-200 hidden md:block">
                   <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={(e) => { const val = Number(e.target.value); setVolume(val); if (videoRef.current) { videoRef.current.volume = val; videoRef.current.muted = val === 0; setMuted(val === 0); } }} className="w-full h-1 cursor-pointer accent-white" />
                 </div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }} className={`transition-transform duration-200 ${showSettings ? 'rotate-90 text-white' : 'text-[#8e8e93] hover:text-white'}`}><IconSettings /></button>
-              <button onClick={(e) => { e.stopPropagation(); toggleFS(); }} className="text-white hover:scale-110 transition-transform"><IconFullscreen /></button>
+
+              <span className="text-white/90 text-xs md:text-sm font-medium tabular-nums ml-1 md:ml-2">{fmt(progress)} <span className="text-white/50 mx-1">/</span> {fmt(duration)}</span>
+            </div>
+            
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }} className={`p-1.5 rounded-full transition-all duration-200 ${showSettings ? 'rotate-90 text-white bg-white/10' : 'text-white/90 hover:bg-white/10 hover:text-white'}`}><IconSettings className="w-5 h-5 md:w-6 md:h-6" /></button>
+              <button onClick={(e) => { e.stopPropagation(); toggleFS(); }} className="text-white p-1.5 hover:bg-white/10 rounded-full hover:scale-105 transition-all"><IconFullscreen className="w-5 h-5 md:w-6 md:h-6" /></button>
             </div>
           </div>
         </div>
