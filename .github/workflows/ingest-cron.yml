@@ -1,0 +1,34 @@
+name: Background Ingestion Worker
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Setiap 6 jam
+  workflow_dispatch:
+
+jobs:
+  ingest-pending:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        
+      - name: Install dependencies
+        run: pip install -r apps/api/requirements.txt
+        
+      - name: Run Ingestion for Pending Episodes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TG_PROXY_BASE_URL: ${{ secrets.TG_PROXY_BASE_URL }}
+        # Placeholder script — kita perlu menulis script python ingest_pending.py di iterasi berikutnya
+        run: |
+          echo "Worker ingestion dijalankan! (Membutuhkan apps/api/scripts/ingest_pending.py)"
+          # python apps/api/scripts/ingest_pending.py --limit 20

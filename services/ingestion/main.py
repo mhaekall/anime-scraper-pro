@@ -64,9 +64,11 @@ class IngestionEngine:
         
         try:
             should_disconnect = False
-            if not database.is_connected:
+            try:
                 await database.connect()
                 should_disconnect = True
+            except Exception:
+                pass  # Already connected
                 
             stmt = (
                 update(episodes)

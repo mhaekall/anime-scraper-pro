@@ -181,7 +181,7 @@ async def sync_episode(anilist_id: int, episode_number: float):
         
         print("\n[TAHAP 2] MEMOTONG MENJADI RATUSAN HLS SEGMENTS (.ts)...")
         slicer = VideoSlicer(output_dir=TMP_DIR + "/hls")
-        m3u8_path = slicer.slice(mp4_path, segment_time=10) # 10s segments
+        m3u8_path = await slicer.slice(mp4_path, segment_time=2) # 2s segments for near-0ms perceived latency
         
         if not m3u8_path:
             print("❌ Gagal memotong video.")
@@ -198,7 +198,7 @@ async def sync_episode(anilist_id: int, episode_number: float):
         uploader = TelegramUploader()
         
         # Tingkatkan max_workers ke 10 agar upload ratusan segmen lebih cepat
-        new_playlist_path = uploader.process_hls_playlist_parallel(m3u8_path, max_workers=10)
+        new_playlist_path = await uploader.process_hls_playlist_parallel(m3u8_path, max_workers=10)
         
         if new_playlist_path:
             duration = time.time() - start_time

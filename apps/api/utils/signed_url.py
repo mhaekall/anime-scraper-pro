@@ -15,7 +15,7 @@ if not PROXY_SECRET:
     PROXY_SECRET = "fallback-only-for-dev"
     
 PROXY_BASE   = os.environ.get("PROXY_WORKER_URL", "https://scraper-proxy-swarm.moehamadhkl.workers.dev")
-TOKEN_TTL    = 6 * 3600  # 6 jam — sama dengan video_cache TTL
+TOKEN_TTL    = 2 * 3600  # 2 jam — lebih aman untuk video streaming
 
 def sign_stream_url(raw_url: str, provider_id: str, quality: str) -> str:
     """

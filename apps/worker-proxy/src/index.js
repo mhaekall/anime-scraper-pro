@@ -30,20 +30,29 @@ export default {
 
     // 1. Get the actual download path from Telegram API
     // We use the TELEGRAM_BOT_TOKEN stored in the Worker's secrets
-    const getFileUrl = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`;
     
     try {
-      const tgFileResponse = await fetch(getFileUrl);
-      if (!tgFileResponse.ok) {
-        return new Response("Telegram API Error", { status: tgFileResponse.status, headers: corsHeaders });
+      // Use KV cache to reduce Telegram getFile API latency
+      let filePath = env.FILE_CACHE ? await env.FILE_CACHE.get(fileId) : null;
+
+      if (!filePath) {
+        const getFileUrl = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`;
+        const tgFileResponse = await fetch(getFileUrl);
+        if (!tgFileResponse.ok) {
+          return new Response("Telegram API Error", { status: tgFileResponse.status, headers: corsHeaders });
+        }
+
+        const tgFileData = await tgFileResponse.json();
+        if (!tgFileData.ok) {
+          return new Response("File not found on Telegram", { status: 404, headers: corsHeaders });
+        }
+
+        filePath = tgFileData.result.file_path;
+        if (env.FILE_CACHE) {
+          ctx.waitUntil(env.FILE_CACHE.put(fileId, filePath, { expirationTtl: 86400 }));
+        }
       }
 
-      const tgFileData = await tgFileResponse.json();
-      if (!tgFileData.ok) {
-        return new Response("File not found on Telegram", { status: 404, headers: corsHeaders });
-      }
-
-      const filePath = tgFileData.result.file_path;
       const tgDownloadUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${filePath}`;
 
       // 2. Stream the file from Telegram to the client

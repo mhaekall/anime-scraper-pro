@@ -31,15 +31,18 @@ class TelegramUploader:
         """
         Uploads a single file to Telegram with retries and exponential backoff.
         """
-        url = f"https://api.telegram.org/bot{self.bot_token}/sendDocument"
+        file_size = os.path.getsize(file_path)
+        endpoint = "sendVideo" if file_size > 10_000_000 else "sendDocument"
+        url = f"https://api.telegram.org/bot{self.bot_token}/{endpoint}"
         
-        logger.info(f"Uploading {file_path} to Telegram...")
+        logger.info(f"Uploading {file_path} to Telegram (using {endpoint})...")
         
         for attempt in range(max_retries):
             try:
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     with open(file_path, "rb") as f:
-                        files = {"document": (os.path.basename(file_path), f)}
+                        file_key = "video" if endpoint == "sendVideo" else "document"
+                        files = {file_key: (os.path.basename(file_path), f)}
                         data = {"chat_id": self.chat_id}
                         
                         response = await client.post(url, data=data, files=files)

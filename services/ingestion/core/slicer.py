@@ -44,6 +44,7 @@ class VideoSlicer:
                 "-i", input_mp4,
                 "-c", "copy",
                 "-f", "hls",
+                "-hls_segment_type", "mpegts",
                 "-hls_time", str(segment_time),
                 "-hls_list_size", "0", # Keep all segments in the playlist
                 "-hls_segment_filename", os.path.join(hls_dir, "segment_%04d.ts"),

@@ -46,11 +46,15 @@ class QStashPublisher:
 
         # --- DEDUPLICATION: Prevent redundant tasks using Redis lock ---
         from services.cache import upstash_set
-        lock_key = f"ingest_lock:{anilist_id}:{episode_number}"
+        lock_key = f"ingest:{anilist_id}:{episode_number}"
         
         # nx=True means "only set if the key does not already exist" (Distributed Lock)
         # We lock for 30 minutes (1800s) to cover the typical ingestion duration
-        is_locked = await upstash_set(lock_key, {"status": "queued", "ts": int(time.time())}, ex=1800, nx=True)
+        is_locked = await upstash_set(lock_key, {
+            "status": "processing",
+            "started_at": int(time.time()),
+            "provider": provider_id
+        }, ex=1800, nx=True)
         
         if not is_locked:
             print(f"[QStash] Ingest already queued/in-progress for {anilist_id} Ep {episode_number}. Skipping deduplicate.")
