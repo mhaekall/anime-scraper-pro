@@ -147,7 +147,9 @@ async def _last_resort_otakudesu(title: str, episode_num: float) -> Dict[str, An
             r = await otakudesu_provider.client.get(f"https://otakudesu.blog/?s={q}&post_type=anime")
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(r.text, 'lxml')
-            first = soup.select_one('ul.chbox li h2 a')
+            first = soup.select_one('ul.chivsrc li h2 a')
+            if not first:
+                first = soup.select_one('ul.chbox li h2 a')
             if not first:
                 first = soup.select_one('ul.chbox li a')
             if not first: return {'sources': [], 'provider': 'otakudesu', 'tier': 3}
