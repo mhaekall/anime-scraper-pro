@@ -176,9 +176,3 @@ async function handleProxy(upstream, request, env, payload, match) {
     return new Response(`Proxy Error: ${error.message}`, { status: 502 });
   }
 }
- });
-  }
-}
-rn new Response(`Proxy Error: ${error.message}`, { status: 502 });
-  }
-}
