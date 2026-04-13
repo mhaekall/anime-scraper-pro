@@ -132,8 +132,18 @@ class UniversalExtractor:
                     except Exception:
                         pass
             elif '4meplayer' in url or 'oplo2.' in url:
-                hash_id = url.split('#')[-1]
-                if not hash_id: return url
+                # Coba dapat hash dari fragment
+                hash_id = url.split('#')[-1] if '#' in url else None
+                
+                # Kalau tidak ada fragment, parse dari path
+                if not hash_id or hash_id == url:
+                    from urllib.parse import urlparse
+                    path = urllib.parse.urlparse(url).path
+                    hash_id = path.strip('/').split('/')[-1]
+                
+                if not hash_id:
+                    return url
+                    
                 api_url = f"https://oplo2.4meplayer.pro/api/source/{hash_id}"
                 try:
                     res = await self.client.post(api_url, data={'r': '', 'd': 'oplo2.4meplayer.pro'})

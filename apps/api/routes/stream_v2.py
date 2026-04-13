@@ -85,9 +85,15 @@ async def _scrape_oploverz(episode_url: str) -> Dict[str, Any]:
     try:
         async with asyncio.timeout(PROVIDER_TIMEOUT):
             res = await oploverz_provider.get_episode_sources(episode_url)
-        resolved = await asyncio.gather(*[_resolve_embed(e, 'oploverz') for e in res.get('sources', [])])
-        return {'sources': [s for s in resolved if s], 'downloads': res.get('downloads', []), 'provider': 'oploverz'}
-    except:
+        
+        embeds = res if isinstance(res, list) else res.get('sources', [])
+        resolved = await asyncio.gather(*[_resolve_embed(e, 'oploverz') for e in embeds])
+        
+        downloads = res.get('downloads', []) if isinstance(res, dict) else []
+        
+        return {'sources': [s for s in resolved if s], 'downloads': downloads, 'provider': 'oploverz'}
+    except Exception as e:
+        print(f"[Oploverz] Error: {e}")
         return {'sources': [], 'downloads': [], 'provider': 'oploverz'}
 
 async def _scrape_otakudesu(series_url: str, episode_num: float) -> Dict[str, Any]:
@@ -95,13 +101,24 @@ async def _scrape_otakudesu(series_url: str, episode_num: float) -> Dict[str, An
         async with asyncio.timeout(PROVIDER_TIMEOUT):
             details = await otakudesu_provider.get_anime_detail(series_url)
         if not details: return {'sources': [], 'provider': 'otakudesu'}
-        target_url = next((e['url'] for e in details.get('episodes', []) if re.search(fr'\b{episode_num}\b', e['title'])), None)
+        
+        target_url = next(
+            (e['url'] for e in details.get('episodes', []) 
+             if re.search(fr'\b{int(episode_num)}\b', e['title'])), 
+            None
+        )
         if not target_url: return {'sources': [], 'provider': 'otakudesu'}
+        
         raw = await otakudesu_provider.get_episode_sources(target_url)
         embeds = raw if isinstance(raw, list) else raw.get('sources', [])
-        resolved = await asyncio.gather(*[_resolve_embed(e, 'otakudesu') for e in embeds])
+        
+        # Filter hanya yang punya URL valid
+        valid = [e for e in embeds if e.get('url') and e['url'].startswith('http')]
+        
+        resolved = await asyncio.gather(*[_resolve_embed(e, 'otakudesu') for e in valid])
         return {'sources': [s for s in resolved if s], 'provider': 'otakudesu'}
-    except:
+    except Exception as e:
+        print(f"[Otakudesu] Error: {e}")
         return {'sources': [], 'provider': 'otakudesu'}
 
 async def _scrape_kuronime(title: str, episode_num: float) -> Dict[str, Any]:
