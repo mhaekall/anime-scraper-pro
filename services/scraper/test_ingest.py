@@ -198,7 +198,8 @@ async def sync_episode(anilist_id: int, episode_number: float):
         uploader = TelegramUploader()
         
         # Tingkatkan max_workers ke 10 agar upload ratusan segmen lebih cepat
-        new_playlist_path = await uploader.process_hls_playlist_parallel(m3u8_path, max_workers=10)
+        progress_key = f"ingest_progress:{anilist_id}:{episode_number}"
+        new_playlist_path = await uploader.process_hls_playlist_parallel(m3u8_path, progress_key=progress_key, max_workers=10)
         
         if new_playlist_path:
             duration = time.time() - start_time

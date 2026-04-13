@@ -94,6 +94,19 @@ def build_provider_series_url(provider_id: str, provider_slug: str) -> str:
     return template.format(slug=provider_slug) if template else ""
 
 
+def extract_url_expiry(url: str) -> int:
+    """Extract expiry dari URL parameter jika ada."""
+    parsed = urllib.parse.urlparse(url)
+    params = urllib.parse.parse_qs(parsed.query)
+    
+    if 'expires' in params:
+        return int(params['expires'][0])
+    if 'expire' in params:
+        return int(params['expire'][0])
+    
+    # Default 4 jam (konservatif)
+    return int(time.time()) + 4 * 3600
+
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
 async def get_provider_mappings(anilist_id: int) -> dict:
@@ -159,12 +172,20 @@ async def get_video_cache(episode_url: str) -> Optional[dict]:
 
 
 async def save_video_cache(episode_url: str, provider_id: str, payload: dict) -> None:
+    # Get actual expiry based on best source URL if available
+    best_source_url = ""
+    if payload.get("sources"):
+        best_source_url = payload["sources"][0].get("raw_url") or payload["sources"][0].get("url")
+    
+    actual_expiry = extract_url_expiry(best_source_url) if best_source_url else int(time.time()) + 4 * 3600
+    ttl_seconds = max(3600, actual_expiry - int(time.time()))
+
     # 1. Save to Redis (hot cache)
     redis_key = f"video_cache:{episode_url}"
-    await upstash_set(redis_key, payload, ex=SOURCE_CACHE_HOURS * 3600)
+    await upstash_set(redis_key, payload, ex=ttl_seconds)
 
     # 2. Save to Postgres
-    expires = datetime.utcnow() + timedelta(hours=SOURCE_CACHE_HOURS)
+    expires = datetime.utcnow() + timedelta(seconds=ttl_seconds)
     await database.execute(
         """
         INSERT INTO video_cache ("episodeUrl", "providerId", payload, "expiresAt", "updatedAt")

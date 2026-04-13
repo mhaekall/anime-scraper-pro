@@ -71,10 +71,11 @@ class TelegramUploader:
 
         return None
 
-    async def process_hls_playlist_parallel(self, m3u8_path: str, max_workers: int = 5) -> Optional[str]:
+    async def process_hls_playlist_parallel(self, m3u8_path: str, progress_key: Optional[str] = None, max_workers: int = 5) -> Optional[str]:
         """
         Reads a local .m3u8 playlist, uploads each .ts segment to Telegram IN PARALLEL using asyncio.Semaphore,
         and creates a new 'cloud' playlist where segments point to proxy URLs.
+        Supports resumable uploads via Upstash Redis if progress_key is provided.
         Returns the path to the new .m3u8 playlist.
         """
         if not os.path.exists(m3u8_path):
@@ -89,10 +90,31 @@ class TelegramUploader:
 
         segment_lines = [(i, line.strip()) for i, line in enumerate(lines) if line.strip() and not line.startswith("#")]
         
+        existing_progress = {}
+        if progress_key:
+            try:
+                try:
+                    from db.cache import upstash_get, upstash_set # If running standalone
+                except ImportError:
+                    try:
+                        from services.cache import upstash_get, upstash_set # If running in worker
+                    except ImportError:
+                        from apps.api.services.cache import upstash_get, upstash_set
+                
+                cached = await upstash_get(progress_key)
+                if cached and isinstance(cached, dict):
+                    existing_progress = cached
+                    logger.info(f"Found existing progress. Resuming {len(existing_progress)} segments.")
+            except Exception as e:
+                logger.warning(f"Failed to get existing progress: {e}")
+
         uploaded_segments: Dict[int, str] = {}
         semaphore = asyncio.Semaphore(max_workers)
 
         async def _upload_task(index: int, line: str):
+            if str(index) in existing_progress:
+                return index, existing_progress[str(index)]
+
             segment_path = os.path.join(hls_dir, line)
             if not os.path.exists(segment_path):
                 logger.error(f"Segment missing locally: {segment_path}")
@@ -112,10 +134,26 @@ class TelegramUploader:
                 idx, file_id = result
                 if file_id:
                     uploaded_segments[idx] = file_id
+                    if progress_key:
+                        existing_progress[str(idx)] = file_id
                 else:
                     logger.error(f"Failed to upload segment at line {idx}")
             else:
                 logger.error(f"Segment generated an exception: {result}")
+
+        # Save progress incrementally
+        if progress_key and uploaded_segments:
+            try:
+                try:
+                    from db.cache import upstash_set
+                except ImportError:
+                    try:
+                        from services.cache import upstash_set
+                    except ImportError:
+                        from apps.api.services.cache import upstash_set
+                await upstash_set(progress_key, existing_progress, ex=86400)
+            except Exception as e:
+                logger.warning(f"Failed to save progress incrementally: {e}")
 
         if len(uploaded_segments) < len(segment_lines):
             logger.error("Not all segments were uploaded successfully. Aborting playlist generation.")

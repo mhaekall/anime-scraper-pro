@@ -48,7 +48,8 @@ class IngestionEngine:
             return False
 
         # 3. Upload to Telegram (Parallel)
-        cloud_m3u8_path = await self.uploader.process_hls_playlist_parallel(m3u8_path, max_workers=5)
+        progress_key = f"ingest_progress:{anilist_id}:{episode_number}"
+        cloud_m3u8_path = await self.uploader.process_hls_playlist_parallel(m3u8_path, progress_key=progress_key, max_workers=5)
         if not cloud_m3u8_path:
             logger.error("Failed to upload segments to Telegram.")
             return False
