@@ -1,5 +1,4 @@
-from httpx import AsyncClient as AsyncSession
-import httpx
+from curl_cffi.requests import AsyncSession
 from typing import Optional
 import os
 
@@ -14,13 +13,7 @@ class TLSSpoofTransport:
     @classmethod
     async def get_session(cls) -> AsyncSession:
         if cls._session is None:
-            # Fallback to standard httpx AsyncClient since curl_cffi doesn't compile on Termux ARM64
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
-            cls._session = AsyncSession(
-                headers=headers,
-                timeout=25,
-                verify=False, # Ignore verification similar to universal extractor if needed, or True
-            )
+            cls._session = AsyncSession(impersonate="chrome120", timeout=25, verify=False)
         return cls._session
     
     @classmethod

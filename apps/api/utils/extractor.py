@@ -89,12 +89,35 @@ class UniversalExtractor:
                     match = re.search(r'<source[^>]+src=["\']([^"\']+)["\']', res.text, re.IGNORECASE)
                     if match:
                         return match.group(1).replace('&amp;', '&')
-            elif 'blogger.com' in url:
-                # Blogger Videos
-                res = await self.client.get(url)
-                match = re.search(r'"play_url":"([^"]+)"', res.text)
-                if match: 
-                    return match.group(1).encode('utf-8').decode('unicode_escape')
+            elif 'blogger.com' in url or 'blogspot.com' in url:
+                try:
+                    # Coba curl_cffi dulu untuk bypass CF
+                    html = await self._tls.get(url)
+                except Exception:
+                    res = await self.client.get(url)
+                    html = res.text
+                
+                # Coba semua format
+                patterns = [
+                    r'"play_url"\s*:\s*"([^"]+)"',
+                    r'file\s*:\s*["\']([^"\']+\.(?:mp4|m3u8)[^"\']*)["\']',
+                    r'"sources"\s*:\s*\[\s*\{\s*"file"\s*:\s*"([^"]+)"',
+                    r'var\s+urlPlay\s*=\s*["\']([^"\']+)["\']',
+                ]
+                
+                for pattern in patterns:
+                    match = re.search(pattern, html, re.IGNORECASE)
+                    if match:
+                        url_found = match.group(1)
+                        url_found = url_found.encode('utf-8').decode('unicode_escape')
+                        if url_found.startswith('http'):
+                            return url_found
+                
+                # Fallback SmartExtractor
+                smart = SmartExtractor()
+                result = smart.extract_from_html(html)
+                if result:
+                    return result
             elif 'krakenfiles.com' in url:
                 res = await self.client.get(url)
                 token_match = re.search(r'var\s+token\s*=\s*["\']([^"\']+)["\']', res.text)
