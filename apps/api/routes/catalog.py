@@ -39,7 +39,7 @@ from services.pipeline import (
     ensure_episodes_exist,
     get_provider_mappings,
 )
-from services.anilist import fetch_anilist_info
+from services.anilist import fetch_anilist_info, fetch_anilist_info_by_id
 from services.db import upsert_anime_db
 from services.cache import swr_cache_get
 
@@ -77,6 +77,15 @@ async def get_anime_v2(anilist_id: int, background_tasks: BackgroundTasks, respo
             data = await get_anime_detail(anilist_id)
             if data is None:
                 raise HTTPException(status_code=404, detail="Anime saved but could not be read back")
+
+        # Override nativeTitle with Romaji title directly from AniList 
+        # so frontend displays alphabet characters instead of Japanese Kanji
+        try:
+            live_anilist = await fetch_anilist_info_by_id(anilist_id)
+            if live_anilist and live_anilist.get('romajiTitle'):
+                data['nativeTitle'] = live_anilist['romajiTitle']
+        except:
+            pass
 
         # Episodes empty — sync in background so next request is fast
         if not data.get("episodes"):

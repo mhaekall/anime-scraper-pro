@@ -143,7 +143,7 @@ async def fetch_anilist_info_by_id(anilist_id: int):
                 'anilistId': media['id'],
                 'cleanTitle': media['title'].get('english') or media['title'].get('romaji'),
                 'romajiTitle': media['title'].get('romaji'),
-                'nativeTitle': media['title'].get('native'),
+                'nativeTitle': media['title'].get('romaji'),
                 'synonyms': media.get('synonyms', []),
                 'hdImage': media['coverImage'].get('extraLarge') or media['coverImage'].get('large'),
                 'color': media['coverImage'].get('color'),
