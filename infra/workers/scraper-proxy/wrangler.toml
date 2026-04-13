@@ -4,4 +4,5 @@ compatibility_date = "2024-04-01"
 
 [vars]
 # Ensure you define this securely in production
-PROXY_SECRET = "anime-pro-secure-2026"
+# PROXY_SECRET is set via wrangler secret put
+

@@ -151,6 +151,36 @@ async def get_sources_v2(
     anilist_id: int = Query(None, description="Anilist ID")
 ):
     start_ts = time.monotonic()
+
+    # Tier 0: Check DB for existing tg-proxy stream (0ms latensi)
+    if anilist_id:
+        try:
+            row = await database.fetch_one(
+                """
+                SELECT id, "episodeUrl", "providerId"
+                FROM   episodes
+                WHERE  "anilistId" = :anilist_id AND "episodeNumber" = :ep_num
+                AND ("episodeUrl" LIKE '%tg-proxy%' OR "episodeUrl" LIKE '%workers.dev%')
+                LIMIT 1
+                """,
+                values={"anilist_id": anilist_id, "ep_num": float(ep)}
+            )
+            if row:
+                ep_url = row["episodeUrl"]
+                return {
+                    'success': True,
+                    'sources': [{
+                        'provider': 'Swarm Storage (Telegram)',
+                        'quality': '1080p',
+                        'url': ep_url,
+                        'type': 'hls' if ep_url.endswith('.m3u8') or 'tg-proxy' in ep_url else 'mp4',
+                        'source': 'telegram_swarm'
+                    }],
+                    'elapsed_ms': int((time.monotonic() - start_ts) * 1000)
+                }
+        except Exception as e:
+            print(f"[StreamV2] Tier 0 error: {e}")
+
     # Tier 1 & 2: Reconciler with Variants
     mappings = {}
     for variant in _title_variants(title):
@@ -209,6 +239,29 @@ async def get_sources_v2(
     all_sources = [s for s in all_sources if s.get('type') == 'direct']
 
     all_sources.sort(key=lambda x: QUALITY_RANK.get(x.get('quality', 'Auto'), 1), reverse=True)
+
+    # Ingestion Trigger: Jika ditemukan direct link, masukkan ke antrean Telegram Swarm
+    if all_sources and anilist_id:
+        best = all_sources[0]
+        raw_url = best.get('url', '')
+        if raw_url and 'workers.dev' not in raw_url and 'tg-proxy' not in raw_url:
+            try:
+                # Dapatkan episode_id dari database untuk update URL nantinya
+                row = await database.fetch_one(
+                    'SELECT id FROM episodes WHERE "anilistId" = :aid AND "episodeNumber" = :ep LIMIT 1',
+                    values={"aid": anilist_id, "ep": float(ep)}
+                )
+                if row:
+                    from services.queue import enqueue_ingest
+                    asyncio.create_task(enqueue_ingest(
+                        episode_id=row["id"],
+                        anilist_id=anilist_id,
+                        provider_id=best.get('source', 'unknown'),
+                        episode_number=float(ep),
+                        direct_url=raw_url
+                    ))
+            except Exception as e:
+                print(f"[StreamV2] Ingestion Trigger Error: {e}")
 
     return {
         'success': len(all_sources) > 0,
