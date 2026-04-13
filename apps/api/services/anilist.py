@@ -14,6 +14,7 @@ GET_ANIME_DETAILS = """
           english
           native
         }
+        synonyms
         coverImage {
           extraLarge
           large
@@ -55,6 +56,117 @@ GET_ANIME_DETAILS = """
 
 anilist_cache = TTLCache(maxsize=1000, ttl=86400)
 anilist_sem = asyncio.Semaphore(5)
+
+GET_ANIME_BY_ID = """
+  query ($id: Int) {
+    Media(id: $id, type: ANIME) {
+      id
+      title {
+        romaji
+        english
+        native
+      }
+      synonyms
+      coverImage {
+        extraLarge
+        large
+        color
+      }
+      bannerImage
+      averageScore
+      popularity
+      trending
+      episodes
+      status
+      season
+      seasonYear
+      description(asHtml: false)
+      genres
+      studios {
+        nodes {
+          name
+          isAnimationStudio
+        }
+      }
+      recommendations {
+        nodes {
+          mediaRecommendation {
+            id
+            title { romaji english }
+            coverImage { large }
+          }
+        }
+      }
+      nextAiringEpisode {
+        episode
+        timeUntilAiring
+      }
+    }
+  }
+"""
+
+async def fetch_anilist_info_by_id(anilist_id: int):
+    cache_key = f"anilist_id_{anilist_id}"
+    if cache_key in anilist_cache:
+        return anilist_cache[cache_key]
+
+    async with anilist_sem:
+        try:
+            response = await client.post('https://graphql.anilist.co', json={
+                'query': GET_ANIME_BY_ID,
+                'variables': {'id': anilist_id}
+            })
+            
+            data = response.json()
+            media = data.get('data', {}).get('Media')
+            
+            if not media:
+                anilist_cache[cache_key] = None
+                return None
+                
+            studios = []
+            if media.get('studios') and media['studios'].get('nodes'):
+                studios = [s['name'] for s in media['studios']['nodes'] if s.get('isAnimationStudio')]
+            
+            recs = []
+            if media.get('recommendations') and media['recommendations'].get('nodes'):
+                for r in media['recommendations']['nodes']:
+                    rec_media = r.get('mediaRecommendation')
+                    if rec_media:
+                        recs.append({
+                            'id': rec_media.get('id'),
+                            'title': rec_media.get('title', {}).get('english') or rec_media.get('title', {}).get('romaji'),
+                            'cover': rec_media.get('coverImage', {}).get('large')
+                        })
+
+            result = {
+                'anilistId': media['id'],
+                'cleanTitle': media['title'].get('english') or media['title'].get('romaji'),
+                'romajiTitle': media['title'].get('romaji'),
+                'nativeTitle': media['title'].get('native'),
+                'synonyms': media.get('synonyms', []),
+                'hdImage': media['coverImage'].get('extraLarge') or media['coverImage'].get('large'),
+                'color': media['coverImage'].get('color'),
+                'banner': media.get('bannerImage'),
+                'score': media.get('averageScore'),
+                'popularity': media.get('popularity', 0),
+                'trending': media.get('trending', 0),
+                'description': media.get('description'),
+                'genres': media.get('genres', []),
+                'episodes': media.get('episodes'),
+                'status': media.get('status'),
+                'season': media.get('season'),
+                'seasonYear': media.get('seasonYear'),
+                'studios': studios,
+                'recommendations': recs,
+                'nextAiringEpisode': media.get('nextAiringEpisode')
+            }
+            anilist_cache[cache_key] = result
+            return result
+                
+        except Exception as e:
+            print(f"[AniList] Error fetching data by ID '{anilist_id}': {str(e)}")
+            return None
 
 def roman_to_int(s):
     rom_val = {'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000}
@@ -156,6 +268,7 @@ async def fetch_anilist_info(title: str):
                 'anilistId': media['id'],
                 'cleanTitle': media['title']['english'] or media['title']['romaji'],
                 'nativeTitle': media['title'].get('native'),
+                'synonyms': media.get('synonyms', []),
                 'hdImage': media['coverImage']['extraLarge'] or media['coverImage']['large'],
                 'color': media['coverImage'].get('color'),
                 'banner': media['bannerImage'],

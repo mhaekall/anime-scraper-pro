@@ -34,6 +34,7 @@ from utils.helpers import extract_domain, determine_quality
 from services.config import HEADERS
 from services.providers import oploverz_provider, otakudesu_provider, samehadaku_provider, kuronime_provider, extractor
 from services.reconciler import reconciler
+from services.anilist import fetch_anilist_info_by_id
 from db.connection import database
 
 router = APIRouter()
@@ -159,11 +160,25 @@ async def _last_resort_otakudesu(title: str, episode_num: float) -> Dict[str, An
 # ---------------------------------------------------------------------------
 # Core Logic
 # ---------------------------------------------------------------------------
-def _title_variants(title: str) -> list[str]:
+def _title_variants(title: str, anilist_info: dict = None) -> list[str]:
     variants = [title.strip()]
     cleaned = re.sub(r'\b(sub\s*indo|batch|bd|ova|season\s*\d+)\b', '', title, flags=re.IGNORECASE).strip()
     if cleaned not in variants: variants.append(cleaned)
-    return variants[:3]
+    
+    if anilist_info:
+        if anilist_info.get('romajiTitle') and anilist_info['romajiTitle'] not in variants:
+            variants.append(anilist_info['romajiTitle'])
+        if anilist_info.get('cleanTitle') and anilist_info['cleanTitle'] not in variants:
+            variants.append(anilist_info['cleanTitle'])
+            
+        if anilist_info.get('synonyms'):
+            for syn in anilist_info['synonyms']:
+                # Allow typical romaji/english aliases, ignore super short or weird ones
+                if re.match(r'^[a-zA-Z0-9\s\-_:\.!]+$', syn) and len(syn) > 2:
+                    if syn not in variants:
+                        variants.append(syn)
+                        
+    return [v for v in variants if v][:6]
 
 @router.get('/v2/stream/sources')
 async def get_sources_v2(
@@ -172,6 +187,13 @@ async def get_sources_v2(
     anilist_id: int = Query(None, description="Anilist ID")
 ):
     start_ts = time.monotonic()
+    
+    anilist_info = None
+    if anilist_id:
+        try:
+            anilist_info = await fetch_anilist_info_by_id(anilist_id)
+        except Exception as e:
+            print(f"[StreamV2] Error fetching anilist info: {e}")
 
     # Tier 0: Check DB for existing tg-proxy stream (0ms latensi)
     if anilist_id:
@@ -204,7 +226,9 @@ async def get_sources_v2(
 
     # Tier 1 & 2: Reconciler with Variants
     mappings = {}
-    for variant in _title_variants(title):
+    title_vars = _title_variants(title, anilist_info)
+    
+    for variant in title_vars:
         try:
             async with asyncio.timeout(10.0):
                 recon_result = await reconciler.reconcile(provider_id="samehadaku", provider_slug="", raw_title=variant)
@@ -238,8 +262,15 @@ async def get_sources_v2(
     if mappings and 'otakudesu' in mappings:
         scrape_tasks.append(_scrape_otakudesu(f"https://otakudesu.blog/anime/{mappings['otakudesu']}/", ep))
     else:
-        # Fallback to search
-        scrape_tasks.append(_last_resort_otakudesu(title, ep))
+        # Fallback to search, try variants if the main title fails
+        async def fallback_otakudesu_search():
+            for v in title_vars:
+                res = await _last_resort_otakudesu(v, ep)
+                if res and res.get('sources'):
+                    return res
+            return {'sources': [], 'provider': 'otakudesu', 'tier': 3}
+            
+        scrape_tasks.append(fallback_otakudesu_search())
     providers_attempted.append('otakudesu')
     
     # 4. Kuronime (KuroPlayer, HLS, Kraken)
@@ -289,4 +320,3 @@ async def get_sources_v2(
         'sources': all_sources,
         'elapsed_ms': int((time.monotonic() - start_ts) * 1000)
     }
-
