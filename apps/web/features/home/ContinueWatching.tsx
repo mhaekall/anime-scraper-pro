@@ -16,7 +16,7 @@ const fmt = (s: number) => {
 
 function ContinueWatchingInner() {
   const { history, isLoading } = useWatchHistory();
-  const accent = useSettings((s) => s.settings.accentColor);
+  const accent = "#0A84FF";
 
   if (isLoading) return (
     <div className="mb-8 px-5 md:px-8">

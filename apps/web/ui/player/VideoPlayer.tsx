@@ -33,7 +33,7 @@ interface Props {
 }
 
 function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onRequireAutoNext, onTimeUpdate, isLoadingSources }: Props) {
-  const accent = useSettings((s) => s.settings.accentColor);
+  const accent = "#0A84FF";
   const autoPlayNext = useSettings((s) => s.settings.autoPlayNext);
   const { updateProgress } = useWatchHistory();
 

@@ -9,7 +9,7 @@ import { useSettings } from "@/core/stores/app-store";
 import type { AnimeHome } from "@/core/types/anime";
 
 function HeroCarouselInner({ items }: { items: AnimeHome[] }) {
-  const accent = useSettings((s) => s.settings.accentColor);
+  const accent = "#0A84FF";
   const [idx, setIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const heroes = items.slice(0, 5); // Max 5 for speed

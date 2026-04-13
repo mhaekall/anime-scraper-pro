@@ -4,27 +4,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-// ── Accent Colors ──────────────────────────────────────────────
-export const ACCENT_COLORS = [
-  { id: "blue", hex: "#0A84FF", name: "Ocean Blue" },
-  { id: "purple", hex: "#BF5AF2", name: "Neon Purple" },
-  { id: "pink", hex: "#FF375F", name: "Sakura Pink" },
-  { id: "red", hex: "#FF453A", name: "Crimson Red" },
-  { id: "orange", hex: "#FF9F0A", name: "Sunset Orange" },
-  { id: "green", hex: "#30D158", name: "Emerald Green" },
-  { id: "yellow", hex: "#FFD60A", name: "Cyber Yellow" },
-  { id: "mono", hex: "#FFFFFF", name: "Monochrome" },
-] as const;
-
 // ── Settings Slice ─────────────────────────────────────────────
 interface Settings {
-  theme: "dark" | "light";
-  accentColor: string;
-  videoQuality: string;
-  subtitleLang: string;
   autoPlayNext: boolean;
   skipIntro: boolean;
-  incognitoMode: boolean;
 }
 
 interface SettingsSlice {
@@ -36,18 +19,13 @@ export const useSettings = create<SettingsSlice>()(
   persist(
     (set) => ({
       settings: {
-        theme: "dark",
-        accentColor: "#0A84FF",
-        videoQuality: "Auto",
-        subtitleLang: "Indonesia",
         autoPlayNext: true,
         skipIntro: false,
-        incognitoMode: false,
       },
       setSetting: (key, val) =>
         set((s) => ({ settings: { ...s.settings, [key]: val } })),
     }),
-    { name: "ani-settings-v2" }
+    { name: "ani-settings-v3" } // Bump version to clear old schema
   )
 );
 

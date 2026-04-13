@@ -21,7 +21,7 @@ function formatCountdown(seconds: number) {
 
 export default function DetailClient({ detail, id }: { detail: any; id: string }) {
   const router = useRouter();
-  const accent = useSettings((s) => s.settings.accentColor);
+  const accent = "#0A84FF";
   const { items, toggle } = useWatchlist();
   const { toast } = useToast();
   const [tab, setTab] = useState("overview");

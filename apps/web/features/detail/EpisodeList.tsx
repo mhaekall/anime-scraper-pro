@@ -13,7 +13,7 @@ interface Episode { title: string; url: string; number: number; provider?: strin
 function EpisodeListInner({ episodes, animeId, cover }: { episodes: Episode[]; animeId: string; cover?: string }) {
   const [reversed, setReversed] = useState(false);
   const [limit, setLimit] = useState(50);
-  const accent = useSettings((s) => s.settings.accentColor);
+  const accent = "#0A84FF";
   const { history } = useWatchHistory();
 
   if (!episodes?.length) return (

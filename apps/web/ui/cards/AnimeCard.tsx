@@ -23,7 +23,7 @@ interface Props {
 }
 
 function AnimeCardInner({ id, title, img, score, color, epId, rank }: Props) {
-  const accent = useSettings((s) => s.settings.accentColor);
+  const accent = "#0A84FF";
   const { history } = useWatchHistory();
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
