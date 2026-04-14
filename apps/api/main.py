@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from db.connection import database
 from services.background import background_scrape_job
-from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook, social
+from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook, social, db
 
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://anime-scraper-pro.pages.dev")
 
@@ -122,6 +122,7 @@ app.add_middleware(
 app.include_router(home.router,    prefix="/api",    tags=["Home"])
 app.include_router(anime.router,   prefix="/api",    tags=["Anime"])
 app.include_router(stream.router,  prefix="/api",    tags=["Stream"])
+app.include_router(db.router,      prefix="/api/v1/db", tags=["Database"])
 
 # v2 routes — use these for all new frontend code
 app.include_router(catalog.router, prefix="/api",    tags=["Catalog v2"])
