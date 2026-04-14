@@ -27,6 +27,7 @@ GET  /api/v2/anime/{anilist_id}/episodes
 """
 
 import asyncio
+from services.prefetch import get_ingestion_stats
 import urllib.parse
 from typing import Optional, List, Dict
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Response
