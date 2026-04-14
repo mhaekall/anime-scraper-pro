@@ -162,9 +162,12 @@ async def get_columns(table_name: str):
 @app.get("/healthz", tags=["System"])
 async def health():
     db_ok = False
+    error_msg = None
     try:
         await database.fetch_one("SELECT 1")
         db_ok = True
-    except Exception:
-        pass
-    return {"status": "ok" if db_ok else "degraded", "db": db_ok}
+    except Exception as e:
+        error_msg = str(e)
+        import traceback
+        error_msg += "\\n" + traceback.format_exc()
+    return {"status": "ok" if db_ok else "degraded", "db": db_ok, "error": error_msg}
