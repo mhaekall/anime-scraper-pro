@@ -5,18 +5,22 @@ import sys
 import traceback
 from fastapi import APIRouter, HTTPException, Request, Response
 from qstash import Receiver
-from upstash_workflow import WorkflowContext, AsyncWorkflow
+from upstash_workflow.fastapi import Serve
+from upstash_workflow import AsyncWorkflowContext
 import httpx
 
 # Import services
 from services.config import QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY
 from services.pipeline import sync_anime_episodes
 from services.cleanup import cleanup_expired_cache, vacuum_old_episodes
-from services.prefetch import smart_prefetch_episodes # Fix missing import
+from services.prefetch import smart_prefetch_episodes
 from db.connection import database
 
 # Inisialisasi Router
 router = APIRouter(prefix="/api/v2/webhook", tags=["workflow"])
+
+# Inisialisasi Upstash Workflow Serve
+serve = Serve(router)
 
 # Import ingestion engine gracefully
 try:
@@ -95,7 +99,8 @@ async def prefetch_webhook(request: Request):
 
 # --- 🚀 ENTERPRISE WORKFLOW INGESTION ---
 
-async def ingestion_workflow(context: WorkflowContext):
+@serve.post("/ingest-workflow")
+async def ingestion_workflow(context: AsyncWorkflowContext):
     payload = context.request_payload
     anime_slug = payload.get("anime_slug")
     episode = payload.get("episode")
@@ -125,9 +130,3 @@ async def ingestion_workflow(context: WorkflowContext):
     )
 
     return {"status": "success", "slug": anime_slug, "ep": episode}
-
-workflow = AsyncWorkflow(ingestion_workflow)
-
-@router.post("/ingest-workflow")
-async def handle_workflow(request: Request):
-    return await workflow.serve(request)
