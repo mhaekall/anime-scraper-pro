@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response, BackgroundTasks, Header, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from db.connection import database
 from services.background import background_scrape_job
@@ -22,14 +23,18 @@ async def verify_admin_key(x_admin_key: str = Header(None)):
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid Admin Key")
 
 
+db_connection_error = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global db_connection_error
     # Connect to DB with robust retry for Neon cold-starts
     retries = 10
     for i in range(retries):
         try:
             await database.connect()
             print(f"[DB] Connected to Neon DB (attempt {i+1})")
+            db_connection_error = None
             
             # Run migrations after successful connection
             try:
@@ -55,6 +60,7 @@ async def lifespan(app: FastAPI):
                 
             break
         except Exception as e:
+            db_connection_error = str(e)
             print(f"[DB] Connection attempt {i+1} failed: {e}")
             await asyncio.sleep(5)
     else:
@@ -73,11 +79,33 @@ async def lifespan(app: FastAPI):
         print(f"[DB] Error disconnecting: {e}")
 
 
+class DatabaseReconnectMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            err_str = str(exc)
+            if "DatabaseBackend is not running" in err_str or "connection" in err_str.lower() or "pool" in err_str.lower() or "closed" in err_str.lower():
+                print(f"[DB Middleware] Connection lost: {exc}. Reconnecting...")
+                try:
+                    await database.disconnect()
+                except:
+                    pass
+                try:
+                    await database.connect()
+                    print("[DB Middleware] Reconnected successfully.")
+                    return await call_next(request)
+                except Exception as reconnect_exc:
+                    print(f"[DB Middleware] Reconnect failed: {reconnect_exc}")
+            raise exc
+
 app = FastAPI(
     title="Anime Platform API",
     version="2.1.0",
     lifespan=lifespan,
 )
+
+app.add_middleware(DatabaseReconnectMiddleware)
 
 @app.get("/api/v2/admin/force-db-setup", dependencies=[Depends(verify_admin_key)])
 async def force_db_setup():
@@ -161,6 +189,7 @@ async def get_columns(table_name: str):
 
 @app.get("/healthz", tags=["System"])
 async def health():
+    global db_connection_error
     db_ok = False
     error_msg = None
     try:
@@ -170,4 +199,4 @@ async def health():
         error_msg = str(e)
         import traceback
         error_msg += "\\n" + traceback.format_exc()
-    return {"status": "ok" if db_ok else "degraded", "db": db_ok, "error": error_msg}
+    return {"status": "ok" if db_ok else "degraded", "db": db_ok, "error": error_msg, "startup_error": db_connection_error}
