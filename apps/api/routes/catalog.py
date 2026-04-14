@@ -209,6 +209,16 @@ async def admin_sync_missing():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@router.get("/v2/debug/curl")
+async def debug_curl(url: str):
+    from utils.tls_spoof import TLSSpoofTransport
+    try:
+        html = await TLSSpoofTransport.get(url)
+        return {"success": True, "html_len": len(html), "html_snippet": html[:500]}
+    except Exception as e:
+        import traceback
+        return {"success": False, "error": str(e), "trace": traceback.format_exc()}
+
 @router.get("/v2/debug/stream")
 async def debug_stream(anilist_id: int, title: str, ep: float):
     from routes.stream_v2 import _title_variants, _last_resort_otakudesu, _scrape_kuronime
