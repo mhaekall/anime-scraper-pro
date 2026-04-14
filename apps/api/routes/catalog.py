@@ -166,6 +166,7 @@ async def admin_get_database():
         query = '''
             SELECT a."anilistId", a."cleanTitle" as title, a.genres, a.status, a.year, a."hdImage" as cover,
                    COUNT(e.id) as episode_count,
+                   SUM(CASE WHEN e."episodeUrl" LIKE '%tg-proxy%' OR e."episodeUrl" LIKE '%workers.dev%' THEN 1 ELSE 0 END) as tg_count,
                    MAX(e."providerId") as "providerId"
             FROM anime_metadata a
             LEFT JOIN episodes e ON a."anilistId" = e."anilistId"
