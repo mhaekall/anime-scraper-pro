@@ -16,8 +16,8 @@ from services.cleanup import cleanup_expired_cache, vacuum_old_episodes
 from services.prefetch import smart_prefetch_episodes
 from db.connection import database
 
-# Inisialisasi Router
-router = APIRouter(prefix="/api/v2/webhook", tags=["workflow"])
+# Inisialisasi Router (Hapus prefix ganda)
+router = APIRouter()
 
 # Inisialisasi Upstash Workflow Serve
 serve = Serve(router)
@@ -64,7 +64,7 @@ async def _verify_qstash(request: Request):
 
 # --- 🍿 STANDAR WEBHOOKS ---
 
-@router.post("/sync")
+@router.post("/webhook/sync")
 async def sync_webhook(request: Request):
     body = await _verify_qstash(request)
     try:
@@ -77,7 +77,7 @@ async def sync_webhook(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/cleanup")
+@router.post("/webhook/cleanup")
 async def cleanup_webhook(request: Request):
     await _verify_qstash(request)
     try:
@@ -87,7 +87,7 @@ async def cleanup_webhook(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/prefetch")
+@router.post("/webhook/prefetch")
 async def prefetch_webhook(request: Request):
     await _verify_qstash(request)
     try:
@@ -99,7 +99,7 @@ async def prefetch_webhook(request: Request):
 
 # --- 🚀 ENTERPRISE WORKFLOW INGESTION ---
 
-@serve.post("/ingest-workflow")
+@serve.post("/webhook/ingest-workflow")
 async def ingestion_workflow(context: AsyncWorkflowContext):
     payload = context.request_payload
     anime_slug = payload.get("anime_slug")
