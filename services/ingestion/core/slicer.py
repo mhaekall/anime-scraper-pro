@@ -11,38 +11,43 @@ class VideoSlicer:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-    async def slice(self, input_mp4: str, segment_time: int = 4) -> Optional[str]:
+    async def slice(self, url: str, filename: str, provider_id: str = "", segment_time: int = 12) -> Optional[str]:
         """
-        Segments an MP4 file into HLS format (.ts chunks and .m3u8 playlist).
+        Segments a video stream directly from a URL into HLS format (.ts chunks and .m3u8 playlist).
         Returns the path to the master .m3u8 playlist on success.
         """
-        if not os.path.exists(input_mp4):
-            logger.error(f"Input file {input_mp4} does not exist.")
-            return None
-
-        # Extract filename without extension to create a subdirectory for HLS
-        base_name = os.path.splitext(os.path.basename(input_mp4))[0]
+        base_name = os.path.splitext(filename)[0]
         hls_dir = os.path.join(self.output_dir, base_name)
         os.makedirs(hls_dir, exist_ok=True)
 
         master_playlist = os.path.join(hls_dir, "index.m3u8")
         
         # If already sliced, skip
-        if os.path.exists(master_playlist):
+        if os.path.exists(master_playlist) and os.path.getsize(master_playlist) > 0:
             logger.info(f"HLS playlist {master_playlist} already exists. Skipping slicing.")
             return master_playlist
 
-        logger.info(f"Slicing video {input_mp4} to {master_playlist} with {segment_time}s segments...")
+        logger.info(f"Streaming and Slicing video from {url} to {master_playlist} with {segment_time}s segments...")
 
         try:
-            # Fast passthrough to HLS segments without re-encoding
-            # This requires the input mp4 to have h264 video and aac audio.
+            # Set headers based on provider
+            referer = f"https://{provider_id}.com" if provider_id else "https://v2.samehadaku.how/"
+            if "wibufile" in url or "samehadaku" in provider_id:
+                referer = "https://v2.samehadaku.how/"
+            elif "mp4upload" in url:
+                referer = "https://www.mp4upload.com/"
+                
+            headers = f"Referer: {referer}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
+
+            # Fast passthrough to HLS segments without intermediate mp4 download
             command = [
                 "ffmpeg",
                 "-y",
+                "-headers", headers,
                 "-err_detect", "ignore_err",
-                "-i", input_mp4,
+                "-i", url,
                 "-c", "copy",
+                "-bsf:a", "aac_adtstoasc",
                 "-f", "hls",
                 "-hls_segment_type", "mpegts",
                 "-hls_time", str(segment_time),
@@ -61,7 +66,7 @@ class VideoSlicer:
             # Ffmpeg might exit with error at the end of slightly corrupted files,
             # but if the master playlist is there, we consider it a success.
             if not os.path.exists(master_playlist) or os.path.getsize(master_playlist) == 0:
-                logger.error(f"FFmpeg slicing failed to produce playlist. Error: {stderr.decode()}")
+                logger.error(f"FFmpeg streaming slicing failed to produce playlist. Error: {stderr.decode()}")
                 return None
                 
             if process.returncode != 0:
@@ -75,18 +80,14 @@ class VideoSlicer:
                     size_mb = os.path.getsize(file_path) / (1024 * 1024)
                     if size_mb > max_size_mb:
                         logger.error(f"FATAL: Segment {f} is too large ({size_mb:.2f}MB). Exceeds Telegram 20MB limit.")
-                        # Future improvement: recursively call slice with smaller segment_time
                         return None
                 
-            logger.info(f"Successfully sliced video to {master_playlist}")
+            logger.info(f"Successfully streamed and sliced video to {master_playlist}")
             return master_playlist
             
         except Exception as e:
-            logger.error(f"Exception during slicing: {str(e)}")
+            logger.error(f"Exception during streaming slicing: {str(e)}")
             return None
 
 if __name__ == "__main__":
-    # Test execution
-    # slicer = VideoSlicer()
-    # slicer.slice("/tmp/anime_ingestion/test_video.mp4")
     pass

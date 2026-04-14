@@ -34,22 +34,17 @@ class IngestionEngine:
         """
         logger.info(f"Starting ingestion for Anime: {anilist_id} | Ep: {episode_number} | Provider: {provider_id}")
         
-        # 1. Fetch (Asynchronous)
         filename = f"{provider_id}_{anilist_id}_{episode_number}.mp4"
-        mp4_path = await self.fetcher.fetch(direct_video_url, filename, provider_id=provider_id)
-        if not mp4_path:
-            logger.error("Failed to fetch video.")
-            return False
-
-        # 2. Slice (Asynchronous)
-        m3u8_path = await self.slicer.slice(mp4_path)
+        
+        # 1 & 2. Streaming Slice (On-the-fly from Provider URL to HLS)
+        m3u8_path = await self.slicer.slice(url=direct_video_url, filename=filename, provider_id=provider_id, segment_time=12)
         if not m3u8_path:
-            logger.error("Failed to slice video.")
+            logger.error("Failed to slice video on-the-fly.")
             return False
 
-        # 3. Upload to Telegram (Parallel)
+        # 3. Upload to Telegram (Parallel Swarm)
         progress_key = f"ingest_progress:{anilist_id}:{episode_number}"
-        cloud_m3u8_path = await self.uploader.process_hls_playlist_parallel(m3u8_path, progress_key=progress_key, max_workers=5)
+        cloud_m3u8_path = await self.uploader.process_hls_playlist_parallel(m3u8_path, progress_key=progress_key, max_workers=8)
         if not cloud_m3u8_path:
             logger.error("Failed to upload segments to Telegram.")
             return False
@@ -80,7 +75,7 @@ class IngestionEngine:
             logger.info(f"Successfully updated DB for episode ID {episode_id} with new stream URL: {final_stream_url}")
             
             # 6. Cleanup (After successful sync)
-            self._cleanup_temp_files(mp4_path, m3u8_path)
+            self._cleanup_temp_files(None, m3u8_path)
             
             return True
         except Exception as e:
