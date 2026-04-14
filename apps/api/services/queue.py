@@ -26,7 +26,7 @@ class QStashPublisher:
                         "Authorization": f"Bearer {QSTASH_TOKEN}",
                         "Content-Type": "application/json",
                         "Upstash-Retries": "5",  # Higher retries for HF Space cold starts
-                        "Upstash-Retry-Delay": "30s", # Give it time to wake up
+                        "Upstash-Retry-Delay": "30", # Give it time to wake up
                         "Upstash-Timeout": "10m" # Heavy syncs might take long
                     },
                     json={"anilistId": anilist_id}
@@ -72,7 +72,7 @@ class QStashPublisher:
                         "Authorization": f"Bearer {QSTASH_TOKEN}",
                         "Content-Type": "application/json",
                         "Upstash-Retries": "5", 
-                        "Upstash-Retry-Delay": "30s",
+                        "Upstash-Retry-Delay": "30",
                         "Upstash-Timeout": "10m" # Ingestion takes time
                     },
                     json={
