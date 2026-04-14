@@ -72,15 +72,21 @@ class VideoSlicer:
             if process.returncode != 0:
                 logger.warning(f"FFmpeg returned non-zero ({process.returncode}), but playlist exists. Proceeding.")
 
-            # --- VALIDATION: Ensure no segment exceeds Telegram's 20MB getFile limit ---
+            # --- VALIDATION: Ensure segments were generated and no segment exceeds Telegram's 20MB getFile limit ---
             max_size_mb = 18.0 # Safety margin
+            has_segments = False
             for f in os.listdir(hls_dir):
                 if f.endswith('.ts'):
+                    has_segments = True
                     file_path = os.path.join(hls_dir, f)
                     size_mb = os.path.getsize(file_path) / (1024 * 1024)
                     if size_mb > max_size_mb:
                         logger.error(f"FATAL: Segment {f} is too large ({size_mb:.2f}MB). Exceeds Telegram 20MB limit.")
                         return None
+            
+            if not has_segments:
+                logger.error("FFmpeg produced an empty playlist with no .ts segments. Anti-bot or broken stream.")
+                return None
                 
             logger.info(f"Successfully streamed and sliced video to {master_playlist}")
             return master_playlist
