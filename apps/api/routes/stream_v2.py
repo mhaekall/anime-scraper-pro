@@ -246,16 +246,33 @@ async def get_sources_v2(
     # 1. Samehadaku (Wibufile, etc)
     if mappings and 'samehadaku' in mappings:
         pass # Currently _scrape_samehadaku handles title search internally, but we can just use the mapping title if needed
-    scrape_tasks.append(_scrape_samehadaku(title, ep))
+    
+    async def fallback_samehadaku_search():
+        for v in title_vars:
+            res = await _scrape_samehadaku(v, ep)
+            if res and res.get('sources'):
+                return res
+        return {'sources': [], 'provider': 'samehadaku'}
+        
+    scrape_tasks.append(fallback_samehadaku_search())
     providers_attempted.append('samehadaku')
     
     # 2. Oploverz (4meplayer, Oplo2, Blogger)
-    # Oploverz often uses title-based slugs, so we can try slugifying
-    if mappings and 'oploverz' in mappings:
-        slug = mappings['oploverz']
-    else:
-        slug = title.lower().replace(' ', '-')
-    scrape_tasks.append(_scrape_oploverz(f"https://o.oploverz.ltd/series/{slug}/episode/{ep}/"))
+    # Oploverz often uses title-based slugs, so we can try slugifying variants
+    async def fallback_oploverz_search():
+        if mappings and 'oploverz' in mappings:
+            slug = mappings['oploverz']
+            res = await _scrape_oploverz(f"https://o.oploverz.ltd/series/{slug}/episode/{ep}/")
+            if res and res.get('sources'): return res
+            
+        for v in title_vars:
+            slug = v.lower().replace(' ', '-')
+            res = await _scrape_oploverz(f"https://o.oploverz.ltd/series/{slug}/episode/{ep}/")
+            if res and res.get('sources'):
+                return res
+        return {'sources': [], 'downloads': [], 'provider': 'oploverz'}
+        
+    scrape_tasks.append(fallback_oploverz_search())
     providers_attempted.append('oploverz')
 
     # 3. Otakudesu (DesuDrives, Blogger)
@@ -274,7 +291,14 @@ async def get_sources_v2(
     providers_attempted.append('otakudesu')
     
     # 4. Kuronime (KuroPlayer, HLS, Kraken)
-    scrape_tasks.append(_scrape_kuronime(title, ep))
+    async def fallback_kuronime_search():
+        for v in title_vars:
+            res = await _scrape_kuronime(v, ep)
+            if res and res.get('sources'):
+                return res
+        return {'sources': [], 'provider': 'kuronime'}
+        
+    scrape_tasks.append(fallback_kuronime_search())
     providers_attempted.append('kuronime')
 
     if not scrape_tasks:
