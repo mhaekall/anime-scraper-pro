@@ -209,6 +209,22 @@ async def admin_sync_missing():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@router.get("/v2/debug/stream")
+async def debug_stream(anilist_id: int, title: str, ep: float):
+    from routes.stream_v2 import _title_variants, _last_resort_otakudesu, _scrape_kuronime
+    from services.anilist import fetch_anilist_info_by_id
+    info = await fetch_anilist_info_by_id(anilist_id)
+    variants = _title_variants(title, info)
+    res_ota = await _last_resort_otakudesu(variants[0], ep)
+    res_ota2 = await _last_resort_otakudesu(variants[1] if len(variants) > 1 else variants[0], ep)
+    res_kur = await _scrape_kuronime(title, ep)
+    return {
+        "variants": variants,
+        "otakudesu1": res_ota,
+        "otakudesu2": res_ota2,
+        "kuronime": res_kur
+    }
+
 @router.post("/v2/admin/fix-titles")
 async def admin_fix_titles(background_tasks: BackgroundTasks):
     """Mass update nativeTitle to Romaji for all existing anime in the database"""
