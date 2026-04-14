@@ -27,7 +27,6 @@ GET  /api/v2/anime/{anilist_id}/episodes
 """
 
 import asyncio
-from services.prefetch import get_ingestion_stats
 import urllib.parse
 from typing import Optional, List, Dict
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Response
@@ -145,6 +144,7 @@ async def get_episodes_v2(anilist_id: int, background_tasks: BackgroundTasks, re
 @router.get("/v2/admin/stats")
 async def admin_get_stats():
     """Get ingestion and database stats for the admin dashboard"""
+    from services.prefetch import get_ingestion_stats
     stats = await get_ingestion_stats()
     return {"success": True, **stats}
 
