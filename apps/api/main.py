@@ -123,31 +123,42 @@ async def ingest_stats():
     try:
         # 1. SCAN for ingest_progress keys
         scan_url = f"{UPSTASH_REDIS_REST_URL}/scan/0?MATCH=ingest_progress:*&COUNT=100"
+        print(f"[IngestStats] Scanning: {scan_url}")
         res = await client.get(scan_url, headers=headers)
         res_data = res.json()
+        print(f"[IngestStats] Scan Result: {res_data}")
         
         # Redis SCAN result is usually ["cursor", ["key1", "key2", ...]]
-        result = res_data.get('result')
-        if not result or not isinstance(result, list) or len(result) < 2:
+        scan_result = res_data.get('result')
+        if not scan_result or not isinstance(scan_result, list) or len(scan_result) < 2:
+            print("[IngestStats] Scan result empty or invalid format")
             return {"success": True, "active_tasks": []}
             
-        keys = result[1]
+        keys = scan_result[1]
         if not keys:
+            print("[IngestStats] No keys found in scan")
             return {"success": True, "active_tasks": []}
 
-        # 2. MGET all keys using the GET /mget/k1/k2 syntax (Upstash REST style)
-        keys_path = "/".join(keys)
+        # 2. MGET all keys using the GET /mget/k1/k2 syntax
+        # Limit to first 10 keys to avoid URL length issues
+        target_keys = keys[:10]
+        keys_path = "/".join(target_keys)
         mget_url = f"{UPSTASH_REDIS_REST_URL}/mget/{keys_path}"
+        print(f"[IngestStats] MGETing: {mget_url}")
         mget_res = await client.get(mget_url, headers=headers)
         mget_data = mget_res.json()
+        print(f"[IngestStats] MGET Result received")
         
         values = mget_data.get('result', [])
         if not values:
+            print("[IngestStats] MGET values empty")
             return {"success": True, "active_tasks": []}
 
         # 3. Parse and pair keys with values
-        for i, key in enumerate(keys):
-            if i >= len(values): break
+        for i, key in enumerate(target_keys):
+            if i >= len(values): 
+                print(f"[IngestStats] Warning: values list shorter than keys at index {i}")
+                break
             
             parts = key.split(':')
             if len(parts) >= 3:
@@ -155,16 +166,13 @@ async def ingest_stats():
                 if raw_val is None: continue
                 
                 status_data = None
-                if isinstance(raw_val, str):
-                    if raw_val.startswith('{'):
-                        try:
-                            status_data = json.loads(raw_val)
-                        except:
-                            status_data = {"status": raw_val}
+                try:
+                    if isinstance(raw_val, str) and raw_val.startswith('{'):
+                        status_data = json.loads(raw_val)
                     else:
                         status_data = {"status": raw_val}
-                elif isinstance(raw_val, dict):
-                    status_data = raw_val
+                except:
+                    status_data = {"status": str(raw_val)}
                 
                 tasks.append({
                     "anilist_id": parts[1],
@@ -175,8 +183,9 @@ async def ingest_stats():
         return {"success": True, "active_tasks": tasks}
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return {"success": False, "error": str(e), "active_tasks": []}
+        err_trace = traceback.format_exc()
+        print(f"[IngestStats] Critical Error: {e}\n{err_trace}")
+        return {"success": False, "error": f"{str(e)} at line {err_trace.splitlines()[-2]}", "active_tasks": []}
 
 @app.get("/api/v2/admin/force-db-setup", dependencies=[Depends(verify_admin_key)])
 async def force_db_setup():
