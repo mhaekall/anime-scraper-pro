@@ -19,7 +19,7 @@ async def get_home_v2(response: Response):
         FROM anime_metadata m
         WHERE EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
         ORDER BY m.trending DESC NULLS LAST, m.popularity DESC NULLS LAST, m.score DESC NULLS LAST
-        LIMIT 6
+        LIMIT 10
     '''
     
     airing_query = '''
@@ -27,7 +27,7 @@ async def get_home_v2(response: Response):
         FROM anime_metadata m
         WHERE m.status = 'RELEASING' AND EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
         ORDER BY m.popularity DESC NULLS LAST
-        LIMIT 15
+        LIMIT 20
     '''
     
     latest_query = '''
@@ -36,7 +36,7 @@ async def get_home_v2(response: Response):
             FROM episodes
             GROUP BY "anilistId"
             ORDER BY last_up DESC
-            LIMIT 15
+            LIMIT 20
         )
         SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score",
                l.max_ep as "latestEpisode"
@@ -50,14 +50,59 @@ async def get_home_v2(response: Response):
         FROM anime_metadata m
         WHERE EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
         ORDER BY m.popularity DESC NULLS LAST, m.score DESC NULLS LAST
-        LIMIT 15
+        LIMIT 20
     '''
 
-    hero_rows, airing_rows, latest_rows, popular_rows = await asyncio.gather(
+    completed_query = '''
+        SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
+        FROM anime_metadata m
+        WHERE m.status = 'FINISHED' AND EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
+        ORDER BY m.popularity DESC NULLS LAST, m.score DESC NULLS LAST
+        LIMIT 20
+    '''
+
+    top_rated_query = '''
+        SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
+        FROM anime_metadata m
+        WHERE EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
+        ORDER BY m.score DESC NULLS LAST, m.popularity DESC NULLS LAST
+        LIMIT 20
+    '''
+
+    isekai_query = '''
+        SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
+        FROM anime_metadata m
+        WHERE m.genres::text ILIKE '%fantasy%' AND EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
+        ORDER BY m.popularity DESC NULLS LAST
+        LIMIT 20
+    '''
+
+    movies_query = '''
+        SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
+        FROM anime_metadata m
+        WHERE m."totalEpisodes" = 1 AND EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
+        ORDER BY m.popularity DESC NULLS LAST
+        LIMIT 20
+    '''
+
+    trending_query = '''
+        SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
+        FROM anime_metadata m
+        WHERE EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
+        ORDER BY m.trending DESC NULLS LAST, m.popularity DESC NULLS LAST
+        LIMIT 20
+    '''
+
+    hero_rows, airing_rows, latest_rows, popular_rows, completed_rows, top_rated_rows, isekai_rows, movies_rows, trending_rows = await asyncio.gather(
         database.fetch_all(hero_query),
         database.fetch_all(airing_query),
         database.fetch_all(latest_query),
-        database.fetch_all(popular_query)
+        database.fetch_all(popular_query),
+        database.fetch_all(completed_query),
+        database.fetch_all(top_rated_query),
+        database.fetch_all(isekai_query),
+        database.fetch_all(movies_query),
+        database.fetch_all(trending_query)
     )
 
     def format_anime(r):
@@ -84,7 +129,13 @@ async def get_home_v2(response: Response):
         "success": True,
         "data": {
             "hero": [format_anime(r) for r in hero_rows],
+            "airing": [format_anime(r) for r in airing_rows],
             "latest": [format_anime(r) for r in latest_rows],
             "popular": [format_anime(r) for r in popular_rows],
+            "completed": [format_anime(r) for r in completed_rows],
+            "top_rated": [format_anime(r) for r in top_rated_rows],
+            "isekai": [format_anime(r) for r in isekai_rows],
+            "movies": [format_anime(r) for r in movies_rows],
+            "trending": [format_anime(r) for r in trending_rows],
         }
     }

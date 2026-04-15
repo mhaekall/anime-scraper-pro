@@ -56,6 +56,7 @@ function ContinueWatchingInner({ userId }: { userId?: string }) {
                   className="w-full h-full object-cover opacity-60 group-hover:scale-[1.03] group-hover:opacity-80 transition-all duration-700 ease-out" 
                   alt="" 
                   loading="lazy"
+                  onError={(e) => { e.currentTarget.src = "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg"; }}
                 />
                 
                 {/* Play Button Overlay */}

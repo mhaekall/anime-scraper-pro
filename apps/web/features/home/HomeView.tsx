@@ -19,12 +19,22 @@ export default function HomeView({
   initialHero = [], 
   initialAiring = [],
   initialLatest = [], 
-  initialPopular = [] 
+  initialPopular = [],
+  initialCompleted = [],
+  initialTopRated = [],
+  initialIsekai = [],
+  initialMovies = [],
+  initialTrending = []
 }: { 
   initialHero?: any[]; 
   initialAiring?: any[];
   initialLatest?: any[]; 
   initialPopular?: any[]; 
+  initialCompleted?: any[];
+  initialTopRated?: any[];
+  initialIsekai?: any[];
+  initialMovies?: any[];
+  initialTrending?: any[];
 }) {
   const { data: session } = authClient.useSession();
   const user = session?.user;
@@ -55,9 +65,14 @@ export default function HomeView({
         <ContinueWatching userId={user?.id} />
 
         {/* Rows — HIG: Content is King */}
+        {initialTrending.length > 0 && <AnimeRow title="Populer Saat Ini" items={initialTrending} showRank />}
         {initialAiring.length > 0 && <AnimeRow title="Sedang Tayang" items={initialAiring} />}
-        {initialLatest.length > 0 && <AnimeRow title="Rilis Episode Terbaru" items={initialLatest} />}
-        {initialPopular.length > 0 && <AnimeRow title="Top Sepanjang Masa" items={initialPopular} showRank />}
+        {initialLatest.length > 0 && <AnimeRow title="Rilis Episode Terbaru" items={initialLatest} variant="horizontal" />}
+        {initialIsekai.length > 0 && <AnimeRow title="Dunia Fantasi & Isekai" items={initialIsekai} />}
+        {initialMovies.length > 0 && <AnimeRow title="Film Layar Lebar (Movies)" items={initialMovies} variant="horizontal" />}
+        {initialTopRated.length > 0 && <AnimeRow title="Rating Tertinggi" items={initialTopRated} showRank />}
+        {initialCompleted.length > 0 && <AnimeRow title="Anime Tamat Terbaik" items={initialCompleted} />}
+        {initialPopular.length > 0 && <AnimeRow title="Top Sepanjang Masa" items={initialPopular} />}
       </div>
       
       {/* Visual Explainer Placeholder / Decorative Gradient */}

@@ -9,10 +9,14 @@ interface Props {
   title: string;
   items: any[];
   showRank?: boolean;
+  variant?: "vertical" | "horizontal";
 }
 
-function AnimeRowInner({ title, items, showRank }: Props) {
+function AnimeRowInner({ title, items, showRank, variant = "vertical" }: Props) {
   if (!items || items.length === 0) return null;
+
+  const isHorizontal = variant === "horizontal";
+  const itemWidthClass = isHorizontal ? "w-[240px] md:w-[280px]" : "w-[130px] sm:w-[150px] md:w-[170px]";
 
   return (
     <section className="mb-8 w-full overflow-hidden">
@@ -24,15 +28,17 @@ function AnimeRowInner({ title, items, showRank }: Props) {
           const id = String(a.anilistId || a.id || "");
           if (!id) return null;
           return (
-            <div key={`${id}-${i}`} className="snap-start shrink-0 w-[130px] sm:w-[150px] md:w-[170px]">
+            <div key={`${id}-${i}`} className={`snap-start shrink-0 ${itemWidthClass}`}>
               <AnimeCard
                 id={id}
                 title={a.title?.english || a.title?.romaji || a.title || ""}
                 img={a.img || a.coverImage?.extraLarge || a.coverImage?.large || null}
+                banner={a.banner || a.bannerImage || null}
                 score={a.score || a.averageScore}
                 color={a.color || a.coverImage?.color}
                 epId={a.latestEpisode ? String(a.latestEpisode) : undefined}
                 rank={showRank ? i + 1 : undefined}
+                variant={variant}
               />
             </div>
           );
@@ -43,3 +49,4 @@ function AnimeRowInner({ title, items, showRank }: Props) {
 }
 
 export const AnimeRow = memo(AnimeRowInner);
+

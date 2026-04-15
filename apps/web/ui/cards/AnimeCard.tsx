@@ -16,13 +16,15 @@ interface Props {
   id: string;
   title: string;
   img: string | null;
+  banner?: string | null;
   score?: number | null;
   color?: string | null;
   epId?: string;
   rank?: number;
+  variant?: "vertical" | "horizontal";
 }
 
-function AnimeCardInner({ id, title, img, score, color, epId, rank }: Props) {
+function AnimeCardInner({ id, title, img, banner, score, color, epId, rank, variant = "vertical" }: Props) {
   const accent = "#0A84FF";
   const { history } = useWatchHistory();
   const ref = useRef<HTMLDivElement>(null);
@@ -50,11 +52,14 @@ function AnimeCardInner({ id, title, img, score, color, epId, rank }: Props) {
   const c = color || accent;
   const href = epId ? `/watch/${id}/${epId}` : `/anime/${id}`;
 
+  const aspectClass = variant === "horizontal" ? "aspect-video" : "aspect-[2/3]";
+  const imageSrc = variant === "horizontal" ? (banner || img) : img;
+
   return (
     <div ref={ref} onMouseEnter={handleMouseEnter} className="flex flex-col h-full w-full group cursor-pointer anim-up" style={{ animationDelay: rank ? `${Math.min(rank * 40, 240)}ms` : "0ms" }}>
-      <button onClick={() => navigate(href)} className="w-full aspect-[2/3] rounded-2xl relative overflow-hidden mb-2 border border-white/5 bg-[#1c1c1e] block transition-shadow duration-300 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.5)] text-left focus:outline-none">
-        {visible && img ? (
-          <img src={img} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.src = "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg"; }} />
+      <button onClick={() => navigate(href)} className={`w-full ${aspectClass} rounded-2xl relative overflow-hidden mb-2 border border-white/5 bg-[#1c1c1e] block transition-shadow duration-300 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.5)] text-left focus:outline-none`}>
+        {visible && imageSrc ? (
+          <img src={imageSrc} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.src = img || "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg"; }} />
         ) : (
           <div className="w-full h-full bg-[#2c2c2e] flex items-center justify-center">
             {visible ? <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full anim-spin" /> : null}
@@ -92,3 +97,4 @@ function AnimeCardInner({ id, title, img, score, color, epId, rank }: Props) {
 }
 
 export const AnimeCard = memo(AnimeCardInner);
+
