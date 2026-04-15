@@ -153,13 +153,13 @@ async def background_scrape_job():
                     if isinstance(res, list):
                         all_items.extend(res)
 
-                # Deduplicate by title
-                seen_titles = set()
+                # Deduplicate by provider and slug
+                seen_providers = set()
                 items = []
                 for item in all_items:
-                    t = item['title'].lower()
-                    if t not in seen_titles:
-                        seen_titles.add(t)
+                    key = f"{item['provider_id']}:{item['provider_slug']}"
+                    if key not in seen_providers:
+                        seen_providers.add(key)
                         items.append(item)
 
                 enqueued = 0

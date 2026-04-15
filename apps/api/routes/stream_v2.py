@@ -224,19 +224,37 @@ async def get_sources_v2(
         except Exception as e:
             print(f"[StreamV2] Tier 0 error: {e}")
 
-    # Tier 1 & 2: Reconciler with Variants
+    # Tier 1 & 2: Get Mappings from DB
     mappings = {}
+    if anilist_id:
+        try:
+            rows = await database.fetch_all(
+                'SELECT "providerId", "providerSlug" FROM anime_mappings WHERE "anilistId" = :aid',
+                values={"aid": anilist_id}
+            )
+            for r in rows:
+                mappings[r["providerId"]] = r["providerSlug"]
+        except Exception as e:
+            print(f"[StreamV2] Mapping DB error: {e}")
+
     title_vars = _title_variants(title, anilist_info)
     
-    for variant in title_vars:
-        try:
-            async with asyncio.timeout(10.0):
-                recon_result = await reconciler.reconcile(provider_id="samehadaku", provider_slug="", raw_title=variant)
-                if recon_result and recon_result.providers:
-                    for p in recon_result.providers:
-                        mappings[p.provider_id] = p.provider_slug
-                    break
-        except: continue
+    if not mappings:
+        for variant in title_vars:
+            try:
+                async with asyncio.timeout(10.0):
+                    recon_result = await reconciler.reconcile(provider_id="stream_query", provider_slug="none", raw_title=variant)
+                    if recon_result and recon_result.anilist_metadata:
+                        # Fallback to query DB again with the found Anilist ID
+                        found_id = recon_result.canonical_anilist_id
+                        rows = await database.fetch_all(
+                            'SELECT "providerId", "providerSlug" FROM anime_mappings WHERE "anilistId" = :aid',
+                            values={"aid": found_id}
+                        )
+                        for r in rows:
+                            mappings[r["providerId"]] = r["providerSlug"]
+                        if mappings: break
+            except: continue
 
     scrape_tasks = []
     providers_attempted = []
