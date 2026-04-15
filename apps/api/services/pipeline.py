@@ -134,7 +134,11 @@ async def upsert_episode(
             (:anilist_id, :provider_id, :ep_num, :ep_title, :ep_url, :thumbnail, NOW())
         ON CONFLICT ("anilistId", "providerId", "episodeNumber")
         DO UPDATE SET
-            "episodeUrl"   = EXCLUDED."episodeUrl",
+            "episodeUrl"   = CASE 
+                                WHEN episodes."episodeUrl" LIKE '%tg-proxy%' AND EXCLUDED."episodeUrl" NOT LIKE '%tg-proxy%' 
+                                THEN episodes."episodeUrl"
+                                ELSE EXCLUDED."episodeUrl"
+                             END,
             "episodeTitle" = EXCLUDED."episodeTitle",
             "thumbnailUrl" = COALESCE(EXCLUDED."thumbnailUrl", episodes."thumbnailUrl"),
             "updatedAt"    = NOW()
@@ -444,72 +448,10 @@ async def get_anime_detail(anilist_id: int) -> Optional[dict]:
 
 async def get_episode_stream(anilist_id: int, ep_num: float) -> Optional[dict]:
     """
-    Get playable sources for anilistId + episodeNumber.
-    Falls back to trying secondary providers if the primary one fails.
+    Get playable sources for anilistId + episodeNumber using StreamCacheEngine.
     """
-    # Get all providers for this episode, ordered by priority
-    rows = await database.fetch_all(
-        """
-        SELECT id, "episodeUrl", "providerId"
-        FROM   episodes
-        WHERE  "anilistId" = :anilist_id AND "episodeNumber" = :ep_num
-        ORDER BY
-            CASE "providerId"
-             WHEN 'samehadaku' THEN 1
-             WHEN 'kuronime'   THEN 1
-             WHEN 'oploverz'   THEN 2
-             WHEN 'doronime'   THEN 3
-             WHEN 'otakudesu'  THEN 4
-             ELSE 5
-            END ASC
-        """,
-        values={"anilist_id": anilist_id, "ep_num": ep_num},
-    )
-
-    if not rows:
-        return None
-
-    for row in rows:
-        ep_url = row["episodeUrl"]
-        # Jika URL di database sudah diubah menjadi Telegram Proxy (hasil Ingestion Engine)
-        if "tg-proxy" in ep_url or "workers.dev" in ep_url:
-            return {
-                "sources": [{
-                    "provider": "Swarm Storage (Telegram)",
-                    "quality": "1080p",
-                    "url": ep_url,
-                    "type": "hls" if ep_url.endswith(".m3u8") or "tg-proxy" in ep_url else "mp4",
-                }],
-                "downloads": [],
-                "episodeUrl": ep_url,
-                "usedProvider": "telegram_swarm"
-            }
-
-        result = await resolve_episode_sources(ep_url, row["providerId"])
-        if result.get("sources"):
-            result["episodeUrl"] = ep_url
-            result["usedProvider"] = row["providerId"]
-            
-            # Fire and forget: trigger QStash ingestion if the best source is a direct link
-            # so the next user gets the 0ms Telegram stream.
-            direct_sources = [s for s in result["sources"] if s.get("type") in ("direct", "mp4", "hls")]
-            if direct_sources:
-                best_source = direct_sources[0]
-                raw_direct_url = best_source.get("raw_url") or best_source.get("url")
-                # Avoid triggering if it's already a proxy URL
-                if "workers.dev" not in raw_direct_url and "tg-proxy" not in raw_direct_url:
-                    from services.queue import enqueue_ingest
-                    asyncio.create_task(enqueue_ingest(
-                        episode_id=row["id"],
-                        anilist_id=anilist_id,
-                        provider_id=row["providerId"],
-                        episode_number=ep_num,
-                        direct_url=raw_direct_url
-                    ))
-            
-            return result
-
-    return {"sources": [], "downloads": [], "error": "No sources resolved from any provider"}
+    from services.stream_cache import get_cached_stream
+    return await get_cached_stream(anilist_id, ep_num)
 
 
 async def ensure_episodes_exist(anilist_id: int) -> bool:
