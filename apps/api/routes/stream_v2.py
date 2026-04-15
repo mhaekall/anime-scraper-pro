@@ -330,12 +330,8 @@ async def get_sources_v2(
         if isinstance(res, dict) and res.get('sources'):
             all_sources.extend(res['sources'])
 
-    # FILTER: PRIORITIZE DIRECT LINKS, FALLBACK TO IFRAME
-    direct_sources = [s for s in all_sources if s.get('type') == 'direct']
-    if direct_sources:
-        all_sources = direct_sources
-    else:
-        all_sources = [s for s in all_sources if s.get('type') == 'iframe']
+    # FILTER: ONLY DIRECT LINKS
+    all_sources = [s for s in all_sources if s.get('type') == 'direct']
 
     all_sources.sort(key=lambda x: QUALITY_RANK.get(x.get('quality', 'Auto'), 1), reverse=True)
 
