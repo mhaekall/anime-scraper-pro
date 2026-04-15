@@ -71,6 +71,31 @@ class TelegramUploader:
 
         return None
 
+    async def _upstash_get(self, key: str):
+        url = os.getenv("UPSTASH_REDIS_REST_URL")
+        token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+        if not url or not token: return None
+        try:
+            res = await self.client.get(f"{url}/get/{key}", headers={"Authorization": f"Bearer {token}"})
+            data = res.json()
+            if data.get('result'):
+                import json
+                return json.loads(data['result'])
+        except:
+            pass
+        return None
+
+    async def _upstash_set(self, key: str, value: dict, ex: int = 86400):
+        url = os.getenv("UPSTASH_REDIS_REST_URL")
+        token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
+        if not url or not token: return
+        try:
+            import json
+            payload = json.dumps(value)
+            await self.client.post(f"{url}/set/{key}?EX={ex}", headers={"Authorization": f"Bearer {token}"}, data=payload)
+        except:
+            pass
+
     async def process_hls_playlist_parallel(self, m3u8_path: str, progress_key: Optional[str] = None, max_workers: int = 5) -> Optional[str]:
         """
         Reads a local .m3u8 playlist, uploads each .ts segment to Telegram IN PARALLEL using asyncio.Semaphore,
@@ -92,21 +117,10 @@ class TelegramUploader:
         
         existing_progress = {}
         if progress_key:
-            try:
-                try:
-                    from db.cache import upstash_get, upstash_set # If running standalone
-                except ImportError:
-                    try:
-                        from services.cache import upstash_get, upstash_set # If running in worker
-                    except ImportError:
-                        from apps.api.services.cache import upstash_get, upstash_set
-                
-                cached = await upstash_get(progress_key)
-                if cached and isinstance(cached, dict):
-                    existing_progress = cached
-                    logger.info(f"Found existing progress. Resuming {len(existing_progress)} segments.")
-            except Exception as e:
-                logger.warning(f"Failed to get existing progress: {e}")
+            cached = await self._upstash_get(progress_key)
+            if cached and isinstance(cached, dict):
+                existing_progress = cached
+                logger.info(f"Found existing progress. Resuming {len(existing_progress)} segments.")
 
         uploaded_segments: Dict[int, str] = {}
         semaphore = asyncio.Semaphore(max_workers)
