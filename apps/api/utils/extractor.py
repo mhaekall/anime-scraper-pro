@@ -70,13 +70,18 @@ class UniversalExtractor:
                 url = iframe_match.group(1)
                 
         try:
-            if 'kuramadrive' in url or 'kuramanime' in url:
+            if 'kuramadrive' in url or 'kuramanime' in url or 'kuroplayer' in url or 'kuronime' in url:
                 # wajik-anime-api extracts kuramanime from #player source
                 # Try fetching the embed url and getting the source
                 res = await self.client.get(url)
-                match = re.search(r'<source[^>]+src="([^"]+)"', res.text, re.IGNORECASE)
+                match = re.search(r'<source[^>]+src=["\']([^"\']+)["\']', res.text, re.IGNORECASE)
                 if match:
-                    return match.group(1)
+                    return match.group(1).replace('&amp;', '&')
+                
+                # Kuroplayer specific fallback
+                match2 = re.search(r'file\s*:\s*["\']([^"\']+)["\']', res.text, re.IGNORECASE)
+                if match2:
+                    return match2.group(1).replace('&amp;', '&')
             elif 'desustream' in url or 'desudrives' in url:
                 fetch_url = f"{url}&mode=json" if '?' in url else f"{url}?mode=json"
                 res = await self.client.get(fetch_url)
