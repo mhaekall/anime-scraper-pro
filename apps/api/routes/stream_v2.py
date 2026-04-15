@@ -44,7 +44,8 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 PROVIDER_TIMEOUT = 10.0
 EXTRACTOR_TIMEOUT = 7.0
-QUALITY_RANK = {"1080p": 5, "720p": 4, "480p": 3, "360p": 2, "Auto": 1}
+# Prioritize 720p for ingestion (Zero-cost optimization), fallback to 1080p if 720p missing
+QUALITY_RANK = {"720p": 5, "1080p": 4, "480p": 3, "360p": 2, "Auto": 1}
 
 async def _resolve_embed(embed: dict, source_tag: str) -> Optional[dict]:
     url = embed.get('url') or embed.get('resolved', '')
