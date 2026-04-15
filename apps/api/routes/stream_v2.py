@@ -64,12 +64,30 @@ async def _resolve_embed(embed: dict, source_tag: str) -> Optional[dict]:
         }
     except: return None
 
-async def _scrape_samehadaku(title: str, episode_num: float) -> Dict[str, Any]:
+async def _scrape_samehadaku(title: str, episode_num: float, series_url: str = None, target_anilist_id: int = None) -> Dict[str, Any]:
     try:
         async with asyncio.timeout(PROVIDER_TIMEOUT):
-            s = await samehadaku_provider.search(title)
-            if not s: return {'sources': [], 'provider': 'samehadaku'}
-            details = await samehadaku_provider.get_anime_detail(s[0]['url'])
+            if series_url:
+                details = await samehadaku_provider.get_anime_detail(series_url)
+            else:
+                results = await samehadaku_provider.search(title)
+                if not results: return {'sources': [], 'provider': 'samehadaku'}
+                
+                # If we have target_anilist_id, try to find the exact match
+                if target_anilist_id:
+                    series_url = None
+                    for res in results[:3]: # Check top 3 results
+                        slug = res['url'].strip('/').split('/')[-1]
+                        recon = await reconciler.reconcile("samehadaku", slug, res['title'])
+                        if recon and recon.canonical_anilist_id == target_anilist_id:
+                            series_url = res['url']
+                            break
+                    if not series_url: return {'sources': [], 'provider': 'samehadaku'}
+                else:
+                    series_url = results[0]['url']
+                    
+                details = await samehadaku_provider.get_anime_detail(series_url)
+                
             if not details: return {'sources': [], 'provider': 'samehadaku'}
             target_url = next(
                 (e['url'] for e in details.get('episodes', [])
@@ -123,12 +141,29 @@ async def _scrape_otakudesu(series_url: str, episode_num: float) -> Dict[str, An
         print(f"[Otakudesu] Error: {e}")
         return {'sources': [], 'provider': 'otakudesu'}
 
-async def _scrape_kuronime(title: str, episode_num: float) -> Dict[str, Any]:
+async def _scrape_kuronime(title: str, episode_num: float, series_url: str = None, target_anilist_id: int = None) -> Dict[str, Any]:
     try:
         async with asyncio.timeout(PROVIDER_TIMEOUT):
-            s = await kuronime_provider.search(title)
-            if not s: return {'sources': [], 'provider': 'kuronime'}
-            details = await kuronime_provider.get_anime_detail(s[0]['url'])
+            if series_url:
+                details = await kuronime_provider.get_anime_detail(series_url)
+            else:
+                results = await kuronime_provider.search(title)
+                if not results: return {'sources': [], 'provider': 'kuronime'}
+                
+                if target_anilist_id:
+                    series_url = None
+                    for res in results[:3]:
+                        slug = res['url'].strip('/').split('/')[-1]
+                        recon = await reconciler.reconcile("kuronime", slug, res['title'])
+                        if recon and recon.canonical_anilist_id == target_anilist_id:
+                            series_url = res['url']
+                            break
+                    if not series_url: return {'sources': [], 'provider': 'kuronime'}
+                else:
+                    series_url = results[0]['url']
+                    
+                details = await kuronime_provider.get_anime_detail(series_url)
+                
             if not details: return {'sources': [], 'provider': 'kuronime'}
             target_url = next((e['url'] for e in details.get('episodes', []) if re.search(fr'\b{episode_num}\b', e['title'])), None)
             if not target_url: return {'sources': [], 'provider': 'kuronime'}
@@ -263,17 +298,17 @@ async def get_sources_v2(
     # Focus on all providers that can yield Direct Streams (Wibufile, DesuDrives, 4meplayer)
     
     # 1. Samehadaku (Wibufile, etc)
+    from services.pipeline import build_provider_series_url
     if mappings and 'samehadaku' in mappings:
-        pass # Currently _scrape_samehadaku handles title search internally, but we can just use the mapping title if needed
-    
-    async def fallback_samehadaku_search():
-        for v in title_vars:
-            res = await _scrape_samehadaku(v, ep)
-            if res and res.get('sources'):
-                return res
-        return {'sources': [], 'provider': 'samehadaku'}
-        
-    scrape_tasks.append(fallback_samehadaku_search())
+        series_url = build_provider_series_url('samehadaku', mappings['samehadaku'])
+        scrape_tasks.append(_scrape_samehadaku(title_vars[0], ep, series_url, target_anilist_id=anilist_id))
+    else:
+        async def fallback_samehadaku_search():
+            for v in title_vars:
+                res = await _scrape_samehadaku(v, ep, target_anilist_id=anilist_id)
+                if res and res.get('sources'): return res
+            return {'sources': [], 'provider': 'samehadaku'}
+        scrape_tasks.append(fallback_samehadaku_search())
     providers_attempted.append('samehadaku')
     
     # 2. Oploverz (4meplayer, Oplo2, Blogger)
@@ -310,14 +345,17 @@ async def get_sources_v2(
     providers_attempted.append('otakudesu')
     
     # 4. Kuronime (KuroPlayer, HLS, Kraken)
-    async def fallback_kuronime_search():
-        for v in title_vars:
-            res = await _scrape_kuronime(v, ep)
-            if res and res.get('sources'):
-                return res
-        return {'sources': [], 'provider': 'kuronime'}
-        
-    scrape_tasks.append(fallback_kuronime_search())
+    if mappings and 'kuronime' in mappings:
+        series_url = build_provider_series_url('kuronime', mappings['kuronime'])
+        scrape_tasks.append(_scrape_kuronime(title_vars[0], ep, series_url, target_anilist_id=anilist_id))
+    else:
+        async def fallback_kuronime_search():
+            for v in title_vars:
+                res = await _scrape_kuronime(v, ep, target_anilist_id=anilist_id)
+                if res and res.get('sources'):
+                    return res
+            return {'sources': [], 'provider': 'kuronime'}
+        scrape_tasks.append(fallback_kuronime_search())
     providers_attempted.append('kuronime')
 
     if not scrape_tasks:
