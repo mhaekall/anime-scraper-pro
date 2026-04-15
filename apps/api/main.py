@@ -187,6 +187,25 @@ async def get_columns(table_name: str):
         return {"error": str(e)}
 
 
+@app.head("/healthz", tags=["System"])
+@app.get("/healthz", tags=["System"])
+async def health():
+    global db_connection_error
+    db_ok = False
+    error_msg = None
+    try:
+        await database.fetch_one("SELECT 1")
+        db_ok = True
+    except Exception as e:
+        error_msg = str(e)
+        import traceback
+        error_msg += "\\n" + traceback.format_exc()
+    return {"status": "ok" if db_ok else "degraded", "db": db_ok, "error": error_msg, "startup_error": db_connection_error}
+umns": [dict(r) for r in rows]}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/healthz", tags=["System"])
 async def health():
     global db_connection_error
