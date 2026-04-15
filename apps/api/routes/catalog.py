@@ -293,12 +293,19 @@ async def get_episode_stream_v2(
     if refresh:
         # Get mapping first
         from services.pipeline import get_provider_mappings
+        from services.cache import upstash_del
+        from apps.api.services.stream_cache import CacheKey
         mappings = await get_provider_mappings(anilist_id)
         for pid, slug in mappings.items():
             # Clear cache for all providers of this anime to force re-scrape
             from services.pipeline import build_provider_series_url
             series_url = build_provider_series_url(pid, slug)
-            # This is complex, for now we just delete from video_cache for this ep
+            rows = await database.fetch_all(
+                'SELECT "episodeUrl" FROM episodes WHERE "anilistId" = :aid AND "providerId" = :pid',
+                values={"aid": anilist_id, "pid": pid}
+            )
+            for row in rows:
+                await upstash_del(CacheKey.stream(row["episodeUrl"]))
             await database.execute(
                 'DELETE FROM video_cache WHERE "episodeUrl" LIKE :url_pattern',
                 values={"url_pattern": f"%{slug}%"}
