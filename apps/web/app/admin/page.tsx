@@ -44,7 +44,22 @@ export default function AdminDashboard() {
   const [filterEps, setFilterEps] = useState<string>("All");
   const [search, setSearch] = useState("");
 
-  const addLog = (msg: string) => setLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 50));
+  const addLog = (msg: string) => {
+    setLogs((prev) => {
+      const newLogs = [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 50);
+      localStorage.setItem("adminLogs", JSON.stringify(newLogs));
+      return newLogs;
+    });
+  };
+
+  useEffect(() => {
+    const savedLogs = localStorage.getItem("adminLogs");
+    if (savedLogs) {
+      try {
+        setLogs(JSON.parse(savedLogs));
+      } catch(e) {}
+    }
+  }, []);
 
   const fetchData = async () => {
     const key = localStorage.getItem("adminKey") || password;

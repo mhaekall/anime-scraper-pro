@@ -1,4 +1,4 @@
-// features/home/ContinueWatching.tsx — Local-first continue watching strip
+// features/home/ContinueWatching.tsx — Apple Glassmorphism Style
 
 "use client";
 
@@ -6,51 +6,88 @@ import { memo } from "react";
 import Link from "next/link";
 import { IconPlay } from "@/ui/icons";
 import { useWatchHistory } from "@/core/hooks/use-watch-history";
-import { useSettings } from "@/core/stores/app-store";
 
 const fmt = (s: number) => {
+  if (!s) return "0:00";
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${sec < 10 ? "0" : ""}${sec}`;
 };
 
-function ContinueWatchingInner() {
-  const { history, isLoading } = useWatchHistory();
+function ContinueWatchingInner({ userId }: { userId?: string }) {
+  const { history, isLoading } = useWatchHistory(userId);
   const accent = "#0A84FF";
 
   if (isLoading) return (
-    <div className="mb-8 px-5 md:px-8">
-      <h2 className="text-lg font-black text-white mb-3">Lanjutkan Menonton</h2>
+    <div className="mb-8 px-6 md:px-10">
+      <h2 className="text-[20px] font-black text-white tracking-tight mb-4">Lanjutkan Menonton</h2>
       <div className="flex gap-4 overflow-x-auto no-scrollbar">
-        {[1, 2, 3].map((i) => <div key={i} className="shrink-0 w-[220px] aspect-video bg-[#1c1c1e] rounded-2xl animate-pulse" />)}
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="shrink-0 w-[240px] md:w-[280px] aspect-video bg-[#1c1c1e] rounded-[22px] animate-pulse border border-white/5" />
+        ))}
       </div>
     </div>
   );
 
-  const inProgress = history.filter((h) => !h.completed && h.timestampSec > 0).slice(0, 8);
+  // In-progress episodes that haven't been completed yet
+  const inProgress = history
+    .filter((h) => !h.completed && h.timestampSec > 5)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 10);
+
   if (inProgress.length === 0) return null;
 
   return (
-    <section className="mb-8 px-5 md:px-8 overflow-hidden">
-      <h2 className="text-lg font-black text-white mb-3">Lanjutkan Menonton</h2>
-      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar" style={{ WebkitOverflowScrolling: "touch" }}>
+    <section className="mb-8 px-6 md:px-10 overflow-hidden anim-fade-up">
+      <h2 className="text-[20px] font-black text-white tracking-tight mb-4">Lanjutkan Menonton</h2>
+      <div className="flex gap-5 overflow-x-auto snap-x snap-mandatory no-scrollbar" style={{ WebkitOverflowScrolling: "touch" }}>
         {inProgress.map((item, i) => {
           const pct = item.durationSec > 0 ? Math.min((item.timestampSec / item.durationSec) * 100, 100) : 0;
           return (
-            <Link key={`${item.animeSlug}-${item.episode}-${i}`} href={`/watch/${item.animeSlug}/${item.episode}`} className="min-w-[220px] md:min-w-[260px] snap-center group anim-fade block">
-              <div className="w-full aspect-video rounded-2xl bg-[#1c1c1e] relative overflow-hidden mb-2 border border-white/5 group-hover:border-white/15 transition-colors">
-                {item.animeCover && <img src={item.animeCover} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" alt="" loading="lazy" decoding="async" />}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-11 h-11 rounded-full bg-black/50 flex items-center justify-center border border-white/20 text-white group-hover:border-transparent transition-colors" style={{ backgroundColor: `${accent}80` }}><IconPlay className="w-4 h-4 ml-0.5" /></div>
+            <Link 
+              key={`${item.anilistId}-${item.episode}-${i}`} 
+              href={`/watch/${item.anilistId}/${item.episode}`} 
+              className="min-w-[240px] md:min-w-[300px] snap-start group block"
+            >
+              {/* Card — HIG: Glassmorphism / Large Rounded Corners */}
+              <div className="w-full aspect-video rounded-[22px] bg-[#1c1c1e] relative overflow-hidden mb-3 border border-white/[0.08] group-hover:border-white/[0.18] transition-all duration-300 shadow-lg">
+                <img 
+                  src={item.animeCover || `https://img.anilist.co/media/${item.anilistId}/banner/medium`} 
+                  className="w-full h-full object-cover opacity-60 group-hover:scale-[1.03] group-hover:opacity-80 transition-all duration-700 ease-out" 
+                  alt="" 
+                  loading="lazy"
+                />
+                
+                {/* Play Button Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-2xl">
+                    <IconPlay className="w-4 h-4 ml-0.5 fill-current" />
+                  </div>
                 </div>
-                <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20"><div className="h-full" style={{ width: `${pct}%`, backgroundColor: accent }} /></div>
+
+                {/* Progress Bar — HIG Style */}
+                <div className="absolute bottom-0 left-0 w-full h-1.5 bg-black/40 backdrop-blur-sm">
+                  <div 
+                    className="h-full bg-[#0A84FF] shadow-[0_0_10px_#0A84FF] transition-all duration-500" 
+                    style={{ width: `${pct}%` }} 
+                  />
+                </div>
+
+                {/* Episode Badge */}
+                <div className="absolute top-3 right-3 px-2.5 py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-[10px] font-black text-white tracking-wider uppercase">
+                  Eps {item.episode}
+                </div>
               </div>
-              <div className="flex justify-between items-start gap-2">
+
+              <div className="flex justify-between items-start px-1">
                 <div className="min-w-0">
-                  <h3 className="text-white font-bold text-[13px] line-clamp-1">{item.animeTitle}</h3>
-                  <p className="text-[#8e8e93] text-[11px]">{fmt(item.timestampSec)} / {fmt(item.durationSec)}</p>
+                  <h3 className="text-white font-bold text-[14px] leading-tight tracking-tight line-clamp-1 group-hover:text-[#0A84FF] transition-colors">
+                    {item.animeTitle || `Anime #${item.anilistId}`}
+                  </h3>
+                  <p className="text-[#8e8e93] text-[11px] font-medium tracking-tight mt-0.5">
+                    Tersisa {fmt(item.durationSec - item.timestampSec)}
+                  </p>
                 </div>
-                <span className="shrink-0 px-2 py-0.5 bg-white/10 rounded text-[9px] font-bold text-white flex items-center gap-1"><IconPlay className="w-2.5 h-2.5" /> Eps {item.episode}</span>
               </div>
             </Link>
           );

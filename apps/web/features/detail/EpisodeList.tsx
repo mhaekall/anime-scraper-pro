@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
 import Link from "next/link";
 import { IconPlay, IconCheck, IconSort } from "@/ui/icons";
 import { useSettings } from "@/core/stores/app-store";
@@ -13,6 +13,8 @@ interface Episode { title: string; url: string; number: number; provider?: strin
 function EpisodeListInner({ episodes, animeId, cover }: { episodes: Episode[]; animeId: string; cover?: string }) {
   const [reversed, setReversed] = useState(false);
   const [limit, setLimit] = useState(50);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const accent = "#0A84FF";
   const { history } = useWatchHistory();
 
@@ -38,14 +40,14 @@ function EpisodeListInner({ episodes, animeId, cover }: { episodes: Episode[]; a
       <div className="flex flex-col gap-2">
         {view.map((ep, i) => {
           const epId = ep.url.replace(/\/$/, "").split("/").pop() || String(ep.number);
-          const w = history.find((h) => h.animeSlug === animeId && h.episode.toString() === epId);
+          const w = mounted ? history.find((h) => h.animeSlug === animeId && h.episode.toString() === epId) : undefined;
           const pct = w && w.durationSec > 0 ? (w.timestampSec / w.durationSec) * 100 : 0;
 
           return (
             <Link key={`${epId}-${i}`} href={`/watch/${animeId}/${epId}`} className="group block">
               <div className="flex gap-3 p-2.5 rounded-2xl bg-[#1c1c1e]/50 hover:bg-[#2c2c2e] border border-transparent hover:border-white/10 transition-all active:scale-[0.99]">
                 <div className="w-[110px] aspect-video rounded-xl bg-[#2c2c2e] relative overflow-hidden shrink-0 border border-white/5">
-                  {(ep.thumbnailUrl || cover) && <img src={ep.thumbnailUrl || cover!} className="w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-500" alt="" loading="lazy" decoding="async" />}
+                  {(ep.thumbnailUrl || cover) && <img src={ep.thumbnailUrl || cover!} className="w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-500" alt="" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.src = "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg"; }} />}
                   {w?.completed && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><IconCheck className="w-5 h-5 text-white" /></div>}
                   {!w?.completed && pct > 0 && <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20"><div className="h-full" style={{ width: `${pct}%`, backgroundColor: accent }} /></div>}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

@@ -57,3 +57,11 @@ htmlcov/
 __pycache__/
 *.pyc
 *.tar.gz
+
+tmp_ingest/
+*.ts
+*.mp4
+*.m3u8
+venv/
+__pycache__/
+tmp_ingest/

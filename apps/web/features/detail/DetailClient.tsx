@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconBack, IconPlay, IconBookmark, IconShare, IconStar } from "@/ui/icons";
@@ -25,9 +25,14 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
   const { items, toggle } = useWatchlist();
   const { toast } = useToast();
   const [tab, setTab] = useState("overview");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const d = detail;
-  const saved = !!items.find((w) => String(w.id) === id);
+  const saved = mounted ? !!items.find((w) => String(w.id) === id) : false;
   const desc = (d.synopsis || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "").trim();
   const eps = d.episodes || [];
   const recs = d.recommendations || [];
@@ -38,7 +43,7 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
     <main className="min-h-screen bg-black pb-24 text-white overflow-y-auto no-scrollbar">
       {/* Hero */}
       <div className="w-full h-[280px] md:h-[360px] relative bg-[#1c1c1e] anim-fade">
-        {(d.banner || d.poster) && <img src={d.banner || d.poster} className="w-full h-full object-cover opacity-50" alt="" />}
+        {(d.banner || d.poster) && <img src={d.banner || d.poster} className="w-full h-full object-cover opacity-50" alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
         <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 100%, ${accent}, transparent 60%)` }} />
         <button onClick={() => router.back()} className="absolute top-10 left-5 w-9 h-9 bg-black/50 rounded-full flex items-center justify-center text-white border border-white/20 active:scale-90 z-20"><IconBack /></button>
@@ -48,7 +53,7 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
         {/* Title row */}
         <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-6 anim-up">
           <div className="w-[100px] md:w-[160px] aspect-[2/3] rounded-2xl shadow-2xl border border-white/10 overflow-hidden shrink-0 bg-[#1c1c1e]">
-            {d.poster && <img src={d.poster} alt="" className="w-full h-full object-cover" />}
+            {d.poster && <img src={d.poster} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg"; }} />}
           </div>
           <div className="pt-1 md:pt-10 flex-1 min-w-0">
             <h1 className="text-2xl md:text-4xl font-black text-white leading-[1.1] mb-1">{d.title}</h1>
@@ -72,7 +77,9 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
             </div>
             <div className="flex flex-wrap gap-2">
               {firstEp ? (
-                <Link href={`/watch/${id}/${firstEp}`}><button className="px-8 py-3 rounded-2xl text-white font-bold flex items-center gap-2 text-sm active:scale-95" style={{ backgroundColor: accent }}><IconPlay /> Putar Eps 1</button></Link>
+                <Link href={`/watch/${id}/${firstEp}`} className="px-8 py-3 rounded-2xl text-white font-bold flex items-center gap-2 text-sm active:scale-95" style={{ backgroundColor: accent }}>
+                  <IconPlay /> Putar Eps 1
+                </Link>
               ) : (
                 <button disabled className="px-8 py-3 rounded-2xl text-[#8e8e93] bg-[#1c1c1e] font-bold text-sm cursor-not-allowed">Belum Tersedia</button>
               )}

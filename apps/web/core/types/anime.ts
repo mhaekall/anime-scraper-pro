@@ -48,6 +48,7 @@ export interface VideoSource {
 }
 
 export interface WatchHistoryItem {
+  anilistId: number;
   animeSlug: string;
   animeTitle: string;
   animeCover?: string;
@@ -56,5 +57,5 @@ export interface WatchHistoryItem {
   timestampSec: number;
   durationSec: number;
   completed: boolean;
-  updatedAt?: string;
+  updatedAt: string;
 }

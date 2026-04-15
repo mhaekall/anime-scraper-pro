@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 from db.connection import database
-from db.models import comments, users, comment_reactions, follows, watch_events
-from sqlalchemy import select, insert, func
+from db.models import comments, users, comment_reactions, follows, watch_events, watch_history
+from sqlalchemy import select, insert, func, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 router = APIRouter()
@@ -33,6 +33,49 @@ class WatchEventCreate(BaseModel):
     episodeNumber: float
     event_type: str
     timestamp_sec: Optional[int] = None
+
+class ProgressUpdate(BaseModel):
+    user_id: str
+    anilistId: int
+    episodeNumber: float
+    progressSeconds: int
+    durationSeconds: int
+    isCompleted: bool = False
+
+# --- Progress Sync ---
+
+@router.get("/progress")
+async def get_progress(user_id: str, anilistId: Optional[int] = None):
+    query = select(watch_history).where(watch_history.c.user_id == user_id)
+    if anilistId:
+        query = query.where(watch_history.c.anilistId == anilistId)
+    
+    rows = await database.fetch_all(query=query)
+    return [dict(row) for row in rows]
+
+@router.post("/progress")
+async def save_progress(prog: ProgressUpdate):
+    # Ensure user exists (BetterAuth dummy sync)
+    upsert_user = pg_insert(users).values(
+        id=prog.user_id, 
+        username=f"user_{prog.user_id[:5]}"
+    ).on_conflict_do_nothing()
+    await database.execute(upsert_user)
+    
+    # Upsert Progress
+    stmt = pg_insert(watch_history).values(
+        **prog.dict()
+    ).on_conflict_do_update(
+        index_elements=["user_id", "anilistId", "episodeNumber"],
+        set_={
+            "progressSeconds": prog.progressSeconds,
+            "durationSeconds": prog.durationSeconds,
+            "isCompleted": prog.isCompleted,
+            "updatedAt": func.now()
+        }
+    )
+    await database.execute(stmt)
+    return {"success": True, "progress": prog.progressSeconds}
 
 # --- Comments ---
 @router.get("/comments")

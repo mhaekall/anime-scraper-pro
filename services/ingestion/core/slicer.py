@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class VideoSlicer:
-    def __init__(self, output_dir: str = "/tmp/anime_ingestion/hls"):
+    def __init__(self, output_dir: str = "/data/data/com.termux/files/home/workspace/anime-scraper-pro/tmp_ingest/hls"):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 

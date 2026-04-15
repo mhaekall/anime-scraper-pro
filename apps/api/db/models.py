@@ -151,3 +151,21 @@ watch_events = Table(
     Column("created_at", DateTime, nullable=False, server_default=func.now()),
     Index("idx_watch_events_episode", "anilistId", "episodeNumber"),
 )
+
+# ── NEW: Persistent Watch History for Progress Sync ───────────────────────────
+
+watch_history = Table(
+    "watch_history",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("anilistId", Integer, nullable=False),
+    Column("episodeNumber", Float, nullable=False),
+    Column("progressSeconds", Integer, nullable=False, default=0),
+    Column("durationSeconds", Integer, nullable=False, default=0),
+    Column("isCompleted", Boolean, nullable=False, default=False),
+    Column("updatedAt", DateTime, nullable=False, server_default=func.now(), onupdate=func.now()),
+    UniqueConstraint("user_id", "anilistId", "episodeNumber", name="uq_user_anime_episode_history"),
+    Index("idx_watch_history_user", "user_id"),
+    Index("idx_watch_history_lookup", "user_id", "anilistId"),
+)

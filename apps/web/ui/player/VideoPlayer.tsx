@@ -29,6 +29,7 @@ const SkipForwardIcon = ({ className }: { className?: string }) => (
 );
 
 interface Props {
+  anilistId: number;
   title: string;
   poster?: string;
   sources: VideoSource[];
@@ -39,7 +40,7 @@ interface Props {
   isLoadingSources?: boolean;
 }
 
-function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onRequireAutoNext, onTimeUpdate, isLoadingSources }: Props) {
+function VideoPlayerInner({ anilistId, title, poster, sources, animeSlug, episodeNum, onRequireAutoNext, onTimeUpdate, isLoadingSources }: Props) {
   const accent = "#0A84FF";
   const autoPlayNext = useSettings((s) => s.settings.autoPlayNext);
   const { updateProgress } = useWatchHistory();
@@ -201,14 +202,23 @@ function VideoPlayerInner({ title, poster, sources, animeSlug, episodeNum, onReq
   }, [autoPlayNext, hasTriggeredAutoNext, onRequireAutoNext]);
 
   useEffect(() => {
-    if (!animeSlug || !episodeNum) return;
+    if (!anilistId || !episodeNum) return;
     clearInterval(saveTimer.current);
     saveTimer.current = setInterval(() => {
       if (progress < 2 || duration < 2) return;
-      updateProgress({ animeSlug, animeTitle: title.split(" - ")[0] ?? title, episode: episodeNum, episodeTitle: title, timestampSec: Math.floor(progress), durationSec: Math.floor(duration), completed: duration > 0 && progress / duration > 0.9 });
+      updateProgress({ 
+        anilistId,
+        animeSlug: animeSlug || String(anilistId), 
+        animeTitle: title.split(" - ")[0] ?? title, 
+        episode: episodeNum, 
+        episodeTitle: title, 
+        timestampSec: Math.floor(progress), 
+        durationSec: Math.floor(duration), 
+        completed: duration > 0 && progress / duration > 0.9 
+      });
     }, 15_000);
     return () => clearInterval(saveTimer.current);
-  }, [progress, duration, animeSlug, episodeNum, title, updateProgress]);
+  }, [progress, duration, anilistId, animeSlug, episodeNum, title, updateProgress]);
 
   const reveal = useCallback(() => { setControls(true); clearTimeout(hideTimer.current); if (videoRef.current && !videoRef.current.paused) hideTimer.current = setTimeout(() => setControls(false), 3000); }, []);
   const togglePlay = useCallback(() => { const v = videoRef.current; if (!v) return; v.paused ? v.play() : v.pause(); reveal(); }, [reveal]);

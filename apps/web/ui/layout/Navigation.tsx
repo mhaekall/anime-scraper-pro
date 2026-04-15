@@ -75,7 +75,7 @@ export function Navigation({ children }: { children: React.ReactNode }) {
                     {isProfile ? (
                       <div className={`w-5 h-5 rounded-full overflow-hidden border ${active ? "border-white" : "border-transparent"}`}>
                         <img 
-                          src={session?.user?.image || "https://api.dicebear.com/7.x/notionists/svg?seed=Guest"} 
+                          src={(mounted && session?.user?.image) ? session.user.image : "https://api.dicebear.com/7.x/notionists/svg?seed=Guest"} 
                           alt="Profile" 
                           className="w-full h-full object-cover bg-white"
                         />

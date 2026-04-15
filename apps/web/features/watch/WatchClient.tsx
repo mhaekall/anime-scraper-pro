@@ -68,7 +68,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
   const { data: streamData, isLoading: streamLoading, mutate } = useSWR(
     `stream-${id}-${episode}`,
     async () => {
-      const res = await fetch(`${API}/api/v2/stream/sources?title=${encodeURIComponent(title)}&ep=${episode}&anilist_id=${id}`);
+      const res = await fetch(`${API}/api/v2/anime/${id}/episodes/${episode}/stream`);
       if (!res.ok) {
         const error = new Error('An error occurred while fetching the data.') as any;
         error.status = res.status;
@@ -120,6 +120,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
         <button onClick={() => router.back()} className="absolute top-4 left-4 z-50 w-9 h-9 bg-black/40 rounded-full flex items-center justify-center text-white border border-white/10 active:scale-90 transition-transform"><IconBack /></button>
         <div className="relative w-full aspect-video flex flex-col justify-center min-h-0 bg-black overflow-hidden">
           <VideoPlayer 
+            anilistId={parseInt(id, 10)}
             title={`${title} - Eps ${episode}`} 
             poster={poster} 
             sources={sources} 

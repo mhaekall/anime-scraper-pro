@@ -183,11 +183,14 @@ async def admin_get_database():
 @router.post("/v2/admin/mass-sync")
 async def admin_mass_sync():
     """Trigger a mass sync via QStash or local background task"""
-    # Trigger script via subprocess or queue
     import subprocess
     import os
+    import sys
     script_path = os.path.join(os.path.dirname(__file__), "../scripts/mass_sync.py")
-    subprocess.Popen(["python", script_path])
+    env = os.environ.copy()
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    env["PYTHONPATH"] = f"{env.get('PYTHONPATH', '')}:{root_dir}:{os.path.join(root_dir, 'apps', 'api')}"
+    subprocess.Popen([sys.executable, script_path], env=env)
     return {"success": True, "message": "Mass sync process started in background."}
 
 @router.post("/v2/admin/sync-missing")

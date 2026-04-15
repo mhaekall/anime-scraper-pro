@@ -25,6 +25,7 @@ export default function TestPlayerPage() {
 
         <div className="rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-2xl">
           <VideoPlayer 
+            anilistId={147105}
             title="Classroom of the Elite Season 4 - Episode 1 (Sampel 30 Detik)"
             sources={testSources}
             animeSlug="classroom-of-the-elite"

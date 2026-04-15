@@ -19,31 +19,37 @@ async function AnimeData({ id }: { id: string }) {
     });
     if (res.ok) {
       const json = await res.json();
-      const a = json.data;
-      detail = {
-        title: a.cleanTitle ?? a.nativeTitle,
-        nativeTitle: a.nativeTitle,
-        poster: a.coverImage,
-        banner: a.bannerImage,
-        synopsis: a.synopsis,
-        score: a.score,
-        genres: a.genres ?? [],
-        studios: a.studios ?? [],
-        status: a.status,
-        totalEpisodes: a.totalEpisodes,
-        season: a.season,
-        seasonYear: a.year,
-        recommendations: a.recommendations ?? [],
-        nextAiringEpisode: a.nextAiringEpisode,
-        episodes: (a.episodes ?? []).map((e: any) => ({
-          title: `Episode ${e.episodeNumber}`,
-          url: `/watch/${id}/${e.episodeNumber}`,
-          number: e.episodeNumber,
-          provider: e.providerId,
-          thumbnailUrl: e.thumbnailUrl,
-        })),
-        _syncing: json.syncing,
-      };
+      if (!json.success) {
+        error = json.error || "Terjadi kesalahan di server";
+      } else if (!json.data) {
+        error = "Data anime tidak ditemukan di server";
+      } else {
+        const a = json.data;
+        detail = {
+          title: a.cleanTitle ?? a.nativeTitle ?? "Unknown Title",
+          nativeTitle: a.nativeTitle,
+          poster: a.coverImage,
+          banner: a.bannerImage,
+          synopsis: a.synopsis,
+          score: a.score,
+          genres: a.genres ?? [],
+          studios: a.studios ?? [],
+          status: a.status,
+          totalEpisodes: a.totalEpisodes,
+          season: a.season,
+          seasonYear: a.year,
+          recommendations: a.recommendations ?? [],
+          nextAiringEpisode: a.nextAiringEpisode,
+          episodes: (a.episodes ?? []).map((e: any) => ({
+            title: `Episode ${e.episodeNumber}`,
+            url: `/watch/${id}/${e.episodeNumber}`,
+            number: e.episodeNumber,
+            provider: e.providerId,
+            thumbnailUrl: e.thumbnailUrl,
+          })),
+          _syncing: json.syncing,
+        };
+      }
     } else {
       error = `HTTP ${res.status}`;
     }

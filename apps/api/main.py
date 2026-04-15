@@ -121,37 +121,57 @@ async def ingest_stats():
     headers = {"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}
     tasks = []
     try:
-        # Scan for ingest_progress keys
+        # 1. SCAN for ingest_progress keys
         scan_url = f"{UPSTASH_REDIS_REST_URL}/scan/0?MATCH=ingest_progress:*&COUNT=100"
         res = await client.get(scan_url, headers=headers)
-        data = res.json()
-        if data.get('result'):
-            cursor, keys = data['result']
-            if keys:
-                # MGET all keys
-                mget_url = f"{UPSTASH_REDIS_REST_URL}/mget"
-                payload = json.dumps(keys)
-                mget_res = await client.post(mget_url, headers=headers, data=payload)
-                mget_data = mget_res.json()
-                if mget_data.get('result'):
-                    values = mget_data['result']
-                    for i, key in enumerate(keys):
-                        # key format: ingest_progress:{anilist_id}:{ep_num}
-                        parts = key.split(':')
-                        if len(parts) >= 3:
-                            val = values[i]
-                            # Handle string progress or JSON dict
-                            status = val
-                            if isinstance(val, str) and val.startswith('{'):
-                                try:
-                                    status = json.loads(val)
-                                except:
-                                    pass
-                            tasks.append({
-                                "anilist_id": parts[1],
-                                "episode": parts[2],
-                                "progress": status
-                            })
+        res_data = res.json()
+        
+        # Redis SCAN result is usually ["cursor", ["key1", "key2", ...]]
+        result = res_data.get('result')
+        if not result or not isinstance(result, list) or len(result) < 2:
+            return {"success": True, "active_tasks": []}
+            
+        keys = result[1]
+        if not keys:
+            return {"success": True, "active_tasks": []}
+
+        # 2. MGET all keys using the GET /mget/k1/k2 syntax (Upstash REST style)
+        keys_path = "/".join(keys)
+        mget_url = f"{UPSTASH_REDIS_REST_URL}/mget/{keys_path}"
+        mget_res = await client.get(mget_url, headers=headers)
+        mget_data = mget_res.json()
+        
+        values = mget_data.get('result', [])
+        if not values:
+            return {"success": True, "active_tasks": []}
+
+        # 3. Parse and pair keys with values
+        for i, key in enumerate(keys):
+            if i >= len(values): break
+            
+            parts = key.split(':')
+            if len(parts) >= 3:
+                raw_val = values[i]
+                if raw_val is None: continue
+                
+                status_data = None
+                if isinstance(raw_val, str):
+                    if raw_val.startswith('{'):
+                        try:
+                            status_data = json.loads(raw_val)
+                        except:
+                            status_data = {"status": raw_val}
+                    else:
+                        status_data = {"status": raw_val}
+                elif isinstance(raw_val, dict):
+                    status_data = raw_val
+                
+                tasks.append({
+                    "anilist_id": parts[1],
+                    "episode": parts[2],
+                    "progress": status_data
+                })
+                
         return {"success": True, "active_tasks": tasks}
     except Exception as e:
         import traceback
@@ -210,6 +230,17 @@ app.include_router(stream_v2.router, prefix="/api/v2", tags=["v2"])
 app.include_router(webhook.router, prefix="/api/v2", tags=["Webhook"])
 app.include_router(social.router, prefix="/api/v2/social", tags=["Social"])
 
+
+@app.get("/api/v2/anime/{anilist_id}/debug-sync", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
+async def debug_sync_anime(anilist_id: int):
+    try:
+        from services.pipeline import sync_anime_episodes
+        # Run it synchronously since it's a debug route
+        await sync_anime_episodes(anilist_id)
+        return {"success": True, "message": f"Successfully synced episodes for {anilist_id}"}
+    except Exception as e:
+        import traceback
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
 
 @app.post("/admin/sync-popular", tags=["Admin"], dependencies=[Depends(verify_admin_key)])
 async def trigger_popular_sync(background_tasks: BackgroundTasks):
