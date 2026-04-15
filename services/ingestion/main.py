@@ -73,14 +73,15 @@ class IngestionEngine:
                 return False
                 
             # 5. Database Sync (Asynchronous)
-            final_stream_url = f"{os.getenv('TG_PROXY_BASE_URL', 'https://tg-proxy.workers.dev')}/{playlist_file_id}"
+            proxy_url = os.getenv("TG_PROXY_BASE_URL")
+            if not proxy_url:
+                raise ValueError("TG_PROXY_BASE_URL wajib di-set")
+            final_stream_url = f"{proxy_url.rstrip('/')}/{playlist_file_id}"
             
             should_disconnect = False
-            try:
+            if not database.is_connected:
                 await database.connect()
                 should_disconnect = True
-            except Exception:
-                pass  # Already connected
                 
             stmt = (
                 update(episodes)
@@ -102,8 +103,16 @@ class IngestionEngine:
             try:
                 if 'should_disconnect' in locals() and should_disconnect:
                     await database.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to disconnect DB: {e}")
+                
+            try:
+                from apps.api.services.cache import upstash_del
+                lock_key = f"ingest:{anilist_id}:{episode_number}"
+                await upstash_del(lock_key)
+                logger.info(f"Released lock for {lock_key}")
+            except Exception as e:
+                logger.warning(f"Failed to release Redis lock: {e}")
 
     def _cleanup_temp_files(self, mp4_path: str, m3u8_path: str):
         """Removes local temporary files to save disk space."""

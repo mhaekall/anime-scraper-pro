@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 # Proxy endpoint configured on Cloudflare worker that serves file_id directly
-PROXY_BASE_URL = os.getenv("TG_PROXY_BASE_URL", "https://tg-proxy.workers.dev")
+PROXY_BASE_URL = os.environ["TG_PROXY_BASE_URL"]
 
 class TelegramUploader:
     def __init__(self):
