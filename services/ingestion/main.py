@@ -3,6 +3,7 @@ import sys
 import logging
 import asyncio
 import shutil
+import httpx
 from typing import Optional
 
 # Add the root directory to Python path if running independently
@@ -28,37 +29,52 @@ class IngestionEngine:
         self.slicer = VideoSlicer()
         self.uploader = TelegramUploader()
 
+    async def _keep_alive_ping(self):
+        """Pings the healthz endpoint every 15 seconds to prevent HF Space sleep during ingestion."""
+        api_url = os.getenv("API_PUBLIC_URL", "https://jonyyyyyyyu-anime-scraper-api.hf.space").rstrip("/")
+        health_url = f"{api_url}/healthz"
+        async with httpx.AsyncClient() as client:
+            while True:
+                try:
+                    await client.head(health_url, timeout=5.0)
+                    logger.info("[Keep-Alive] Pinged HF Space health endpoint to prevent sleep.")
+                except Exception as e:
+                    logger.warning(f"[Keep-Alive] Ping failed: {e}")
+                await asyncio.sleep(15)
+
     async def process_episode(self, episode_id: int, anilist_id: int, provider_id: str, episode_number: float, direct_video_url: str):
         """
         Full pipeline to ingest a video from a provider, slice it, upload to Telegram, and update DB.
         """
-        logger.info(f"Starting ingestion for Anime: {anilist_id} | Ep: {episode_number} | Provider: {provider_id}")
-        
-        filename = f"{provider_id}_{anilist_id}_{episode_number}.mp4"
-        
-        # 1 & 2. Streaming Slice (On-the-fly from Provider URL to HLS)
-        m3u8_path = await self.slicer.slice(url=direct_video_url, filename=filename, provider_id=provider_id, segment_time=12)
-        if not m3u8_path:
-            logger.error("Failed to slice video on-the-fly.")
-            return False
-
-        # 3. Upload to Telegram (Parallel Swarm)
-        progress_key = f"ingest_progress:{anilist_id}:{episode_number}"
-        cloud_m3u8_path = await self.uploader.process_hls_playlist_parallel(m3u8_path, progress_key=progress_key, max_workers=8)
-        if not cloud_m3u8_path:
-            logger.error("Failed to upload segments to Telegram.")
-            return False
-            
-        # 4. Upload the master playlist itself to Telegram or use it directly
-        playlist_file_id = await self.uploader.upload_file(cloud_m3u8_path)
-        if not playlist_file_id:
-            logger.error("Failed to upload master playlist to Telegram.")
-            return False
-            
-        # 5. Database Sync (Asynchronous)
-        final_stream_url = f"{os.getenv('TG_PROXY_BASE_URL', 'https://tg-proxy.workers.dev')}/{playlist_file_id}"
+        ping_task = asyncio.create_task(self._keep_alive_ping())
         
         try:
+            logger.info(f"Starting ingestion for Anime: {anilist_id} | Ep: {episode_number} | Provider: {provider_id}")
+            
+            filename = f"{provider_id}_{anilist_id}_{episode_number}.mp4"
+            
+            # 1 & 2. Streaming Slice (On-the-fly from Provider URL to HLS)
+            m3u8_path = await self.slicer.slice(url=direct_video_url, filename=filename, provider_id=provider_id, segment_time=12)
+            if not m3u8_path:
+                logger.error("Failed to slice video on-the-fly.")
+                return False
+
+            # 3. Upload to Telegram (Parallel Swarm)
+            progress_key = f"ingest_progress:{anilist_id}:{episode_number}"
+            cloud_m3u8_path = await self.uploader.process_hls_playlist_parallel(m3u8_path, progress_key=progress_key, max_workers=8)
+            if not cloud_m3u8_path:
+                logger.error("Failed to upload segments to Telegram.")
+                return False
+                
+            # 4. Upload the master playlist itself to Telegram or use it directly
+            playlist_file_id = await self.uploader.upload_file(cloud_m3u8_path)
+            if not playlist_file_id:
+                logger.error("Failed to upload master playlist to Telegram.")
+                return False
+                
+            # 5. Database Sync (Asynchronous)
+            final_stream_url = f"{os.getenv('TG_PROXY_BASE_URL', 'https://tg-proxy.workers.dev')}/{playlist_file_id}"
+            
             should_disconnect = False
             try:
                 await database.connect()
@@ -82,8 +98,12 @@ class IngestionEngine:
             logger.error(f"Database update failed: {e}")
             return False
         finally:
-            if should_disconnect:
-                await database.disconnect()
+            ping_task.cancel()
+            try:
+                if 'should_disconnect' in locals() and should_disconnect:
+                    await database.disconnect()
+            except Exception:
+                pass
 
     def _cleanup_temp_files(self, mp4_path: str, m3u8_path: str):
         """Removes local temporary files to save disk space."""
