@@ -107,6 +107,57 @@ app = FastAPI(
 
 app.add_middleware(DatabaseReconnectMiddleware)
 
+@app.get("/api/v2/admin/cache-stats", dependencies=[Depends(verify_admin_key)])
+async def cache_stats():
+    from services.stream_cache import cache_stats_handler
+    return await cache_stats_handler()
+
+@app.get("/api/v2/admin/ingest-stats", dependencies=[Depends(verify_admin_key)])
+async def ingest_stats():
+    import json
+    from services.clients import client
+    from services.config import UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+    
+    headers = {"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}
+    tasks = []
+    try:
+        # Scan for ingest_progress keys
+        scan_url = f"{UPSTASH_REDIS_REST_URL}/scan/0?MATCH=ingest_progress:*&COUNT=100"
+        res = await client.get(scan_url, headers=headers)
+        data = res.json()
+        if data.get('result'):
+            cursor, keys = data['result']
+            if keys:
+                # MGET all keys
+                mget_url = f"{UPSTASH_REDIS_REST_URL}/mget"
+                payload = json.dumps(keys)
+                mget_res = await client.post(mget_url, headers=headers, data=payload)
+                mget_data = mget_res.json()
+                if mget_data.get('result'):
+                    values = mget_data['result']
+                    for i, key in enumerate(keys):
+                        # key format: ingest_progress:{anilist_id}:{ep_num}
+                        parts = key.split(':')
+                        if len(parts) >= 3:
+                            val = values[i]
+                            # Handle string progress or JSON dict
+                            status = val
+                            if isinstance(val, str) and val.startswith('{'):
+                                try:
+                                    status = json.loads(val)
+                                except:
+                                    pass
+                            tasks.append({
+                                "anilist_id": parts[1],
+                                "episode": parts[2],
+                                "progress": status
+                            })
+        return {"success": True, "active_tasks": tasks}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e), "active_tasks": []}
+
 @app.get("/api/v2/admin/force-db-setup", dependencies=[Depends(verify_admin_key)])
 async def force_db_setup():
     try:

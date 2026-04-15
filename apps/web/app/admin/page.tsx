@@ -27,6 +27,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [ingestionStats, setIngestionStats] = useState<any>(null);
   const [cacheStats, setCacheStats] = useState<any>(null);
+  const [ingestTasks, setIngestTasks] = useState<any[]>([]);
 
   useEffect(() => {
     const savedAuth = localStorage.getItem("adminAuth");
@@ -76,6 +77,18 @@ export default function AdminDashboard() {
       if (resCache.ok) {
         const dataCache = await resCache.json();
         setCacheStats(dataCache);
+      }
+
+      // 4. Fetch Active Ingestion Tasks
+      const resTasks = await fetch(`${API}/api/v2/admin/ingest-stats`, { 
+        headers: { 'x-admin-key': key },
+        cache: 'no-store'
+      });
+      if (resTasks.ok) {
+        const dataTasks = await resTasks.json();
+        if (dataTasks.success) {
+          setIngestTasks(dataTasks.active_tasks || []);
+        }
       }
       
     } catch (e) {
@@ -313,7 +326,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Action Center & Logs */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="bg-[#1c1c1e] border border-white/10 rounded-2xl p-5 space-y-4">
                 <h2 className="text-sm font-bold text-[#8e8e93] uppercase tracking-widest flex items-center gap-2">
                   🛠️ Mission Control
@@ -343,6 +356,38 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
+              <div className="bg-[#1c1c1e] border border-white/10 rounded-2xl p-5 h-[240px] flex flex-col shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+                <h2 className="text-sm font-bold text-[#8e8e93] uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#ff9f0a] animate-pulse" /> Live Ingestion Tasks
+                </h2>
+                <div className="flex-1 overflow-y-auto font-mono text-[11px] text-white space-y-2">
+                  {ingestTasks.length === 0 ? (
+                    <span className="text-white/30">Tidak ada task ingestion yang aktif...</span>
+                  ) : (
+                    ingestTasks.map((t: any, i) => (
+                      <div key={i} className="flex flex-col bg-black border border-white/10 p-2 rounded-lg">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-[#0a84ff]">ID: {t.anilist_id} | Ep: {t.episode}</span>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase ${
+                            t.progress?.status === 'processing' ? 'bg-[#ff9f0a]/20 text-[#ff9f0a]' : 
+                            t.progress === 'DONE' ? 'bg-[#30d158]/20 text-[#30d158]' : 
+                            'bg-[#8e8e93]/20 text-[#8e8e93]'
+                          }`}>
+                            {t.progress?.status || (typeof t.progress === 'string' ? t.progress : 'UNKNOWN')}
+                          </span>
+                        </div>
+                        {t.progress?.progress && (
+                          <div className="w-full bg-white/10 rounded-full h-1.5 mt-1">
+                            <div className="bg-[#0a84ff] h-1.5 rounded-full" style={{ width: `${Math.min(100, Math.max(0, parseInt(t.progress.progress)))}%` }}></div>
+                          </div>
+                        )}
+                        {t.progress?.progress && <span className="text-[9px] text-[#8e8e93] mt-1 text-right">{t.progress.progress}%</span>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
               <div className="bg-black border border-white/10 rounded-2xl p-5 h-[240px] flex flex-col shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
                 <h2 className="text-sm font-bold text-[#8e8e93] uppercase tracking-widest mb-3 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-[#30d158] animate-pulse" /> Terminal Logs
