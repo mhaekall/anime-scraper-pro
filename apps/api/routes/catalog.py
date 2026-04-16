@@ -294,7 +294,7 @@ async def get_episode_stream_v2(
         # Get mapping first
         from services.pipeline import get_provider_mappings
         from services.cache import upstash_del
-        from apps.api.services.stream_cache import CacheKey
+        from services.stream_cache import CacheKey
         mappings = await get_provider_mappings(anilist_id)
         for pid, slug in mappings.items():
             # Clear cache for all providers of this anime to force re-scrape
