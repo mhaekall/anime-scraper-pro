@@ -52,7 +52,7 @@ PROVIDERS = {
 
 # Priority when multiple providers have the same episode.
 # Lower number = higher priority.
-PROVIDER_PRIORITY = {"samehadaku": 1, "kuronime": 1, "otakudesu": 4, "doronime": 3, "oploverz": 2}
+PROVIDER_PRIORITY = {"kuronime": 1, "samehadaku": 2, "oploverz": 3, "doronime": 4, "otakudesu": 5}
 
 SOURCE_CACHE_HOURS = 6
 

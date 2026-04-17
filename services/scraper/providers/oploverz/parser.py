@@ -26,14 +26,18 @@ class OploverzParser(BaseParser):
         return {"episodes": sorted(episodes, key=lambda x: x["number"]),
                 "poster": None, "synopsis": ""}
 
-    def parse_episode_sources(self, html: str) -> list[EpisodeSource]:
+    def parse_episode_sources(self, html: str) -> dict:
         sources = []
+        downloads = []
         payload_match = re.search(
             r'kit\.start\(app,\s*element,\s*(\{.*?\})\);', html, re.DOTALL
         )
         if payload_match:
+            payload = payload_match.group(1)
+            
+            # Extract streams
             ep_match = re.search(
-                r'episode:\{.*?streamUrl:(\[.*?\])', payload_match.group(1), re.DOTALL
+                r'episode:\{.*?streamUrl:(\[.*?\])', payload, re.DOTALL
             )
             if ep_match:
                 for src, url in re.findall(
@@ -41,7 +45,30 @@ class OploverzParser(BaseParser):
                 ):
                     sources.append({"provider": src, "quality": "Auto",
                                     "url": url, "type": "iframe"})
-        return sources
+            
+            # Extract Pixeldrain downloads and add them as direct sources
+            # Format: quality:"720p",download_links:[{host:"Linkbox",url:"https://pixeldrain.com/u/..."}]
+            dl_section = re.finditer(r'quality:"([^"]+)",download_links:\[(.*?)\]', payload)
+            for match in dl_section:
+                quality = match.group(1)
+                links_block = match.group(2)
+                for host, url in re.findall(r'host:"([^"]+)",url:"([^"]+)"', links_block):
+                    if 'pixeldrain' in url.lower():
+                        # Convert to API url to bypass html page
+                        if "/u/" in url:
+                            file_id = url.split('/u/')[-1].split('?')[0]
+                            api_url = f"https://pixeldrain.com/api/file/{file_id}"
+                        else:
+                            api_url = url
+                        sources.append({
+                            "provider": "Pixeldrain (Oploverz)",
+                            "quality": quality,
+                            "url": api_url,
+                            "type": "direct"
+                        })
+                        
+        # Support dict return for new architecture while maintaining old list return support in provider
+        return {"sources": sources, "downloads": downloads}
 
     def parse_search_results(self, html: str) -> list[dict]:
         soup = BeautifulSoup(html, 'lxml')

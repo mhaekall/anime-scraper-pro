@@ -1,11 +1,18 @@
+import asyncio
 import os
-import httpx
-from dotenv import load_dotenv
+import hashlib
+import sys
 
-load_dotenv(".env")
-url = os.getenv("UPSTASH_REDIS_REST_URL").strip().strip('"')
-token = os.getenv("UPSTASH_REDIS_REST_TOKEN").strip().strip('"')
+sys.path.append(os.path.join(os.getcwd(), 'apps', 'api'))
+from services.cache import upstash_get
 
-# Fetch all keys starting with 'ingest'
-res = httpx.get(f"{url}/keys/ingest*", headers={"Authorization": f"Bearer {token}"})
-print(res.text)
+async def main():
+    url = 'https://kuronime.sbs/nonton-tensei-shitara-slime-datta-ken-episode-1/'
+    key = f'stream:v3:{hashlib.md5(url.encode()).hexdigest()}'
+    print(f"Checking Redis key: {key}")
+    val = await upstash_get(key)
+    import json
+    print(json.dumps(val, indent=2))
+
+if __name__ == "__main__":
+    asyncio.run(main())

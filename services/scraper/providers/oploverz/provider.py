@@ -15,7 +15,7 @@ class OploverzProvider(BaseProvider):
         html = await self._t.get_html(series_url)
         return self._p.parse_episode_list(html, BASE)
 
-    async def get_episode_sources(self, episode_url: str) -> list[EpisodeSource]:
+    async def get_episode_sources(self, episode_url: str):
         html = await self._t.get_html(episode_url)
         return self._p.parse_episode_sources(html)
 

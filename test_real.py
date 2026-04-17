@@ -1,43 +1,40 @@
-import httpx
+import asyncio
 import os
+import sys
+import json
+
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'apps', 'api'))
+
+from databases import Database
 from dotenv import load_dotenv
 
-# Load kredensial asli dari .env
 load_dotenv()
+db_url = os.getenv("DATABASE_URL")
+if db_url and db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+test_db = Database(db_url)
 
-QSTASH_TOKEN = os.getenv("QSTASH_TOKEN")
-HF_URL = "https://jonyyyyyyyu-anime-scraper-api.hf.space/api/v2/webhook/sync"
+# Monkeypatch
+import apps.api.db.connection as db_conn
+db_conn.database = test_db
+import apps.api.services.reconciler as rec_service
+rec_service.database = test_db
+import apps.api.services.db as db_service
+db_service.database = test_db
+import apps.api.services.pipeline as pipe_service
+pipe_service.database = test_db
+import apps.api.services.stream_cache as cache_service
+cache_service.database = test_db
 
-def trigger_real_sync(anilist_id):
-    print(f"🚀 Memasukkan perintah SYNC untuk Anilist ID: {anilist_id} ke antrean QStash...")
-    
-    headers = {
-        "Authorization": f"Bearer {QSTASH_TOKEN}",
-        "Content-Type": "application/json",
-        "Upstash-Method": "POST",
-    }
-    
-    payload = {"anilistId": anilist_id}
-    
-    # QStash API v2: Mengirim pesan ke URL tujuan
-    url = f"https://qstash.upstash.io/v2/publish/{HF_URL}"
-    
-    try:
-        response = httpx.post(url, headers=headers, json=payload)
-        if response.status_code == 201:
-            data = response.json()
-            print(f"✅ BERHASIL: Pesan dikirim ke QStash.")
-            print(f"📡 Message ID: {data.get('messageId')}")
-            print(f"🔗 Anda bisa cek statusnya di: https://console.upstash.com/qstash")
-        else:
-            print(f"❌ GAGAL: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"🚨 Error: {e}")
+from apps.api.services.stream_cache import stream_cache
+
+async def main():
+    await test_db.connect()
+    print("Testing get_stream for Tensura S1 Ep 1 directly from Kuronime via pipeline...")
+    # The mapping should be in DB now.
+    res = await cache_service.get_cached_stream(anilist_id=101280, ep_num=1.0)
+    print(json.dumps(res, indent=2))
+    await test_db.disconnect()
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1:
-        anilist_id = int(sys.argv[1])
-        trigger_real_sync(anilist_id)
-    else:
-        print("Penggunaan: python test_real.py <anilist_id>")
+    asyncio.run(main())

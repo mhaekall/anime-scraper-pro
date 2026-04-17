@@ -83,11 +83,11 @@ class Config:
 
     # Provider scrape priority (lower = preferred)
     PROVIDER_PRIORITY = {
-        "samehadaku": 1,
         "kuronime":   1,
-        "oploverz":   2,
-        "doronime":   3,
-        "otakudesu":  4,
+        "samehadaku": 2,
+        "oploverz":   3,
+        "doronime":   4,
+        "otakudesu":  5,
     }
 
     PROVIDERS = {
@@ -809,12 +809,12 @@ class StreamCacheEngine:
                 AND "providerId" != :failed
                 ORDER BY
                     CASE "providerId"
-                     WHEN 'samehadaku' THEN 1
                      WHEN 'kuronime'   THEN 1
-                     WHEN 'oploverz'   THEN 2
-                     WHEN 'doronime'   THEN 3
-                     WHEN 'otakudesu'  THEN 4
-                     ELSE 5
+                     WHEN 'samehadaku' THEN 2
+                     WHEN 'oploverz'   THEN 3
+                     WHEN 'doronime'   THEN 4
+                     WHEN 'otakudesu'  THEN 5
+                     ELSE 6
                     END ASC
                 LIMIT 3
                 """,
@@ -943,12 +943,12 @@ async def get_cached_stream(
         WHERE  "anilistId" = :aid AND "episodeNumber" = :ep
         ORDER BY
             CASE "providerId"
-             WHEN 'samehadaku' THEN 1
              WHEN 'kuronime'   THEN 1
-             WHEN 'oploverz'   THEN 2
-             WHEN 'doronime'   THEN 3
-             WHEN 'otakudesu'  THEN 4
-             ELSE 5
+             WHEN 'samehadaku' THEN 2
+             WHEN 'oploverz'   THEN 3
+             WHEN 'doronime'   THEN 4
+             WHEN 'otakudesu'  THEN 5
+             ELSE 6
             END ASC
         """,
         values={"aid": anilist_id, "ep": ep_num},

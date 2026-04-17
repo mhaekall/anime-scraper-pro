@@ -14,6 +14,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
   let recommendations: any[] = [];
   let title = `Episode ${episode}`;
   let poster = "";
+  let animeDetails: any = null;
 
   // Hanya ambil detail dulu (metadata ringan)
   // Stream di-fetch CLIENT-SIDE setelah mount
@@ -25,6 +26,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
     const data = await detailRes.json();
     const anime = data.data;
     if (anime) {
+      animeDetails = anime;
       title = anime.cleanTitle ?? anime.nativeTitle ?? title;
       poster = anime.coverImage ?? "";
       recommendations = anime.recommendations ?? [];
@@ -45,6 +47,7 @@ export default async function WatchPage({ params }: { params: Promise<{ id: stri
       sources={[]} 
       allEpisodes={allEpisodes} 
       recommendations={recommendations} 
+      animeDetails={animeDetails}
     />
   );
 }

@@ -1,31 +1,18 @@
-import httpx
-import json
-import time
+import asyncio
+import os
+import sys
 
-BASE_URL = "https://jonyyyyyyyu-anime-scraper-api.hf.space"
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'apps', 'api'))
+from apps.api.services.providers import otakudesu_provider, doronime_provider
 
-def test_endpoint(name, path):
-    url = f"{BASE_URL}{path}"
-    print(f"🔍 Mengetes {name}...")
-    try:
-        response = httpx.post(url)
-        status = response.status_code
-        print(f"📡 URL: {url}")
-        print(f"📡 Status Code: {status}")
-        
-        if status == 404:
-            print(f"❌ ERROR: Rute {path} benar-benar TIDAK DITEMUKAN (404).")
-        elif status == 500:
-            print(f"✅ TERDETEKSI: Rute {path} ADA, tapi error karena kita tidak mengirim data QStash yang sah (Ini Normal).")
-        elif status == 400 or status == 401:
-            print(f"✅ TERDETEKSI: Rute {path} ADA dan sistem keamanan (Security Guard) aktif.")
-        else:
-            print(f"❓ Info: Respons lain ({status})")
-    except Exception as e:
-        print(f"🚨 Error Koneksi: {e}")
+async def main():
+    print("Fetching otakudesu...")
+    det = await otakudesu_provider.get_anime_detail("https://otakudesu.cloud/anime/tensei-shitara-slime-datta-ken-sub-indo/")
+    print(det)
+            
+    print("\nFetching doronime...")
+    det2 = await doronime_provider.get_anime_detail("https://doronime.id/anime/tensei-shitara-slime-datta-ken/")
+    print(det2)
 
 if __name__ == "__main__":
-    print("⏳ Menjalankan Verifikasi Akhir Stack Backend...")
-    test_endpoint("Endpoint Prefetch", "/api/v2/webhook/prefetch")
-    print("-" * 30)
-    test_endpoint("Endpoint Ingestion Workflow", "/api/v2/webhook/ingest-workflow")
+    asyncio.run(main())

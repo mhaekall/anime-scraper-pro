@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from db.connection import database
 from db.models import comments, users, comment_reactions, follows, watch_events, watch_history
-from sqlalchemy import select, insert, func, update
+from sqlalchemy import select, insert, func, update, and_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 router = APIRouter()
@@ -55,84 +55,63 @@ async def get_progress(user_id: str, anilistId: Optional[int] = None):
 
 @router.post("/progress")
 async def save_progress(prog: ProgressUpdate):
-    # Ensure user exists (BetterAuth dummy sync)
-    upsert_user = pg_insert(users).values(
-        id=prog.user_id, 
-        username=f"user_{prog.user_id[:5]}"
-    ).on_conflict_do_nothing()
+    upsert_user = pg_insert(users).values(id=prog.user_id, username=f"user_{prog.user_id[-4:]}").on_conflict_do_nothing()
     await database.execute(upsert_user)
     
-    # Upsert Progress
-    stmt = pg_insert(watch_history).values(
-        **prog.dict()
-    ).on_conflict_do_update(
+    stmt = pg_insert(watch_history).values(**prog.dict()).on_conflict_do_update(
         index_elements=["user_id", "anilistId", "episodeNumber"],
-        set_={
-            "progressSeconds": prog.progressSeconds,
-            "durationSeconds": prog.durationSeconds,
-            "isCompleted": prog.isCompleted,
-            "updatedAt": func.now()
-        }
+        set_={"progressSeconds": prog.progressSeconds, "durationSeconds": prog.durationSeconds, "isCompleted": prog.isCompleted, "updatedAt": func.now()}
     )
     await database.execute(stmt)
-    return {"success": True, "progress": prog.progressSeconds}
+    return {"success": True}
 
 # --- Comments ---
 @router.get("/comments")
-async def get_comments(anilistId: int, episodeNumber: float):
-    reactions_sub = select(func.count()).where(comment_reactions.c.comment_id == comments.c.id).scalar_subquery()
+async def get_comments(anilistId: int, episodeNumber: float, sort_by: str = "newest", parent_id: Optional[int] = None):
+    replies_alias = comments.alias()
+    replies_sub = select(func.count()).where(replies_alias.c.parent_id == comments.c.id).scalar_subquery()
+    
+    reactions_alias = comment_reactions.alias()
+    reactions_sub = select(func.count()).where(reactions_alias.c.comment_id == comments.c.id).scalar_subquery()
+    
     query = select(
-        comments,
-        users.c.username,
-        users.c.avatar,
-        reactions_sub.label("reactions")
-    ).select_from(
-        comments.outerjoin(users, comments.c.user_id == users.c.id)
-    ).where(
-        (comments.c.anilistId == anilistId) & 
-        (comments.c.episodeNumber == episodeNumber)
-    ).order_by(comments.c.created_at.desc())
+        comments, users.c.username, users.c.avatar,
+        reactions_sub.label("reactions"), replies_sub.label("reply_count")
+    ).select_from(comments.outerjoin(users, comments.c.user_id == users.c.id)).where(
+        (comments.c.anilistId == anilistId) & (comments.c.episodeNumber == episodeNumber)
+    )
+    
+    if parent_id is not None: query = query.where(comments.c.parent_id == parent_id)
+    else: query = query.where(comments.c.parent_id.is_(None))
+        
+    if sort_by == "top": query = query.order_by(reactions_sub.desc(), comments.c.created_at.desc())
+    else: query = query.order_by(comments.c.created_at.desc())
     
     rows = await database.fetch_all(query=query)
     return [dict(row) for row in rows]
 
 @router.post("/comments")
 async def create_comment(comment: CommentCreate):
-    # Ensure user exists before adding comment (upsert dummy user for MVP)
-    upsert_user = pg_insert(users).values(
-        id=comment.user_id, 
-        username=f"user_{comment.user_id[:5]}"
-    ).on_conflict_do_nothing()
+    upsert_user = pg_insert(users).values(id=comment.user_id, username=f"user_{comment.user_id[-4:]}").on_conflict_do_nothing()
     await database.execute(upsert_user)
-    
-    insert_comment = insert(comments).values(**comment.dict()).returning(comments.c.id)
-    record_id = await database.execute(insert_comment)
+    insert_stmt = insert(comments).values(**comment.dict()).returning(comments.c.id)
+    record_id = await database.execute(insert_stmt)
     return {"id": record_id, "success": True}
 
-# --- Reactions ---
 @router.post("/reactions")
 async def create_reaction(reaction: ReactionCreate):
-    insert_reaction = pg_insert(comment_reactions).values(**reaction.dict()).on_conflict_do_nothing()
-    await database.execute(insert_reaction)
+    await database.execute(pg_insert(comment_reactions).values(**reaction.dict()).on_conflict_do_nothing())
     return {"success": True}
 
-# --- Follows ---
+# --- Follows & Events ---
 @router.post("/follows")
 async def follow_user(follow: FollowCreate):
-    insert_follow = pg_insert(follows).values(**follow.dict()).on_conflict_do_nothing()
-    await database.execute(insert_follow)
+    await database.execute(pg_insert(follows).values(**follow.dict()).on_conflict_do_nothing())
     return {"success": True}
 
-# --- Watch Events ---
 @router.post("/events")
 async def track_event(event: WatchEventCreate):
-    # Upsert user if needed
-    upsert_user = pg_insert(users).values(
-        id=event.user_id, 
-        username=f"user_{event.user_id[:5]}"
-    ).on_conflict_do_nothing()
+    upsert_user = pg_insert(users).values(id=event.user_id, username=f"user_{event.user_id[-4:]}").on_conflict_do_nothing()
     await database.execute(upsert_user)
-    
-    insert_event = insert(watch_events).values(**event.dict())
-    await database.execute(insert_event)
+    await database.execute(insert(watch_events).values(**event.dict()))
     return {"success": True}

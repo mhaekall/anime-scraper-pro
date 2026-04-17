@@ -7,22 +7,29 @@ interface AutoNextOverlayProps {
   nextEpisodeTitle: string;
   nextThumbnail?: string;
   onCancel: () => void;
+  onPlayNow?: () => void; // Optional function for smooth nav
   isLastEpisode: boolean;
 }
 
-export function AutoNextOverlay({ nextEpisodeUrl, nextEpisodeTitle, nextThumbnail, onCancel, isLastEpisode }: AutoNextOverlayProps) {
+export function AutoNextOverlay({ nextEpisodeUrl, nextEpisodeTitle, nextThumbnail, onCancel, onPlayNow, isLastEpisode }: AutoNextOverlayProps) {
   const [countdown, setCountdown] = useState(10);
   const router = useRouter();
 
   useEffect(() => {
     if (isLastEpisode) return;
     if (countdown === 0) {
-      router.push(nextEpisodeUrl);
+      if (onPlayNow) onPlayNow();
+      else router.push(nextEpisodeUrl);
       return;
     }
     const timer = setInterval(() => setCountdown(c => c - 1), 1000);
     return () => clearInterval(timer);
-  }, [countdown, nextEpisodeUrl, router, isLastEpisode]);
+  }, [countdown, nextEpisodeUrl, router, isLastEpisode, onPlayNow]);
+
+  const handlePlayNow = () => {
+    if (onPlayNow) onPlayNow();
+    else router.push(nextEpisodeUrl);
+  };
 
   return (
     <div className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300">
@@ -56,7 +63,7 @@ export function AutoNextOverlay({ nextEpisodeUrl, nextEpisodeTitle, nextThumbnai
           </div>
 
           <div className="flex gap-4">
-            <button onClick={() => router.push(nextEpisodeUrl)} className="px-8 py-3 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
+            <button onClick={handlePlayNow} className="px-8 py-3 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform">
               Putar Sekarang
             </button>
             <button onClick={onCancel} className="px-8 py-3 bg-[#1c1c1e] text-white font-bold rounded-full border border-white/20 hover:bg-white/10 transition-colors">

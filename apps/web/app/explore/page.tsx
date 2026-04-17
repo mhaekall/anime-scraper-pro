@@ -1,6 +1,9 @@
 import ExploreView from "@/features/explore/ExploreView";
 import { api } from "@/core/lib/api";
 
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
+
 const SEARCH_Q = `
   query ($search: String, $page: Int, $perPage: Int, $genres: [String], $sort: [MediaSort]) {
     Page(page: $page, perPage: $perPage) {
@@ -11,8 +14,6 @@ const SEARCH_Q = `
     }
   }
 `;
-
-export const revalidate = 60;
 
 export default async function Page() {
   let initialResults = [];
@@ -38,4 +39,3 @@ export default async function Page() {
 
   return <ExploreView initialResults={initialResults} />;
 }
-

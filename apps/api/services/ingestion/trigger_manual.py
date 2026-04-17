@@ -2,14 +2,13 @@ import asyncio
 import os
 import sys
 
-# Insert root dir to sys.path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(1, os.path.join(os.path.dirname(os.path.abspath(__file__)), "apps", "api"))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../apps/api')))
 
 from databases import Database
 from dotenv import load_dotenv
 
-load_dotenv("apps/api/.env")
+load_dotenv("../../apps/api/.env")
 db_url = os.getenv("DATABASE_URL")
 if db_url and db_url.startswith("postgresql://"):
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)

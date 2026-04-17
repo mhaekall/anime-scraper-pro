@@ -27,17 +27,20 @@ interface Props {
   sources: any[];
   allEpisodes: any[];
   recommendations?: any[];
+  animeDetails?: any;
 }
 
-export default function WatchClient({ id, episode, title, poster, sources: initialSources, allEpisodes, recommendations = [] }: Props) {
+export default function WatchClient({ id, episode: initialEpisode, title, poster, sources: initialSources, allEpisodes, recommendations = [], animeDetails }: Props) {
   const router = useRouter();
+  const [activeEpisode, setActiveEpisode] = useState(initialEpisode);
   const [showAutoNext, setShowAutoNext] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [showAllEpisodes, setShowAllEpisodes] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(0);
   const [views] = useState(0);
-  const epNum = parseFloat(episode) || 1;
+  const epNum = parseFloat(activeEpisode) || 1;
+  const [mounted, setMounted] = useState(false);
   const [showSynopsis, setShowSynopsis] = useState(false);
 
   const { items, toggle } = useWatchlist();
@@ -50,7 +53,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: `${title} - Episode ${episode}`,
+        title: `${title} - Episode ${activeEpisode}`,
         url: window.location.href
       }).catch(console.error);
     } else {
@@ -64,31 +67,47 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
     setLikes(prev => liked ? prev - 1 : prev + 1);
   };
 
-  // Fetch stream secara async setelah halaman render
-  const { data: streamData, isLoading: streamLoading, mutate } = useSWR(
-    `stream-${id}-${episode}`,
-    async () => {
-      const res = await fetch(`${API}/api/v2/anime/${id}/episodes/${episode}/stream`);
-      if (!res.ok) {
-        const error = new Error('An error occurred while fetching the data.') as any;
-        error.status = res.status;
-        throw error;
-      }
-      return res.json();
-    },
-    {
-      revalidateOnFocus: true,
-      revalidateIfStale: true,
-      dedupingInterval: 60000, // Cache 1 menit
-      onError: (err) => {
-        if (err.status === 403 || err.status === 410) {
-          mutate(); // Force revalidate if expired
-        }
+  // Scroll current episode into view on mount
+  const epsContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showAllEpisodes) {
+      const activeEp = epsContainerRef.current?.querySelector('[data-active="true"]');
+      if (activeEp) {
+        activeEp.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       }
     }
+  }, [showAllEpisodes, activeEpisode]);
+
+  // Sync state dengan prop (misal jika user klik back button)
+  useEffect(() => {
+    setActiveEpisode(initialEpisode);
+  }, [initialEpisode]);
+
+  const handleEpisodeChange = (newEp: string) => {
+    if (newEp === activeEpisode) return;
+    
+    // Update State (Instan)
+    setActiveEpisode(newEp);
+    setShowAutoNext(false);
+    setCurrentTime(0);
+    
+    // Update URL secara silent (tanpa reload halaman/RSC fetch)
+    const newPath = `/watch/${id}/${newEp}`;
+    window.history.pushState({ ...window.history.state, as: newPath, url: newPath }, '', newPath);
+  };
+
+  // Fetch stream secara async berbasis activeEpisode
+  const { data: streamData, isLoading: streamLoading, mutate } = useSWR(
+    `stream-${id}-${activeEpisode}`,
+    async () => {
+      const res = await fetch(`${API}/api/v2/anime/${id}/episodes/${activeEpisode}/stream`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
-  const sources = streamData?.sources ?? initialSources;
+  const sources = streamData?.sources ?? (activeEpisode === initialEpisode ? initialSources : []);
   const downloads = streamData?.downloads ?? [];
 
   // Assuming episodes are sorted ascending by number
@@ -101,17 +120,6 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
     if (v) v.currentTime = time;
   };
 
-  // Scroll current episode into view on mount
-  const epsContainerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!showAllEpisodes) {
-      const activeEp = epsContainerRef.current?.querySelector('[data-active="true"]');
-      if (activeEp) {
-        activeEp.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      }
-    }
-  }, [showAllEpisodes]);
-
   return (
     <div className="w-full min-h-[100dvh] bg-black flex flex-col anim-fade items-center">
       
@@ -121,7 +129,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
         <div className="relative w-full aspect-video flex flex-col justify-center min-h-0 bg-black overflow-hidden">
           <VideoPlayer 
             anilistId={parseInt(id, 10)}
-            title={`${title} - Eps ${episode}`} 
+            title={`${title} - Eps ${activeEpisode}`} 
             poster={poster} 
             sources={sources} 
             animeSlug={id} 
@@ -129,6 +137,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
             onRequireAutoNext={() => setShowAutoNext(true)} 
             onTimeUpdate={setCurrentTime}
             isLoadingSources={streamLoading && sources.length === 0}
+            key={`player-${id}-${activeEpisode}`} // Force re-mount player for clean state
           />
           
           {showAutoNext && nextEp && (
@@ -138,6 +147,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
               nextThumbnail={nextEp.thumbnailUrl || poster}
               isLastEpisode={false}
               onCancel={() => setShowAutoNext(false)}
+              onPlayNow={() => handleEpisodeChange(String(nextEp.number))}
             />
           )}
           {showAutoNext && !nextEp && (
@@ -161,7 +171,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
             <div className="flex items-center gap-3">
               <span className="text-[#8e8e93] font-medium text-sm">{views}K views</span>
               <span className="w-1 h-1 rounded-full bg-[#8e8e93]" />
-              <span className="text-[#0a84ff] font-bold text-sm bg-[#0a84ff]/10 px-2 py-0.5 rounded-md">Episode {episode}</span>
+              <span className="text-[#0a84ff] font-bold text-sm bg-[#0a84ff]/10 px-2 py-0.5 rounded-md">Episode {activeEpisode}</span>
             </div>
             
             {/* Action Buttons (YouTube Style) */}
@@ -203,23 +213,6 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
           </div>
         </div>
 
-        {/* Synopsis & Metadata Box */}
-        <div 
-          onClick={() => setShowSynopsis(!showSynopsis)}
-          className={`bg-[#1c1c1e] rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors ${showSynopsis ? '' : 'line-clamp-2'}`}
-        >
-          <div className="text-sm text-[#e5e5ea] leading-relaxed">
-            <span className="font-bold mr-2 text-white">Detail Anime:</span>
-            Nikmati tontonan ini dengan kualitas terbaik. Jika ada masalah video, silakan ganti server atau resolusi melalui tombol pengaturan di pojok kanan bawah video player.
-          </div>
-          {showSynopsis && (
-            <div className="mt-3 pt-3 border-t border-white/5 flex gap-4 text-xs text-[#8e8e93]">
-              <div><span className="font-bold text-[#d1d1d6]">Studio:</span> Unknown</div>
-              <div><span className="font-bold text-[#d1d1d6]">Tahun:</span> 2026</div>
-            </div>
-          )}
-        </div>
-
         {/* Episode List */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -237,11 +230,9 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
               {sortedEpisodes.map(ep => {
                 const isActive = ep.number === epNum;
                 return (
-                  <Link 
+                  <button 
                     key={ep.number} 
-                    href={`/watch/${id}/${ep.number}`}
-                    replace
-                    prefetch={false}
+                    onClick={() => handleEpisodeChange(String(ep.number))}
                     className={`flex items-center justify-center w-full aspect-square rounded-[10px] border text-[14px] font-bold transition-all ${
                       isActive 
                         ? "bg-white text-black border-white shadow-[0_0_12px_rgba(255,255,255,0.2)]" 
@@ -249,7 +240,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
                     }`}
                   >
                     {ep.number}
-                  </Link>
+                  </button>
                 )
               })}
             </div>
@@ -258,13 +249,10 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
               {sortedEpisodes.map(ep => {
                 const isActive = ep.number === epNum;
                 return (
-                  <Link 
-
+                  <button 
                     key={ep.number} 
-                    href={`/watch/${id}/${ep.number}`}
+                    onClick={() => handleEpisodeChange(String(ep.number))}
                     data-active={isActive}
-                    replace
-                    prefetch={false}
                     className={`shrink-0 flex items-center justify-center min-w-[64px] px-4 h-12 rounded-[14px] border text-[15px] font-bold transition-all snap-start ${
                       isActive 
                         ? "bg-white text-black border-white shadow-[0_0_12px_rgba(255,255,255,0.2)]" 
@@ -273,7 +261,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
                   >
                     {isActive && <IconPlay className="w-4 h-4 text-black mr-1 -ml-1 fill-black" />}
                     {ep.number}
-                  </Link>
+                  </button>
                 )
               })}
             </div>
@@ -283,7 +271,7 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
         {/* Comments Section (YouTube Style) */}
         <div className="pt-4 border-t border-[#2c2c2e]/50">
           <h3 className="text-white font-bold text-base md:text-lg mb-4 tracking-tight">Komentar</h3>
-          <CommentSection anilistId={id} episode={episode} currentTime={currentTime} onSeek={handleSeek} />
+          <CommentSection anilistId={id} episode={activeEpisode} currentTime={currentTime} onSeek={handleSeek} />
         </div>
 
         {/* Recommendations (Horizontal Scroll) */}
@@ -291,18 +279,34 @@ export default function WatchClient({ id, episode, title, poster, sources: initi
           <h3 className="text-white font-bold text-base md:text-lg tracking-tight">Rekomendasi</h3>
           {recommendations && recommendations.length > 0 ? (
             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 snap-x">
-              {recommendations.slice(0, 10).map(rec => (
-                <Link key={rec.id || rec.node?.id} href={`/anime/${rec.id || rec.node?.id}`} className="block group shrink-0 w-[140px] md:w-[160px] snap-start">
-                  <div className="aspect-[3/4] bg-[#1c1c1e] rounded-xl overflow-hidden relative shadow-md">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={rec.coverImage?.extraLarge || rec.coverImage?.large || rec.node?.coverImage?.large || poster} alt={rec.title?.userPreferred || rec.node?.title?.userPreferred || "Anime"} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    <div className="absolute bottom-0 inset-x-0 p-2.5">
-                      <p className="text-white font-bold text-[12px] leading-tight line-clamp-2">{rec.title?.userPreferred || rec.title?.english || rec.node?.title?.userPreferred || "Anime"}</p>
+              {recommendations.slice(0, 10).map(rec => {
+                const recImage = rec.cover || rec.image;
+                const recTitle = typeof rec.title === 'string' ? rec.title : (rec.title?.userPreferred || rec.title?.english || "Anime");
+                
+                return (
+                  <Link key={rec.id} href={`/anime/${rec.id}`} className="block group shrink-0 w-[140px] md:w-[160px] snap-start">
+                    <div className="aspect-[3/4] bg-[#1c1c1e] rounded-xl overflow-hidden relative shadow-md">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {recImage ? (
+                        <img 
+                          src={recImage} 
+                          alt={recTitle} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#2c2c2e] flex items-center justify-center text-[10px] text-[#8e8e93] p-4 text-center">
+                          {recTitle}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      <div className="absolute bottom-0 inset-x-0 p-2.5">
+                        <p className="text-white font-bold text-[12px] leading-tight line-clamp-2">{recTitle}</p>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <div className="text-[#8e8e93] text-sm">Belum ada rekomendasi.</div>
