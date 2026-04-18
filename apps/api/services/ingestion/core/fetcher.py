@@ -25,22 +25,44 @@ class VideoFetcher:
             return output_path
 
         try:
-            # We use ffmpeg to download.
-            referer = f"https://{provider_id}.com" if provider_id else "https://v2.samehadaku.how/"
-            if "wibufile" in url or "samehadaku" in provider_id:
-                referer = "https://v2.samehadaku.how/"
-            elif "mp4upload" in url:
-                referer = "https://www.mp4upload.com/"
-                
-            headers = f"Referer: {referer}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
-            
+            # --- ADVANCED HEADER SPOOFING ---
+            import random
+
+            # Mimic real browser behavior
+            user_agents = [
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            ]
+
+            # Generate a fake internal IP to try and confuse simple load balancers
+            fake_ip = f"{random.randint(1,254)}.{random.randint(1,254)}.{random.randint(1,254)}.{random.randint(1,254)}"
+
+            h = {
+                "User-Agent": random.choice(user_agents),
+                "Accept": "*/*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": "https://pixeldrain.com/",
+                "Origin": "https://pixeldrain.com",
+                "DNT": "1",
+                "Connection": "keep-alive",
+                "Sec-Fetch-Dest": "video",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-site",
+                "X-Forwarded-For": fake_ip,
+                "X-Real-IP": fake_ip
+            }
+
+            # Convert dict to FFmpeg header string
+            headers_str = "".join([f"{k}: {v}\r\n" for k, v in h.items()])
+
             command = [
                 "ffmpeg",
-                "-y", # Overwrite output files without asking
-                "-headers", headers,
+                "-y",
+                "-headers", headers_str,
                 "-i", url,
-                "-c", "copy", # Copy codec without re-encoding
-                "-bsf:a", "aac_adtstoasc", # Fix AAC bitstream for mpegts to mp4 if needed
+                "-c", "copy",
+                "-bsf:a", "aac_adtstoasc",
                 output_path
             ]
             
