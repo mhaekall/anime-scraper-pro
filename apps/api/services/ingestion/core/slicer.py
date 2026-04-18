@@ -46,6 +46,8 @@ class VideoSlicer:
                 "-headers", headers,
                 "-err_detect", "ignore_err",
                 "-i", url,
+                "-map", "0:v:0",
+                "-map", "0:a:0",
                 "-c", "copy",
                 "-bsf:a", "aac_adtstoasc",
                 "-f", "hls",
