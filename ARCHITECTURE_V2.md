@@ -1,14 +1,15 @@
 # 🏗️ Arsitektur Sistem: anime-scraper-pro (V2.0)
 
-Dokumen ini memetakan seluruh ekosistem teknis, infrastruktur, dan filosofi pengembangan proyek **anime-scraper-pro**. Dirancang dengan prinsip **Efficiency-First** dan **Apple Human Interface Guidelines (HIG)**.
+Dokumen ini memetakan seluruh ekosistem teknis, infrastruktur, dan filosofi pengembangan proyek **anime-scraper-pro**. Dirancang dengan prinsip **Efficiency-First**, **$0 Cost Infrastructure**, dan **Apple Human Interface Guidelines (HIG)**.
 
 ---
 
 ## 1. 🚀 Core Philosophy
 - **Agentic Loops:** Menggunakan Gemini CLI sebagai orkestrator utama untuk melakukan *Analyze, Summarize, & Transform*.
-- **Source-First Strategy:** Data metadata (AniList) hanya ditampilkan jika sumber video (Oploverz/Otakudesu/Doronime) dipastikan ada (Verified Existence).
-- **Hybrid Edge/Cloud:** Memisahkan beban berat (Scraping) di Cloud (HF Spaces) dan penyajian cepat (UI) di Edge (Cloudflare).
-- **Zero Pop-Up UX:** Mengutamakan ekstraksi link mentah (.m3u8/.mp4) atau Proxy Iframe untuk pengalaman menonton tanpa iklan.
+- **Source-First Strategy:** Data metadata (AniList) hanya ditampilkan jika sumber video (Oploverz/Kuronime/Samehadaku) dipastikan ada (Verified Existence).
+- **Strict Direct Stream (No Iframe):** Mengutamakan ekstraksi link mentah (.m3u8/.mp4) untuk pengalaman menonton tanpa iklan. Iframe fallback ditiadakan demi menjaga kualitas *Enterprise*.
+- **Hybrid Distributed Workers:** Menggunakan pendekatan *Zigzag Multitasking* (Lokal + Cloud Hugging Face) untuk mempercepat proses *Ingestion* tanpa membebani satu server.
+- **Fail-Fast & Resilient:** Menggunakan *Exponential Backoff* saat menghadapi *Rate Limit* Telegram (Error 429) dan *Delay Queue* (Upstash QStash) untuk pemrosesan sekuensial yang aman.
 
 ---
 
@@ -16,56 +17,56 @@ Dokumen ini memetakan seluruh ekosistem teknis, infrastruktur, dan filosofi peng
 
 | Layer | Teknologi | Peran Utama |
 | :--- | :--- | :--- |
-| **Frontend** | Next.js 15 (App Router) | UI Premium (Apple Style), Edge Rendering. |
+| **Frontend** | Next.js 15 (App Router) | UI Premium (Apple Style), Edge Rendering, Multi-Resolution Player. |
 | **Backend** | FastAPI (Python 3.11) | Aggregator Logic, Scraper Engine, Resolver. |
-| **Database** | Upstash Redis (Global) | State Management, Home Data Cache, Dist. Locking. |
-| **Metadata** | AniList GraphQL API | HD Posters, Banners, Scores, & Recommendations. |
-| **Auth** | BetterAuth + Google OAuth | Manajemen user & sinkronisasi Watch History. |
-| **Deployment** | Cloudflare Pages/Workers | Host Frontend (Edge Runtime). |
-| **Runner** | Hugging Face Spaces (Docker) | Host Backend Scraper 24/7 (Free Tier). |
+| **Database** | Upstash Redis & Neon Postgres | State Management, Home Data Cache, Dist. Locking, Episodes DB. |
+| **Storage** | Telegram Swarm Storage | *Unlimited $0 Object Storage* untuk segmen HLS (.ts). |
+| **Queue** | Upstash QStash | Manajemen antrean *Ingestion* dengan fitur *Delayed Delivery*. |
+| **Deployment** | Cloudflare Pages/Workers | Host Frontend (Edge Runtime) & Proxy Telegram (`tg-proxy`). |
+| **Runner** | Hugging Face Spaces (Docker) | Host Backend Scraper & Cloud Ingestion Worker 24/7 (Free Tier). |
 
 ---
 
 ## 3. 🐳 Hugging Face Infrastructure (Backend)
 Backend dijalankan menggunakan **Docker** di Hugging Face Spaces untuk stabilitas 24/7.
 - **Port:** `7860` (Standar HF Spaces).
-- **Background Cron:** Menjalankan `background_scrape_job` setiap 1 jam untuk memperbarui data center.
-- **SSRF Guard:** Perlindungan tingkat lanjut untuk mencegah scraper disalahgunakan di infrastruktur cloud.
+- **Background Queue:** Menerima *webhook* dari QStash secara sekuensial (dengan jeda waktu misal 15 menit per tugas) untuk mencegah OOM (Out of Memory).
+- **Pixeldrain Auto-Hunter:** Secara otomatis membongkar halaman *download* *provider* (seperti Oploverz) untuk mencari link Pixeldrain beresolusi 720p/1080p sebagai bahan baku *Ingestion* yang paling stabil (bebas IP Lock/CORS).
 
 ---
 
-## 4. 🔗 Data Flow & Architecture
+## 4. 🔗 Data Flow & Architecture (Swarm Ingestion)
 ```mermaid
 graph TD
-    A[Provider: Oploverz/Kuronime/Samehadaku] -->|Raw HTML / Iframe| B(Backend: Python Extractor)
-    B -->|Direct URL Extracted| C{Already in Telegram?}
+    A[Provider: Oploverz/Kuronime] -->|Pixeldrain Auto-Hunter| B(Backend: Python Extractor)
+    B -->|Direct MP4 URL Extracted| C{Already in Telegram?}
     C -->|Yes| D[Return Cloudflare Proxy URL]
-    C -->|No| E[Return Direct URL + Trigger QStash]
-    E --> F[User Plays Video Instantly]
-    E -->|Background| G[QStash Calls Webhook]
-    G --> H[Hugging Face: Download & Slice MP4 to HLS]
-    H -->|Parallel Upload| I[Telegram Swarm Storage]
-    I -->|Update DB| J[Next User Gets Proxy URL 0ms Latency]
+    C -->|No| E[Trigger QStash with 15m Delay]
+    E --> F[Hugging Face / Local Worker: Download & Slice MP4 to HLS]
+    F -->|Upload Segments 3 Workers| G[Telegram Swarm Storage]
+    G -->|Master Playlist Created| H[Update Postgres DB]
+    H --> I[Next User Gets Proxy URL 0ms Latency]
 ```
 
 ---
 
 ## 5. 🗺️ Pemetaan Folder Inti
-- `/backend`: Mesin utama Python.
-    - `/providers`: Logika spesifik sumber (Oploverz, Otakudesu, Doronime).
-    - `/utils`: Fitur keamanan (SSRF) dan sinkronisasi (Distributed Lock).
-- `/frontend`: Antarmuka Next.js.
-    - `/app`: Rute API Edge dan View (Home, Watch, Detail).
-    - `/components`: Komponen UI minimalis (Apple Style).
-- `/roadmap`: Strategi pengembangan jangka panjang.
+- `apps/api`: Mesin utama Python (FastAPI).
+    - `services/providers`: Logika spesifik sumber (Oploverz, Otakudesu, Kuronime, Samehadaku, dll).
+    - `services/ingestion`: Mesin Pemotong (FFmpeg Slicer) dan Pengunggah (Telegram Uploader).
+    - `routes`: Endpoint API (termasuk webhook QStash).
+- `apps/web`: Antarmuka Next.js.
+    - `app`: Rute UI (Home, Watch, Detail).
+    - `ui/player`: Komponen VideoPlayer canggih pendukung HLS.js dan *Multi-Resolution Switcher*.
+- `archive`: Kumpulan skrip *debugging*, injeksi manual, dan *testing* yang diarsipkan agar *root directory* tetap bersih.
 
 ---
 
 ## 6. 📅 Future Expansion
-1. **Fully Multi-Source Discovery:** Mengaktifkan pencarian simultan dari Doronime untuk redundansi data.
-2. **Universal Iframe Sanitizer:** Proxy Python untuk membersihkan iklan dari iframe pihak ketiga secara dinamis.
-3. **AI-Powered Repair:** Script otomatis untuk memperbaiki scraper jika struktur HTML sumber berubah.
+1. **P2P WebRTC (p2p-media-loader):** Meringankan beban *bandwidth* Cloudflare Worker dengan membuat penonton saling berbagi segmen video.
+2. **Multi-Season Auto-Hunter:** Memperluas skrip otomatis pencari Pixeldrain untuk Season 2, Season 3, dan judul anime besar lainnya.
+3. **Adaptive Bitrate (ABR) Master Playlist:** Menjahit resolusi 1080p, 720p, dan 480p ke dalam satu file `.m3u8` jika server mendapatkan *upgrade* CPU.
 
 ---
-*Last Updated: Monday, April 6, 2026*
+*Last Updated: Today*
 *Author: Gemini CLI x Developer*
