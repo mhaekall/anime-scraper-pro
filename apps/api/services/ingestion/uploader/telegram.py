@@ -15,27 +15,46 @@ logger = logging.getLogger(__name__)
 # 4. Extract 'file_id' from the response.
 # 5. The Cloudflare Worker proxy will stream the file by its 'file_id' via the getFile API.
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-# Proxy endpoint configured on Cloudflare worker that serves file_id directly
-PROXY_BASE_URL = os.environ["TG_PROXY_BASE_URL"]
+# Pool of bots for load balancing and avoiding Rate Limits
+# Format: {"token": "BOT_TOKEN", "proxy": "PROXY_URL"}
+BOT_POOL = [
+    {
+        "token": os.getenv("TELEGRAM_BOT_TOKEN"),
+        "proxy": os.getenv("TG_PROXY_BASE_URL", "").rstrip("/")
+    },
+    {
+        "token": "8743346873:AAEUONWv2fRkfgHNxr361_cCscwHDsH4ONI",
+        "proxy": "https://tg-proxy-2.moehamadhkl.workers.dev"
+    }
+]
 
 class TelegramUploader:
     def __init__(self):
-        self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = os.getenv("TELEGRAM_CHAT_ID")
-        if not self.bot_token or not self.chat_id:
-            logger.warning("TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set. Uploader will fail.")
+        self.bot_pool = [b for b in BOT_POOL if b.get("token") and b.get("proxy")]
+        
+        if not self.bot_pool:
+            logger.warning("No valid bot tokens and proxies found in BOT_POOL. Uploader will fail.")
+        if not self.chat_id:
+            logger.warning("TELEGRAM_CHAT_ID not set. Uploader will fail.")
 
     async def upload_file(self, file_path: str, max_retries: int = 3) -> Optional[str]:
         """
-        Uploads a single file to Telegram with retries and exponential backoff.
+        Uploads a single file to Telegram using a random bot from the pool.
+        Returns the full proxy URL (proxy_url + file_id) if successful.
         """
+        if not self.bot_pool:
+            return None
+            
+        bot = random.choice(self.bot_pool)
+        bot_token = bot["token"]
+        proxy_url = bot["proxy"]
+
         file_size = os.path.getsize(file_path)
         endpoint = "sendVideo" if file_size > 10_000_000 else "sendDocument"
-        url = f"https://api.telegram.org/bot{self.bot_token}/{endpoint}"
+        url = f"https://api.telegram.org/bot{bot_token}/{endpoint}"
         
-        logger.info(f"Uploading {file_path} to Telegram (using {endpoint})...")
+        logger.info(f"Uploading {os.path.basename(file_path)} via {proxy_url.split('//')[-1].split('.')[0]}...")
         
         for attempt in range(max_retries):
             try:
@@ -49,24 +68,30 @@ class TelegramUploader:
                         
                         if response.status_code == 200:
                             resp_json = response.json()
+                            file_id = None
                             if "document" in resp_json.get("result", {}):
-                                return resp_json["result"]["document"]["file_id"]
+                                file_id = resp_json["result"]["document"]["file_id"]
                             elif "video" in resp_json.get("result", {}):
-                                return resp_json["result"]["video"]["file_id"]
+                                file_id = resp_json["result"]["video"]["file_id"]
+                                
+                            if file_id:
+                                # Return full proxy URL instead of just file_id
+                                return f"{proxy_url}/{file_id}"
+                                
                         elif response.status_code == 429:
                             # Too Many Requests
                             retry_after = response.json().get("parameters", {}).get("retry_after", 2 ** attempt)
                             wait = retry_after + random.uniform(0, 1)
-                            logger.warning(f"Rate limited (429) for {file_path}, waiting {wait:.1f}s")
+                            logger.warning(f"Rate limited (429) for {os.path.basename(file_path)}, waiting {wait:.1f}s")
                             await asyncio.sleep(wait)
                             continue
                         else:
-                            logger.error(f"Failed to upload {file_path}. HTTP {response.status_code}: {response.text}")
+                            logger.error(f"Failed to upload {os.path.basename(file_path)}. HTTP {response.status_code}: {response.text}")
             except Exception as e:
                 logger.error(f"Exception during Telegram upload (attempt {attempt+1}): {str(e)}")
             
             wait = 2 ** attempt + random.uniform(0, 1)
-            logger.warning(f"Upload retry {attempt+1} for {file_path}, waiting {wait:.1f}s")
+            logger.warning(f"Upload retry {attempt+1} for {os.path.basename(file_path)}, waiting {wait:.1f}s")
             await asyncio.sleep(wait)
 
         return None
@@ -131,7 +156,7 @@ class TelegramUploader:
 
             segment_path = os.path.join(hls_dir, line)
             if not os.path.exists(segment_path):
-                logger.error(f"Segment missing locally: {segment_path}")
+                logger.error(f"Segment missing locally: {os.path.basename(segment_path)}")
                 return index, None
             
             async with semaphore:
@@ -174,12 +199,18 @@ class TelegramUploader:
             return None
 
         new_lines = []
+        # Fallback proxy for backwards compatibility if string is just file_id
+        fallback_proxy = os.getenv("TG_PROXY_BASE_URL", "")
+        
         for i, line in enumerate(lines):
             line = line.strip()
             if line and not line.startswith("#"):
                 file_id = uploaded_segments.get(i)
                 if file_id:
-                    new_url = f"{PROXY_BASE_URL}/{file_id}"
+                    if file_id.startswith("http"):
+                        new_url = file_id
+                    else:
+                        new_url = f"{fallback_proxy.rstrip('/')}/{file_id}"
                     new_lines.append(new_url)
                 else:
                     new_lines.append(line)
