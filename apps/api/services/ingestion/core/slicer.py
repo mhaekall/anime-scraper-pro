@@ -48,7 +48,10 @@ class VideoSlicer:
                 "-i", url,
                 "-map", "0:v:0",
                 "-map", "0:a:0",
-                "-c", "copy",
+                "-map", "0:s?",  # Optional: include all subtitle streams if present
+                "-c:v", "copy",
+                "-c:a", "copy",
+                "-c:s", "webvtt", # Convert softsubs to HLS compatible webvtt
                 "-bsf:a", "aac_adtstoasc",
                 "-f", "hls",
                 "-hls_segment_type", "mpegts",
