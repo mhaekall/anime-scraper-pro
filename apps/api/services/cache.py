@@ -14,6 +14,16 @@ async def upstash_get(key: str):
         print(f"[Upstash] Get error: {e}")
     return None
 
+async def upstash_keys(pattern: str):
+    try:
+        url = f"{UPSTASH_REDIS_REST_URL}/keys/{pattern}"
+        res = await client.get(url, headers={"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"})
+        data = res.json()
+        return data.get('result', [])
+    except Exception as e:
+        print(f"[Upstash] Keys error: {e}")
+        return []
+
 async def upstash_set(key: str, value: dict, ex: int = 3600, nx: bool = False):
     try:
         payload = json.dumps(value)

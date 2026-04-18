@@ -105,9 +105,18 @@ async def _run_ingestion_bg(episode_id, anilist_id, provider_id, episode_number,
             print("[Webhook] IngestionEngine is not available.")
             return
         engine = IngestionEngine()
-        await engine.process_episode(episode_id, anilist_id, provider_id, episode_number, direct_url)
+        success = await engine.process_episode(episode_id, anilist_id, provider_id, episode_number, direct_url)
+        if not success:
+             from services.cache import upstash_set
+             await upstash_set(f"ingest_error:{anilist_id}:{episode_number}", "IngestionEngine returned False")
     except Exception as e:
         print(f"[Webhook] Background ingestion failed: {e}")
+        try:
+            from services.cache import upstash_set
+            import traceback
+            await upstash_set(f"ingest_error:{anilist_id}:{episode_number}", f"{str(e)}\n{traceback.format_exc()}")
+        except:
+            pass
 
 @router.post("/webhook/ingest")
 async def ingest_webhook(request: Request):
@@ -129,6 +138,134 @@ async def ingest_webhook(request: Request):
     except Exception as e:
         print(f"[Webhook] Error processing ingestion payload: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/webhook/triage")
+async def triage_webhook(request: Request):
+    await _verify_qstash(request)
+    try:
+        from services.cache import upstash_keys, upstash_get
+        error_keys = await upstash_keys("ingest_error:*")
+        if not error_keys:
+            return Response(status_code=200, content="No errors found. All good.")
+        
+        # Limit to first 10 errors to avoid spam/OOM
+        errors_found = len(error_keys)
+        sample_keys = error_keys[:10]
+        details = []
+        for key in sample_keys:
+            val = await upstash_get(key)
+            if val:
+                # Truncate value if too long
+                val_str = str(val)[:100].replace('\n', ' ')
+                details.append(f"- `{key}`: {val_str}...")
+            else:
+                details.append(f"- `{key}`: (No details)")
+        
+        message = (
+            f"🚨 *Auto-Triage Alert: {errors_found} Ingestion Errors* 🚨\n\n"
+            f"The system detected *{errors_found}* failed or rate-limited ingestion tasks.\n\n"
+            "*Sample Errors:*\n" + "\n".join(details) + "\n\n"
+            "⚠️ Please check Hugging Face logs or run the manual resume script."
+        )
+        
+        # Send to Telegram
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        
+        if bot_token and chat_id:
+            async with httpx.AsyncClient() as client:
+                res = await client.post(
+                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                    json={
+                        "chat_id": chat_id,
+                        "text": message,
+                        "parse_mode": "Markdown",
+                        "reply_markup": {
+                            "inline_keyboard": [
+                                [
+                                    {"text": "🔄 Retry Failed Episodes", "callback_data": "retry_all_errors"},
+                                    {"text": "🗑️ Clear Errors", "callback_data": "clear_all_errors"}
+                                ]
+                            ]
+                        }
+                    }
+                )
+                if res.status_code >= 400:
+                    print(f"[Triage] Failed to send Telegram alert: {res.text}")
+        else:
+            print("[Triage] Telegram credentials missing. Could not send alert.")
+        
+        return Response(status_code=200, content=f"Triage complete. {errors_found} errors reported.")
+    except Exception as e:
+        print(f"[Webhook] Triage error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/webhook/telegram")
+async def telegram_webhook(request: Request):
+    """ChatOps Webhook: Listens for button clicks from the Telegram Bot"""
+    try:
+        data = await request.json()
+        
+        if "callback_query" in data:
+            callback = data["callback_query"]
+            callback_id = callback["id"]
+            action = callback.get("data")
+            message = callback.get("message")
+            chat_id = message["chat"]["id"]
+            
+            bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+            if not bot_token:
+                return Response(status_code=200)
+
+            async with httpx.AsyncClient() as client:
+                # Answer callback to stop loading spinner on button
+                await client.post(
+                    f"https://api.telegram.org/bot{bot_token}/answerCallbackQuery", 
+                    json={"callback_query_id": callback_id}
+                )
+                
+                from services.cache import upstash_keys, upstash_del
+                error_keys = await upstash_keys("ingest_error:*")
+                
+                if action == "clear_all_errors":
+                    for key in error_keys:
+                        await upstash_del(key)
+                    await client.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json={"chat_id": chat_id, "text": f"🗑️ ✅ Cleared {len(error_keys)} error keys from Redis."}
+                    )
+                
+                elif action == "retry_all_errors":
+                    from services.queue import enqueue_sync
+                    # Extract unique anilist ids from keys (e.g. ingest_error:<anilist_id>:<ep>)
+                    anilist_ids = set()
+                    for key in error_keys:
+                        parts = key.split(":")
+                        if len(parts) >= 3:
+                            anilist_ids.add(parts[1])
+                            
+                        # Delete the error key so we don't trip triage again
+                        await upstash_del(key)
+                    
+                    if anilist_ids:
+                        for aid in anilist_ids:
+                            # Re-syncing the anime will automatically find missing episodes and queue them
+                            await enqueue_sync(int(aid))
+                        
+                        await client.post(
+                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                            json={"chat_id": chat_id, "text": f"🔄 ✅ Queued Full Sync for {len(anilist_ids)} Anime.\nSelf-healing initiated. Errors cleared."}
+                        )
+                    else:
+                        await client.post(
+                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                            json={"chat_id": chat_id, "text": "⚠️ No specific Anilist IDs found in error logs to retry."}
+                        )
+                    
+        return Response(status_code=200)
+    except Exception as e:
+        print(f"[Telegram Webhook] Error: {e}")
+        return Response(status_code=200) # Always return 200 to prevent retries
 
 # --- 🚀 ENTERPRISE WORKFLOW INGESTION ---
 
