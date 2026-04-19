@@ -36,7 +36,7 @@ async def get_home_v2(response: Response):
                max(e."updatedAt") as last_up
         FROM anime_metadata m
         JOIN episodes e ON m."anilistId" = e."anilistId"
-        WHERE m.year = 2026 AND m.status = 'RELEASING'
+        WHERE (m.year >= 2026 OR m.year IS NULL) AND m.status = 'RELEASING'
         GROUP BY m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
         ORDER BY last_up DESC
         LIMIT 20
