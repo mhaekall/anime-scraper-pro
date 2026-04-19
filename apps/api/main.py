@@ -279,6 +279,23 @@ async def get_columns(table_name: str):
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/api/v2/debug/counts", tags=["Debug"])
+async def debug_counts():
+    try:
+        from db.models import anime_metadata, episodes, watch_history, collections
+        m_count = await database.fetch_val("SELECT COUNT(*) FROM anime_metadata")
+        e_count = await database.fetch_val("SELECT COUNT(*) FROM episodes")
+        wh_count = await database.fetch_val("SELECT COUNT(*) FROM watch_history")
+        c_count = await database.fetch_val("SELECT COUNT(*) FROM collections")
+        return {
+            "anime_metadata": m_count,
+            "episodes": e_count,
+            "watch_history": wh_count,
+            "collections": c_count
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.head("/healthz", tags=["System"])
 @app.get("/healthz", tags=["System"])
 async def health():

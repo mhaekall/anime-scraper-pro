@@ -37,13 +37,13 @@ watch_history = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("userId", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
-    Column("anilistId", Integer, nullable=False),
-    Column("episodeNumber", Float, nullable=False),
-    Column("progressSeconds", Integer, default=0),
-    Column("durationSeconds", Integer, default=0),
-    Column("isCompleted", Boolean, default=False),
+    Column("animeSlug", String, nullable=False),
+    Column("episode", Integer, nullable=False),
+    Column("timestampSec", Integer, default=0),
+    Column("durationSec", Integer, default=0),
+    Column("completed", Boolean, default=False),
     Column("updatedAt", DateTime, nullable=False, server_default=func.now(), onupdate=func.now()),
-    UniqueConstraint("userId", "anilistId", name="uq_user_anime_history"),
+    UniqueConstraint("userId", "animeSlug", "episode", name="uq_user_anime_history_v2"),
 )
 
 anime_mappings = Table(

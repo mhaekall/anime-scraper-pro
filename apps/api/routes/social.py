@@ -19,13 +19,14 @@ class WatchProgressUpdate(BaseModel):
 @router.get("/progress")
 async def get_watch_history(user_id: str):
     # Join with anime_metadata to get titles and images
+    # We join on animeSlug = cast(anilistId as String)
     query = select(
         watch_history,
         anime_metadata.c.cleanTitle,
         anime_metadata.c.nativeTitle,
         anime_metadata.c.coverImage
     ).select_from(
-        watch_history.outerjoin(anime_metadata, watch_history.c.anilistId == anime_metadata.c.anilistId)
+        watch_history.outerjoin(anime_metadata, watch_history.c.animeSlug == func.cast(anime_metadata.c.anilistId, String))
     ).where(watch_history.c.userId == user_id).order_by(watch_history.c.updatedAt.desc())
     
     rows = await database.fetch_all(query=query)
@@ -33,21 +34,21 @@ async def get_watch_history(user_id: str):
 
 @router.post("/progress")
 async def update_watch_history(item: WatchProgressUpdate):
+    # Drizzle schema columns: userId, animeSlug, episode, timestampSec, durationSec, completed
     stmt = pg_insert(watch_history).values(
         userId=item.user_id,
-        anilistId=item.anilistId,
-        episodeNumber=item.episodeNumber,
-        progressSeconds=item.progressSeconds,
-        durationSeconds=item.durationSeconds,
-        isCompleted=item.isCompleted,
+        animeSlug=str(item.anilistId),
+        episode=int(item.episodeNumber),
+        timestampSec=item.progressSeconds,
+        durationSec=item.durationSeconds,
+        completed=item.isCompleted,
         updatedAt=func.now()
     ).on_conflict_do_update(
-        index_elements=["userId", "anilistId"],
+        index_elements=["userId", "animeSlug", "episode"],
         set_={
-            "episodeNumber": item.episodeNumber,
-            "progressSeconds": item.progressSeconds,
-            "durationSeconds": item.durationSeconds,
-            "isCompleted": item.isCompleted,
+            "timestampSec": item.progressSeconds,
+            "durationSec": item.durationSeconds,
+            "completed": item.isCompleted,
             "updatedAt": func.now()
         }
     )
