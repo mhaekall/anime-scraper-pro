@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from db.connection import database
-from db.models import collections, users, anime_metadata
+from db.models import collections, users as user_table, anime_metadata
 from sqlalchemy import select, delete, func, String
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -32,7 +32,7 @@ async def get_collection(user_id: str):
 @router.post("/")
 async def save_collection(coll: CollectionUpdate):
     # Upsert user just in case
-    upsert_user = pg_insert(users).values(id=coll.user_id, username=f"user_{coll.user_id[-4:]}").on_conflict_do_nothing()
+    upsert_user = pg_insert(user_table).values(id=coll.user_id, username=f"user_{coll.user_id[-4:]}").on_conflict_do_nothing()
     await database.execute(upsert_user)
     
     stmt = pg_insert(collections).values(

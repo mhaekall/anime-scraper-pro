@@ -25,7 +25,25 @@ anime_metadata = Table(
     Column("genres",          JSON),
     Column("recommendations", JSON),
     Column("nextAiringEpisode", JSON),
+    Column("popularity",      Integer, default=0),
+    Column("trending",        Integer, default=0),
     Column("updatedAt", DateTime, nullable=False, server_default=func.now(), onupdate=func.now()),
+)
+
+# ── NEW: Persistent Watch History for Cloud Sync ──────────────────────────────
+
+watch_history = Table(
+    "watch_history",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("userId", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
+    Column("anilistId", Integer, nullable=False),
+    Column("episodeNumber", Float, nullable=False),
+    Column("progressSeconds", Integer, default=0),
+    Column("durationSeconds", Integer, default=0),
+    Column("isCompleted", Boolean, default=False),
+    Column("updatedAt", DateTime, nullable=False, server_default=func.now(), onupdate=func.now()),
+    UniqueConstraint("userId", "anilistId", name="uq_user_anime_history"),
 )
 
 anime_mappings = Table(

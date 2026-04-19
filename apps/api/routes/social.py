@@ -2,11 +2,57 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from db.connection import database
-from db.models import watch_events, episode_likes, activity_feed, follows
-from sqlalchemy import select, func, and_
+from db.models import watch_events, episode_likes, activity_feed, follows, watch_history, anime_metadata
+from sqlalchemy import select, func, and_, desc, String
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 router = APIRouter()
+
+class WatchProgressUpdate(BaseModel):
+    user_id: str
+    anilistId: int
+    episodeNumber: float
+    progressSeconds: int
+    durationSeconds: int
+    isCompleted: bool
+
+@router.get("/progress")
+async def get_watch_history(user_id: str):
+    # Join with anime_metadata to get titles and images
+    query = select(
+        watch_history,
+        anime_metadata.c.cleanTitle,
+        anime_metadata.c.nativeTitle,
+        anime_metadata.c.coverImage
+    ).select_from(
+        watch_history.outerjoin(anime_metadata, watch_history.c.anilistId == anime_metadata.c.anilistId)
+    ).where(watch_history.c.userId == user_id).order_by(watch_history.c.updatedAt.desc())
+    
+    rows = await database.fetch_all(query=query)
+    return [dict(row) for row in rows]
+
+@router.post("/progress")
+async def update_watch_history(item: WatchProgressUpdate):
+    stmt = pg_insert(watch_history).values(
+        userId=item.user_id,
+        anilistId=item.anilistId,
+        episodeNumber=item.episodeNumber,
+        progressSeconds=item.progressSeconds,
+        durationSeconds=item.durationSeconds,
+        isCompleted=item.isCompleted,
+        updatedAt=func.now()
+    ).on_conflict_do_update(
+        index_elements=["userId", "anilistId"],
+        set_={
+            "episodeNumber": item.episodeNumber,
+            "progressSeconds": item.progressSeconds,
+            "durationSeconds": item.durationSeconds,
+            "isCompleted": item.isCompleted,
+            "updatedAt": func.now()
+        }
+    )
+    await database.execute(stmt)
+    return {"success": True}
 
 class WatchEventCreate(BaseModel):
     user_id: str
