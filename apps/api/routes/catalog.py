@@ -365,9 +365,9 @@ async def trigger_sync_v2(anilist_id: int, background_tasks: BackgroundTasks):
 async def browse_anime(
     response: Response,
     page: int = Query(1, ge=1),
-    sort: str = Query("score", regex="^(score|popularity|trending|newest)$"),
+    sort: str = Query("score", pattern="^(score|popularity|trending|newest)$"),
     genre: str = Query(None),
-    status: str = Query(None, regex="^(RELEASING|FINISHED|NOT_YET_RELEASED)$"),
+    status: str = Query(None, pattern="^(RELEASING|FINISHED|NOT_YET_RELEASED)$"),
     limit: int = Query(24, le=50),
 ):
     response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
