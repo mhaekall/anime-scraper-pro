@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from db.connection import database
 from services.background import background_scrape_job
-from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook, social, db, collection
+from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook, social, comments, db, collection
 
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://orcanime.pages.dev")
 
@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
             try:
                 print("[DB] Running SQLAlchemy async create_all as fallback for missing tables...")
                 from db.connection import metadata
-                from db.models import users, comments, comment_reactions, follows, notifications, watch_events
+                from db.models import comments, comment_reactions, follows, notifications, watch_events
                 from sqlalchemy.ext.asyncio import create_async_engine
                 import os
                 db_url = os.getenv("DATABASE_URL")
