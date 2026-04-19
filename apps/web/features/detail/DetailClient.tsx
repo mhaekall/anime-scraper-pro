@@ -1,12 +1,13 @@
 // features/detail/DetailClient.tsx — Anime detail page client component
-
 "use client";
 
 import { useState, memo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconBack, IconPlay, IconBookmark, IconShare, IconStar } from "@/ui/icons";
-import { useSettings, useWatchlist, useToast } from "@/core/stores/app-store";
+import { useSettings, useToast } from "@/core/stores/app-store";
+import { useCollection } from "@/core/hooks/use-collection";
+import { authClient } from "@/core/lib/auth-client";
 import { EpisodeList } from "./EpisodeList";
 import { AnimeCard } from "@/ui/cards/AnimeCard";
 
@@ -22,17 +23,18 @@ function formatCountdown(seconds: number) {
 export default function DetailClient({ detail, id }: { detail: any; id: string }) {
   const router = useRouter();
   const accent = "#0A84FF";
-  const { items, toggle } = useWatchlist();
+  const { data: session } = authClient.useSession();
+  const { items, toggle } = useCollection(session?.user?.id);
   const { toast } = useToast();
-  const [tab, setTab] = useState("overview");
   const [mounted, setMounted] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false); // For synopsis
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const d = detail;
-  const saved = mounted ? !!items.find((w) => String(w.id) === id) : false;
+  const saved = mounted ? !!items.find((w: any) => String(w.id) === id) : false;
   const desc = (d.synopsis || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "").trim();
   const eps = d.episodes || [];
   const recs = d.recommendations || [];
@@ -42,32 +44,29 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
   return (
     <main className="min-h-screen bg-black pb-24 text-white overflow-y-auto no-scrollbar">
       {/* Hero */}
-      <div className="w-full h-[280px] md:h-[360px] relative bg-[#1c1c1e] anim-fade">
-        {(d.banner || d.poster) && <img src={d.banner || d.poster} className="w-full h-full object-cover opacity-50" alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-        <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 100%, ${accent}, transparent 60%)` }} />
+      <div className="w-full h-[450px] md:h-[500px] relative bg-black anim-fade">
+        {d.poster && <img src={d.poster} className="w-full h-full object-cover opacity-50" alt="" loading="eager" fetchPriority="high" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
+        
+        {/* Accent Glow (Layer 0: Behind the black fade) */}
+        <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 80%, ${accent}, transparent 70%)` }} />
+
+        {/* Layer 1: Base shading */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        
+        {/* Layer 2: Harder gradient at the bottom to ensure seamless blend with black background */}
+        <div className="absolute inset-x-0 bottom-0 h-[250px] bg-gradient-to-t from-black via-black/80 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-[100px] bg-gradient-to-t from-black to-transparent" />
+        
         <button onClick={() => router.back()} className="absolute top-10 left-5 w-9 h-9 bg-black/50 rounded-full flex items-center justify-center text-white border border-white/20 active:scale-90 z-20"><IconBack /></button>
       </div>
 
-      <div className="px-5 md:px-8 -mt-16 relative z-10 max-w-4xl mx-auto">
+      <div className="px-5 md:px-8 -mt-[200px] md:-mt-[240px] relative z-10 max-w-4xl mx-auto">
         {/* Title row */}
-        <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-6 anim-up">
-          <div className="w-[100px] md:w-[160px] aspect-[2/3] rounded-2xl shadow-2xl border border-white/10 overflow-hidden shrink-0 bg-[#1c1c1e]">
-            {d.poster && <img src={d.poster} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg"; }} />}
-          </div>
-          <div className="pt-1 md:pt-10 flex-1 min-w-0">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-8 anim-up">
+          <div className="flex-1 min-w-0">
             <h1 className="text-2xl md:text-4xl font-black text-white leading-[1.1] mb-1">{d.title}</h1>
             {d.nativeTitle && <h2 className="text-sm text-[#8e8e93] mb-3">{d.nativeTitle}</h2>}
 
-            {/* Countdown Pill */}
-            {d.nextAiringEpisode && (
-              <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 bg-[#1c1c1e] border border-[#0A84FF]/30 rounded-full shadow-lg shadow-[#0A84FF]/10 anim-fade">
-                <div className="w-2 h-2 rounded-full bg-[#0A84FF] animate-pulse" />
-                <span className="text-[11px] font-bold text-[#0A84FF] tracking-widest uppercase">
-                  Ep {d.nextAiringEpisode.episode} • {formatCountdown(d.nextAiringEpisode.timeUntilAiring)}
-                </span>
-              </div>
-            )}
             <div className="flex items-center gap-2 text-[12px] font-semibold flex-wrap mb-4">
               {d.score && <span className="text-[#30D158] flex items-center gap-0.5"><IconStar /> {(d.score / 10).toFixed(1)}</span>}
               <span className="text-[#48484a]">•</span>
@@ -92,49 +91,66 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-5 border-b border-white/10 mb-5 anim-up" style={{ animationDelay: "80ms" }}>
-          {[["overview", "Ringkasan"], ["episodes", "Episode"]].map(([tid, label]) => (
-            <button key={tid} onClick={() => setTab(tid)} className={`pb-2.5 text-[14px] font-bold border-b-2 transition-colors ${tab === tid ? "text-white border-white" : "text-[#8e8e93] border-transparent"}`}>{label}</button>
-          ))}
-        </div>
+        <div className="space-y-8 anim-up" style={{ animationDelay: "80ms" }}>
+          {/* Metadata Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[
+              ["Status", d.status === "FINISHED" ? "Selesai" : d.status === "RELEASING" ? "Tayang" : "TBA"],
+              ["Studio", d.studios?.join(", ") || "-"],
+              ["Musim", d.season ? `${d.season.toLowerCase()} ${d.seasonYear}` : "-"],
+            ].map(([l, v]) => (
+              <div key={l} className="bg-[#1c1c1e] rounded-2xl p-3 border border-white/5">
+                <p className="text-[#8e8e93] text-[10px] uppercase tracking-wider mb-0.5">{l}</p>
+                <p className="text-white font-bold text-sm capitalize line-clamp-1">{v}</p>
+              </div>
+            ))}
+            <div className="bg-[#1c1c1e] rounded-2xl p-3 border border-white/5">
+              <p className="text-[#8e8e93] text-[10px] uppercase tracking-wider mb-0.5">Genre</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {d.genres && d.genres.length > 0 ? d.genres.map((g: string) => (
+                  <Link key={g} href={`/explore?genre=${encodeURIComponent(g)}`} className="text-white font-bold text-[11px] bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded transition-colors active:scale-95">
+                    {g}
+                  </Link>
+                )) : <p className="text-white font-bold text-sm">-</p>}
+              </div>
+            </div>
+          </div>
 
-        {/* Tab content */}
-        <div className="min-h-[250px] anim-up" style={{ animationDelay: "140ms" }}>
-          {tab === "overview" && (
-            <div className="space-y-5 anim-fade">
-              <p className="text-[#e5e5ea] text-[14px] leading-relaxed whitespace-pre-line">{desc || "Sinopsis tidak tersedia."}</p>
-              {d.genres?.length > 0 && (
-                <div><h3 className="text-white font-bold mb-2 text-sm">Genre</h3><div className="flex flex-wrap gap-2">{d.genres.map((g: string) => <span key={g} className="px-3 py-1 bg-[#1c1c1e] text-[#d1d1d6] text-[12px] font-medium rounded-full border border-white/5">{g}</span>)}</div></div>
-              )}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {[
-                  ["Status", d.status === "FINISHED" ? "Selesai" : d.status === "RELEASING" ? "Tayang" : "TBA"],
-                  ["Studio", d.studios?.join(", ") || "-"],
-                  ["Musim", d.season ? `${d.season.toLowerCase()} ${d.seasonYear}` : "-"],
-                  ["Rating", d.score ? `${d.score}/10` : "-"],
-                ].map(([l, v]) => (
-                  <div key={l} className="bg-[#1c1c1e] rounded-2xl p-3 border border-white/5">
-                    <p className="text-[#8e8e93] text-[10px] uppercase tracking-wider mb-0.5">{l}</p>
-                    <p className="text-white font-bold text-sm capitalize line-clamp-1">{v}</p>
+          {/* Synopsis */}
+          <div>
+            <h3 className="text-white font-bold text-base mb-2">Ringkasan</h3>
+            <p className={`text-[#e5e5ea] text-[14px] leading-relaxed whitespace-pre-line transition-all duration-300 ${isExpanded ? "" : "line-clamp-3"}`}>
+              {desc || "Sinopsis tidak tersedia."}
+            </p>
+            {desc && desc.length > 150 && (
+              <button 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="text-[#0A84FF] text-[13px] font-bold mt-2 hover:underline focus:outline-none"
+              >
+                {isExpanded ? "Sembunyikan" : "Selengkapnya"}
+              </button>
+            )}
+          </div>
+
+          {/* Episodes List */}
+          <div>
+            <h3 className="text-white font-bold text-base mb-4">Episode</h3>
+            <EpisodeList episodes={eps} animeId={id} cover={d.poster} />
+          </div>
+
+          {/* Recommendations */}
+          {recs.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-white font-bold text-base mb-4">Rekomendasi</h3>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 snap-x">
+                {recs.map((r: any, i: number) => (
+                  <div key={i} className="min-w-[120px] snap-start">
+                    <AnimeCard id={String(r.id)} title={r.title} img={r.cover || r.poster || r.image} />
                   </div>
                 ))}
               </div>
-              {recs.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="text-white font-bold text-base mb-3">Rekomendasi</h3>
-                  <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4">
-                    {recs.map((r: any, i: number) => (
-                      <div key={i} className="min-w-[120px]">
-                        <AnimeCard id={String(r.id)} title={r.title} img={r.cover || r.poster || r.image} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
-          {tab === "episodes" && <EpisodeList episodes={eps} animeId={id} cover={d.poster} />}
         </div>
       </div>
     </main>

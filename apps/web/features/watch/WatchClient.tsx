@@ -8,7 +8,8 @@ import { VideoPlayer } from "@/ui/player/VideoPlayer";
 import { AutoNextOverlay } from "@/ui/player/AutoNextOverlay";
 import { IconBack, IconPlay, IconCheck, IconStar, IconShare, IconBookmark } from "@/ui/icons";
 import { CommentSection } from "./CommentSection";
-import { useWatchlist } from "@/core/stores/app-store";
+import { useCollection } from "@/core/hooks/use-collection";
+import { authClient } from "@/core/lib/auth-client";
 import { API } from "@/core/lib/api";
 
 // Helper SVG icons for those missing in ui/icons
@@ -43,7 +44,8 @@ export default function WatchClient({ id, episode: initialEpisode, title, poster
   const [mounted, setMounted] = useState(false);
   const [showSynopsis, setShowSynopsis] = useState(false);
 
-  const { items, toggle } = useWatchlist();
+  const { data: session } = authClient.useSession();
+  const { items, toggle } = useCollection(session?.user?.id);
   const isSaved = items.some(i => String(i.id) === id);
 
   const handleSave = () => {

@@ -238,6 +238,7 @@ app.include_router(home_v2.router, prefix="/api",    tags=["Home v2"])
 app.include_router(stream_v2.router, prefix="/api/v2", tags=["v2"])
 app.include_router(webhook.router, prefix="/api/v2", tags=["Webhook"])
 app.include_router(social.router, prefix="/api/v2/social", tags=["Social"])
+app.include_router(collection.router, prefix="/api/v2/collection", tags=["Collection"])
 
 
 @app.get("/api/v2/anime/{anilist_id}/debug-sync", tags=["Admin"], dependencies=[Depends(verify_admin_key)])

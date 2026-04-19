@@ -78,12 +78,12 @@ function SpecialPopularRowInner({ title, items }: Props) {
 
 function Rank1Card({ item, rank }: { item: any, rank: number }) {
   const id = String(item.anilistId || item.id || "");
-  const href = item.latestEpisode ? `/watch/${id}/${item.latestEpisode}` : `/anime/${id}`;
+  const href = `/anime/${id}`;
   
   const img = item.coverImage?.extraLarge || item.coverImage?.large || item.img;
 
   return (
-    <Link href={href} className="block relative w-full aspect-[9/16] rounded-[24px] overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1c1c1e] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_30px_60px_rgba(0,0,0,0.7)] hover:border-white/20">
+    <Link href={href} prefetch={true} className="block relative w-full aspect-[9/16] rounded-[24px] overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 bg-[#1c1c1e] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_30px_60px_rgba(0,0,0,0.7)] hover:border-white/20">
       {img && (
         <img 
           src={img} 
@@ -121,13 +121,13 @@ function Rank1Card({ item, rank }: { item: any, rank: number }) {
 
 function PairedCard({ item, rank }: { item: any, rank: number }) {
   const id = String(item.anilistId || item.id || "");
-  const href = item.latestEpisode ? `/watch/${id}/${item.latestEpisode}` : `/anime/${id}`;
+  const href = `/anime/${id}`;
   
   // Menggunakan cover image (poster) agar sesuai dengan proporsi potrait 9:16
   const img = item.coverImage?.extraLarge || item.coverImage?.large || item.img;
 
   return (
-    <Link href={href} className="block relative w-full h-[calc(50%-6px)] md:h-[calc(50%-8px)] rounded-[20px] overflow-hidden group shadow-[0_12px_24px_rgba(0,0,0,0.3)] bg-[#2c2c2e]">
+    <Link href={href} prefetch={true} className="block relative w-full h-[calc(50%-6px)] md:h-[calc(50%-8px)] rounded-[20px] overflow-hidden group shadow-[0_12px_24px_rgba(0,0,0,0.3)] bg-[#2c2c2e]">
       {img && (
         <img 
           src={img} 

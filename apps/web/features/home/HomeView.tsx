@@ -62,17 +62,23 @@ export default function HomeView({
       </div>
 
       {/* Top Header Section — HIG: Minimalist & Spaced */}
-      <div className="px-6 md:px-10 pt-4 pb-8 anim-fade">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="pt-4 pb-8 anim-fade">
+        <div className="px-6 md:px-10 flex items-center gap-2 mb-6">
           <div className="w-2 h-2 rounded-full bg-[#32D74B] shadow-[0_0_8px_#32D74B]" />
           <p className="text-[#8e8e93] text-[11px] font-bold tracking-[0.2em] uppercase">
             {greet()}, {user?.name || "Guest"}
           </p>
         </div>
-        <h1 className="text-[34px] md:text-[42px] font-black tracking-[-0.03em] leading-[1.05]">
-          Temukan anime<br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-[#8e8e93]">favorit barumu.</span>
-        </h1>
+
+        {/* Continue Watching Section — HIG: Utility First */}
+        <ContinueWatching userId={user?.id} />
+
+        <div className="px-6 md:px-10 mt-4">
+          <h1 className="text-[34px] md:text-[42px] font-black tracking-[-0.03em] leading-[1.05]">
+            Temukan anime<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-[#8e8e93]">favorit barumu.</span>
+          </h1>
+        </div>
       </div>
 
       {/* Search Bar Section */}
@@ -86,9 +92,6 @@ export default function HomeView({
       <LatestGrid title="Tayangan Terbaru" items={initialLatest} isNew={true} />
 
       <div className="space-y-12">
-        {/* Continue Watching Section — HIG: Utility First */}
-        <ContinueWatching userId={user?.id} />
-
         {/* Rows — HIG: Content is King */}
         {initialTrending.length > 0 && <SpecialPopularRow title="Populer Saat Ini" items={initialTrending} />}
         <HomeGenreGrid />

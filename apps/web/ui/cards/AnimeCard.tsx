@@ -5,12 +5,12 @@
 "use client";
 
 import { memo, useRef, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API } from "@/core/lib/api";
 import { IconPlay, IconCheck } from "@/ui/icons";
 import { useSettings } from "@/core/stores/app-store";
 import { useWatchHistory } from "@/core/hooks/use-watch-history";
-import { useViewTransition } from "@/core/hooks/use-view-transition";
 
 interface Props {
   id: string;
@@ -32,7 +32,6 @@ function AnimeCardInner({ id, title, img, banner, score, color, epId, rank, vari
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const router = useRouter();
-  const navigate = useViewTransition();
 
   const watched = history.find((h) => h.animeSlug === id);
   const pct = watched && watched.durationSec > 0 ? (watched.timestampSec / watched.durationSec) * 100 : 0;
@@ -46,20 +45,20 @@ function AnimeCardInner({ id, title, img, banner, score, color, epId, rank, vari
   }, []);
 
   const handleMouseEnter = () => {
-    const href = epId ? `/watch/${id}/${epId}` : `/anime/${id}`;
+    const href = `/anime/${id}`;
     // Prefetch route Next.js
     router.prefetch(href);
   };
 
   const c = color || accent;
-  const href = epId ? `/watch/${id}/${epId}` : `/anime/${id}`;
+  const href = `/anime/${id}`;
 
   const aspectClass = variant === "horizontal" ? "aspect-video" : "aspect-[2/3]";
   const imageSrc = variant === "horizontal" ? (banner || img) : img;
 
   return (
-    <div ref={ref} onMouseEnter={handleMouseEnter} className="flex flex-col h-full w-full group cursor-pointer anim-up" style={{ animationDelay: rank ? `${Math.min(rank * 40, 240)}ms` : "0ms" }}>
-      <button onClick={() => navigate(href)} className={`w-full ${aspectClass} rounded-2xl relative overflow-hidden mb-2 border border-white/5 bg-[#1c1c1e] block transition-shadow duration-300 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.5)] text-left focus:outline-none`}>
+    <div ref={ref} onMouseEnter={handleMouseEnter} onTouchStart={handleMouseEnter} className="flex flex-col h-full w-full group cursor-pointer anim-up" style={{ animationDelay: rank ? `${Math.min(rank * 40, 240)}ms` : "0ms" }}>
+      <Link href={href} prefetch={true} className={`w-full ${aspectClass} rounded-2xl relative overflow-hidden mb-2 border border-white/5 bg-[#1c1c1e] block transition-shadow duration-300 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.5)] text-left focus:outline-none`}>
         {visible && imageSrc ? (
           <img src={imageSrc} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.src = img || "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/default.jpg"; }} />
         ) : (
@@ -95,7 +94,7 @@ function AnimeCardInner({ id, title, img, banner, score, color, epId, rank, vari
             <div className="h-full transition-all" style={{ width: `${pct}%`, backgroundColor: accent }} />
           </div>
         )}
-      </button>
+      </Link>
       <h3 className="text-[#f2f2f7] font-semibold text-[13px] line-clamp-2 leading-[1.3] px-0.5 group-hover:text-white transition-colors">{title}</h3>
       <div className="flex items-center gap-2 mt-1 px-0.5">
         {score ? (

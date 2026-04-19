@@ -2,9 +2,18 @@
 // Each icon is ~200 bytes vs lucide-react's 40KB+ bundle impact.
 
 import { memo } from "react";
-import { Home, Compass, Library, User, Info } from "lucide-react";
+import { Home, Compass, Library, User, Info, Bell } from "lucide-react";
 
 type P = { className?: string };
+
+export const IconBell = memo(({ className = "w-5 h-5", filled = false }: P & { filled?: boolean }) => (
+  <Bell 
+    className={className} 
+    strokeWidth={1.5} 
+    fill={filled ? "currentColor" : "none"} 
+  />
+));
+IconBell.displayName = "IconBell";
 
 export const IconPlay = memo(({ className = "w-5 h-5" }: P) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>

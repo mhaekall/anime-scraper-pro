@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AnimeCard } from "./AnimeCard";
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
 
 export function LatestGrid({ title, items, isNew = false }: Props) {
   const [visibleCount, setVisibleCount] = useState(12);
+  const sectionRef = useRef<HTMLElement>(null);
 
   if (!items || items.length === 0) return null;
 
@@ -18,7 +19,7 @@ export function LatestGrid({ title, items, isNew = false }: Props) {
   const hasMore = visibleCount < items.length;
 
   return (
-    <section className="mb-12 px-5 md:px-8 max-w-7xl mx-auto w-full">
+    <section ref={sectionRef} className="mb-12 px-5 md:px-8 max-w-7xl mx-auto w-full">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">{title}</h2>
       </div>
@@ -58,7 +59,12 @@ export function LatestGrid({ title, items, isNew = false }: Props) {
         {visibleCount > 12 && (
           <button 
             onClick={() => {
-              setVisibleCount(12);
+              if (sectionRef.current) {
+                const y = sectionRef.current.getBoundingClientRect().top + window.scrollY - 100;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+              }
+              // Set timeout is added so the scroll starts right before or during the element resizing
+              setTimeout(() => setVisibleCount(12), 100);
             }}
             className="px-6 py-2.5 bg-white/5 hover:bg-white/10 rounded-full text-sm font-bold text-white/60 hover:text-white transition-all active:scale-95 border border-white/5"
           >

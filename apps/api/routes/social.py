@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from db.connection import database
 from db.models import comments, users, comment_reactions, follows, watch_events, watch_history
-from sqlalchemy import select, insert, func, update, and_
+from sqlalchemy import select, insert, func, update, and_, String
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 router = APIRouter()

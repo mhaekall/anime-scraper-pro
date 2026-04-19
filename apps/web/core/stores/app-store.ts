@@ -41,42 +41,6 @@ export interface WatchlistItem {
   updatedAt: number;
 }
 
-interface WatchlistSlice {
-  items: WatchlistItem[];
-  toggle: (anime: Omit<WatchlistItem, "status" | "progress" | "addedAt" | "updatedAt">, status?: WatchlistItem["status"]) => boolean;
-  updateStatus: (id: string | number, status?: WatchlistItem["status"], progress?: number) => void;
-  remove: (id: string | number) => void;
-}
-
-export const useWatchlist = create<WatchlistSlice>()(
-  persist(
-    (set, get) => ({
-      items: [],
-      toggle: (anime, status = "plan_to_watch") => {
-        const exists = get().items.find((w) => w.id === anime.id);
-        if (exists) {
-          set((s) => ({ items: s.items.filter((w) => w.id !== anime.id) }));
-          return false; // removed
-        }
-        set((s) => ({
-          items: [{ ...anime, status, progress: 0, addedAt: Date.now(), updatedAt: Date.now() }, ...s.items],
-        }));
-        return true; // added
-      },
-      updateStatus: (id, status, progress) =>
-        set((s) => ({
-          items: s.items.map((w) =>
-            w.id === id
-              ? { ...w, ...(status && { status }), ...(progress !== undefined && { progress }), updatedAt: Date.now() }
-              : w
-          ),
-        })),
-      remove: (id) => set((s) => ({ items: s.items.filter((w) => w.id !== id) })),
-    }),
-    { name: "ani-watchlist-v2" }
-  )
-);
-
 // ── Toast (transient, no persist) ──────────────────────────────
 interface Toast {
   id: string;
