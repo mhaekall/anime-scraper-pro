@@ -291,4 +291,3 @@ async def health():
         import traceback
         error_msg += "\\n" + traceback.format_exc()
     return {"status": "ok" if db_ok else "degraded", "db": db_ok, "error": error_msg, "startup_error": db_connection_error}
-ed", "db": db_ok, "error": error_msg, "startup_error": db_connection_error}
