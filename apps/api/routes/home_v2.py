@@ -31,19 +31,15 @@ async def get_home_v2(response: Response):
     '''
     
     latest_query = '''
-        WITH latest_eps AS (
-            SELECT "anilistId", max("episodeNumber") as max_ep, max("updatedAt") as last_up
-            FROM episodes
-            GROUP BY "anilistId"
-            ORDER BY last_up DESC
-            LIMIT 60
-        )
         SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score",
-               l.max_ep as "latestEpisode"
+               max(e."episodeNumber") as "latestEpisode",
+               max(e."updatedAt") as last_up
         FROM anime_metadata m
-        JOIN latest_eps l ON m."anilistId" = l."anilistId"
-        WHERE m."seasonYear" = 2026
-        ORDER BY l.last_up DESC
+        JOIN episodes e ON m."anilistId" = e."anilistId"
+        WHERE m."seasonYear" = 2026 AND m.status = 'RELEASING'
+        GROUP BY m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
+        ORDER BY last_up DESC
+        LIMIT 20
     '''
     
     popular_query = '''
