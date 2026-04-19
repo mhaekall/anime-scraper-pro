@@ -42,6 +42,7 @@ async def get_home_v2(response: Response):
                l.max_ep as "latestEpisode"
         FROM anime_metadata m
         JOIN latest_eps l ON m."anilistId" = l."anilistId"
+        WHERE m."seasonYear" = 2026
         ORDER BY l.last_up DESC
     '''
     

@@ -2,7 +2,8 @@
 
 "use client";
 
-import { HeroCarousel } from "./HeroCarousel";
+import { HomeSearchBar } from "./HomeSearchBar";
+import { HomeGenreGrid } from "./HomeGenreGrid";
 import { ContinueWatching } from "./ContinueWatching";
 import { AnimeRow } from "@/ui/cards/AnimeRow";
 import { SpecialPopularRow } from "@/ui/cards/SpecialPopularRow";
@@ -74,9 +75,11 @@ export default function HomeView({
         </h1>
       </div>
 
-      {/* Hero Section — HIG: Immersive */}
-      <div className="mb-12 relative">
-        {initialHero.length > 0 && <HeroCarousel items={initialHero} />}
+      {/* Search Bar Section */}
+      <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-white/5 py-3 px-5 md:px-10 mb-8 w-full transition-all">
+        <div className="max-w-4xl mx-auto">
+          <HomeSearchBar />
+        </div>
       </div>
 
       {/* Latest Airing (Vertical Grid) */}
@@ -88,11 +91,9 @@ export default function HomeView({
 
         {/* Rows — HIG: Content is King */}
         {initialTrending.length > 0 && <SpecialPopularRow title="Populer Saat Ini" items={initialTrending} />}
+        <HomeGenreGrid />
         {initialCompleted.length > 0 && <LatestGrid title="Anime Tamat Terbaik" items={initialCompleted} />}
         {initialIsekai.length > 0 && <AnimeRow title="Dunia Fantasi & Isekai" items={initialIsekai} />}
-        {initialMovies.length > 0 && <AnimeRow title="Film Layar Lebar (Movies)" items={initialMovies} variant="horizontal" />}
-        {initialTopRated.length > 0 && <AnimeRow title="Rating Tertinggi" items={initialTopRated} showRank />}
-        {initialPopular.length > 0 && <AnimeRow title="Top Sepanjang Masa" items={initialPopular} />}
       </div>
       
       {/* Visual Explainer Placeholder / Decorative Gradient */}

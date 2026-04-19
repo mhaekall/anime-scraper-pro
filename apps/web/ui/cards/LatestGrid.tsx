@@ -59,7 +59,6 @@ export function LatestGrid({ title, items, isNew = false }: Props) {
           <button 
             onClick={() => {
               setVisibleCount(12);
-              window.scrollTo({ top: 300, behavior: 'smooth' });
             }}
             className="px-6 py-2.5 bg-white/5 hover:bg-white/10 rounded-full text-sm font-bold text-white/60 hover:text-white transition-all active:scale-95 border border-white/5"
           >
