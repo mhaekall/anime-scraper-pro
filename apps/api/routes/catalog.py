@@ -86,6 +86,23 @@ async def get_anime_v2(anilist_id: int, background_tasks: BackgroundTasks, respo
                 data['nativeTitle'] = live_anilist['romajiTitle']
         except:
             pass
+            
+        # Auto-translate synopsis to Indonesian and save to DB
+        if data.get("synopsis"):
+            try:
+                from utils.translator import translate_en_to_id
+                # Quick heuristic to avoid translating if it seems already translated
+                if "dan" not in data["synopsis"].lower() and "yang" not in data["synopsis"].lower():
+                    translated = await translate_en_to_id(data["synopsis"])
+                    if translated and translated != data["synopsis"]:
+                        data["synopsis"] = translated
+                        background_tasks.add_task(
+                            database.execute,
+                            'UPDATE anime_metadata SET synopsis = :synopsis WHERE "anilistId" = :id',
+                            values={"synopsis": translated, "id": anilist_id}
+                        )
+            except Exception as e:
+                print(f"Translation error: {e}")
 
         # Episodes empty — sync in background so next request is fast
         if not data.get("episodes"):
