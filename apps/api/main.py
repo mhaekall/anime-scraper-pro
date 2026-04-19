@@ -11,9 +11,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from db.connection import database
 from services.background import background_scrape_job
-from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook, social, db
+from routes import home, anime, stream, catalog, home_v2, stream_v2, webhook, social, db, collection
 
-ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://anime-scraper-pro.pages.dev")
+ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://orcanime.pages.dev")
 
 async def verify_admin_key(x_admin_key: str = Header(None)):
     expected_key = os.getenv("ADMIN_API_KEY")
@@ -291,3 +291,4 @@ async def health():
         import traceback
         error_msg += "\\n" + traceback.format_exc()
     return {"status": "ok" if db_ok else "degraded", "db": db_ok, "error": error_msg, "startup_error": db_connection_error}
+ed", "db": db_ok, "error": error_msg, "startup_error": db_connection_error}
