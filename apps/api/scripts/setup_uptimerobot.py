@@ -8,7 +8,7 @@ API_KEY = os.getenv("UPTIMEROBOT_API_KEY", "your_uptimerobot_api_key_here")
 
 # Hugging Face Space URL
 SPACE_URL = os.getenv("SPACE_URL", "https://jonyyyyyyyu-anime-scraper-api.hf.space/healthz")
-MONITOR_NAME = "Anime Scraper Pro - HF Space"
+MONITOR_NAME = "Orca - HF Space"
 
 def create_uptimerobot_monitor():
     """

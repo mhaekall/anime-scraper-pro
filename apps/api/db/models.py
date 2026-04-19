@@ -86,7 +86,7 @@ video_cache = Table(
 # ── NEW: social & watch behavior ──────────────────────────────────────────────
 
 users = Table(
-    "users",
+    "user",
     metadata,
     Column("id", String, primary_key=True),
     Column("username", String, unique=True, nullable=False),
@@ -98,7 +98,7 @@ comments = Table(
     "comments",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("user_id", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
     Column("anilistId", Integer, nullable=False),
     Column("episodeNumber", Float, nullable=False),
     Column("parent_id", Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True),
@@ -113,7 +113,7 @@ comment_reactions = Table(
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("comment_id", Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=False),
-    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("user_id", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
     Column("emoji", String, nullable=False),
     Column("created_at", DateTime, nullable=False, server_default=func.now()),
     UniqueConstraint("comment_id", "user_id", "emoji", name="uq_reaction_user"),
@@ -122,8 +122,8 @@ comment_reactions = Table(
 follows = Table(
     "follows",
     metadata,
-    Column("follower_id", String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
-    Column("following_id", String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("follower_id", String, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True),
+    Column("following_id", String, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True),
     Column("created_at", DateTime, nullable=False, server_default=func.now()),
 )
 
@@ -131,19 +131,42 @@ notifications = Table(
     "notifications",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("user_id", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
     Column("type", String, nullable=False),
     Column("reference_id", String, nullable=False),
+    Column("metadata", JSON, nullable=True),
     Column("is_read", Boolean, nullable=False, default=False),
     Column("created_at", DateTime, nullable=False, server_default=func.now()),
     Index("idx_notifications_user", "user_id"),
+)
+
+activity_feed = Table(
+    "activity_feed",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("user_id", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
+    Column("event_type", String, nullable=False),
+    Column("metadata", JSON, nullable=False),
+    Column("created_at", DateTime, nullable=False, server_default=func.now()),
+    Index("idx_activity_feed_user", "user_id", "created_at"),
+)
+
+episode_likes = Table(
+    "episode_likes",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("user_id", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
+    Column("anilistId", Integer, nullable=False),
+    Column("episodeNumber", Float, nullable=False),
+    Column("created_at", DateTime, nullable=False, server_default=func.now()),
+    UniqueConstraint("user_id", "anilistId", "episodeNumber", name="uq_episode_like_user"),
 )
 
 watch_events = Table(
     "watch_events",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("user_id", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
     Column("anilistId", Integer, nullable=False),
     Column("episodeNumber", Float, nullable=False),
     Column("event_type", String, nullable=False),
@@ -154,30 +177,11 @@ watch_events = Table(
 
 # ── NEW: Persistent Watch History for Progress Sync ───────────────────────────
 
-watch_history = Table(
-    "watch_history",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("userId", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-    Column("animeSlug", String, nullable=False),
-    Column("animeTitle", String, nullable=True),
-    Column("animeCover", String, nullable=True),
-    Column("episode", Float, nullable=False),
-    Column("episodeTitle", String, nullable=True),
-    Column("timestampSec", Integer, nullable=False, default=0),
-    Column("durationSec", Integer, nullable=False, default=0),
-    Column("completed", Boolean, nullable=False, default=False),
-    Column("source", String, nullable=True),
-    Column("quality", String, nullable=True),
-    Column("updatedAt", DateTime, nullable=False, server_default=func.now(), onupdate=func.now()),
-    UniqueConstraint("userId", "animeSlug", "episode", name="watch_history_userId_animeSlug_episode_key"),
-)
-
 collections = Table(
     "collections",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("userId", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("userId", String, ForeignKey("user.id", ondelete="CASCADE"), nullable=False),
     Column("animeSlug", String, nullable=False),
     Column("status", String, nullable=False, default="plan_to_watch"), # watching, plan_to_watch, completed, dropped
     Column("progress", Float, nullable=False, default=0),

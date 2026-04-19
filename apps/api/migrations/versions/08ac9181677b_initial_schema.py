@@ -48,8 +48,6 @@ def upgrade() -> None:
         """,
         'CREATE INDEX IF NOT EXISTS idx_video_cache_url     ON video_cache ("episodeUrl")',
         'CREATE INDEX IF NOT EXISTS idx_video_cache_expires ON video_cache ("expiresAt")',
-        'CREATE INDEX IF NOT EXISTS idx_user_bookmarks_anilist_id ON user_bookmarks ("anilistId")',
-        'CREATE INDEX IF NOT EXISTS idx_watch_history_anilist_id ON watch_history ("anilistId")',
         """
         ALTER TABLE anime_metadata 
           ADD COLUMN IF NOT EXISTS "lockVersion" INTEGER NOT NULL DEFAULT 0

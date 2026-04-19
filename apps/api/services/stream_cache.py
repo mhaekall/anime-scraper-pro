@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════════════════════════════════╗
-║          ADAPTIVE STREAM CACHE ENGINE  —  anime-scraper-pro                    ║
+║          ADAPTIVE STREAM CACHE ENGINE  —  orca                               ║
 ║          Target: Near 0ms latency untuk episode stream sources                 ║
 ╠══════════════════════════════════════════════════════════════════════════════════╣
 ║  ARSITEKTUR MULTI-LAYER:                                                        ║
