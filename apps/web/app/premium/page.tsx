@@ -9,7 +9,7 @@ export default function PremiumPage() {
         <Link href="/profile" className="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
           <IconBack />
         </Link>
-        <h1 className="font-bold text-lg">AnimeScraper Pro</h1>
+        <h1 className="font-bold text-lg">Orca</h1>
       </div>
 
       <div className="max-w-2xl mx-auto px-5 md:px-8 pt-8 anim-up">
@@ -57,7 +57,7 @@ export default function PremiumPage() {
         </div>
 
         <p className="text-center text-[#8e8e93] text-xs">
-          Ini adalah halaman demonstrasi (dummy). AnimeScraper Pro 100% gratis dan open-source berkat dukungan arsitektur Serverless.
+          Ini adalah halaman demonstrasi (dummy). Orca 100% gratis dan open-source berkat dukungan arsitektur Serverless.
         </p>
       </div>
     </div>

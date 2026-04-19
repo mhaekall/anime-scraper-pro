@@ -1,4 +1,4 @@
-# 📜 Full Stack Manifesto: Anime Scraper Pro v2.1
+# 📜 Full Stack Manifesto: Orca v2.1
 **Vision:** Zero Friction, Near 0ms Latency, $0 Cost Infrastructure.
 **Architecture:** Wrapper-Centric / Distributed Edge Streaming.
 

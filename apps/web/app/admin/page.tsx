@@ -247,7 +247,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <h1 className="text-2xl font-black text-white mb-2 text-center">Control Center</h1>
-          <p className="text-[#8e8e93] text-sm text-center mb-6">Anime Scraper Pro Administration</p>
+          <p className="text-[#8e8e93] text-sm text-center mb-6">Orca Administration</p>
           <form onSubmit={handleLogin}>
             <input 
               type="password" 

@@ -22,4 +22,5 @@ export const auth = betterAuth({
             clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
         }
     },
+    secret: process.env.BETTER_AUTH_SECRET,
 });

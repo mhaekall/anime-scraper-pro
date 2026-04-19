@@ -39,7 +39,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div className="w-16 h-16 bg-gradient-to-tr from-[#0A84FF] to-[#64D2FF] rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-[#0A84FF]/20">
             <IconCheck className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-black text-white">Login ke AnimeScraper</h2>
+          <h2 className="text-2xl font-black text-white">Login ke Orca</h2>
           <p className="text-sm text-white/40 mt-2">Sinkronisasi riwayat tontonan dan koleksi Anda di semua perangkat.</p>
         </div>
 

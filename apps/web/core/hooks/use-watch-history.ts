@@ -53,13 +53,36 @@ export function useWatchHistory(userId?: string) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const { data: history = [], mutate, isLoading } = useSWR<WatchHistoryItem[]>(
+  const { data: history, mutate, isLoading } = useSWR<WatchHistoryItem[]>(
     mounted && userId ? [API_URL, userId] : null,
     ([url, uid]: [string, string]) => fetcher(url, uid),
     { revalidateOnFocus: false, dedupingInterval: 10_000, keepPreviousData: true }
   );
 
-  const display = history.length === 0 && isLoading && mounted ? getLocal() : history;
+  const [display, setDisplay] = useState<WatchHistoryItem[]>(getLocal());
+
+  useEffect(() => {
+    if (!mounted) return;
+    const local = getLocal();
+    if (!userId) {
+      setDisplay(local);
+      return;
+    }
+
+    if (history) {
+      if (history.length === 0 && local.length > 0) {
+        const merged = [...history];
+        local.forEach(l => {
+          if (!merged.find(m => m.anilistId === l.anilistId && m.episode === l.episode)) {
+            merged.push(l);
+          }
+        });
+        setDisplay(merged);
+      } else {
+        setDisplay(history);
+      }
+    }
+  }, [history, userId, mounted]);
 
   const updateProgress = useCallback(
     async (item: Omit<WatchHistoryItem, "updatedAt">) => {

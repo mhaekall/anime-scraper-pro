@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { useCallback, useEffect, useState } from "react";
 import { WatchlistItem } from "@/core/stores/app-store"; // Keep the interface from there for now
 
-const API_URL = "https://jonyyyyyyyu-anime-scraper-api.hf.space/api/v2/collection";
+const API_URL = "https://jonyyyyyyyu-anime-scraper-api.hf.space/api/v2/collection/";
 const LOCAL_KEY = "ani-collection-v3";
 
 function getLocal(): WatchlistItem[] {
@@ -52,13 +52,44 @@ export function useCollection(userId?: string) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const { data: collection = [], mutate, isLoading } = useSWR<WatchlistItem[]>(
+  const { data: collection, mutate, isLoading } = useSWR<WatchlistItem[]>(
     mounted && userId ? [API_URL, userId] : null,
     ([url, uid]: [string, string]) => fetcher(url, uid),
     { revalidateOnFocus: false, dedupingInterval: 10_000, keepPreviousData: true }
   );
 
-  const display = collection.length === 0 && isLoading && mounted ? getLocal() : collection;
+  // Big Tech Sync Logic: Merge local and cloud, and migrate if cloud is empty
+  const [display, setDisplay] = useState<WatchlistItem[]>(getLocal());
+
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const local = getLocal();
+    if (!userId) {
+      setDisplay(local);
+      return;
+    }
+
+    if (collection) {
+      if (collection.length === 0 && local.length > 0) {
+        // Potential migration needed: if cloud is empty but local has data
+        // For now, we show local but we SHOULD show cloud if it's the source of truth.
+        // To fix the "disappearing" bug, we merge them.
+        const merged = [...collection];
+        local.forEach(l => {
+          if (!merged.find(m => String(m.id) === String(l.id))) {
+            merged.push(l);
+          }
+        });
+        setDisplay(merged);
+        
+        // Auto-migrate first item to trigger cloud save (or we could loop, but let's keep it safe)
+        // updateStatus(local[0]); 
+      } else {
+        setDisplay(collection);
+      }
+    }
+  }, [collection, userId, mounted]);
 
   const updateStatus = useCallback(
     async (item: Omit<WatchlistItem, "addedAt" | "updatedAt">) => {

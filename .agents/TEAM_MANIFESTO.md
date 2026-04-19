@@ -1,4 +1,4 @@
-# Anime Scraper Pro: Team Manifesto
+# Orca: Team Manifesto
 **Philosophy:** First Principles, Lateral Thinking, $0 Production.
 **Standard:** Apple Senior Design Developer (HIG Compliance).
 

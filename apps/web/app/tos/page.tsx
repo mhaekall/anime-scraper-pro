@@ -23,12 +23,12 @@ export default function TosPage() {
           
           <div className="space-y-6 text-[15px] leading-relaxed text-[#e5e5ea]">
             <p>
-              Selamat datang di AnimeScraper Pro. Dengan mengakses atau menggunakan aplikasi ini, Anda setuju untuk terikat oleh Ketentuan Layanan berikut.
+              Selamat datang di Orca. Dengan mengakses atau menggunakan aplikasi ini, Anda setuju untuk terikat oleh Ketentuan Layanan berikut.
             </p>
             
             <h3 className="text-lg font-bold text-white">1. Sifat Layanan</h3>
             <p>
-              AnimeScraper Pro beroperasi sebagai <strong>Mesin Pencari dan Pengindeks</strong>. Kami tidak menyimpan, mendistribusikan, atau menghosting file media berhak cipta pada server kami. Seluruh media diambil dari penyedia pihak ketiga publik di internet melalui mekanisme scraping/parser *on-the-fly*.
+              Orca beroperasi sebagai <strong>Mesin Pencari dan Pengindeks</strong>. Kami tidak menyimpan, mendistribusikan, atau menghosting file media berhak cipta pada server kami. Seluruh media diambil dari penyedia pihak ketiga publik di internet melalui mekanisme scraping/parser *on-the-fly*.
             </p>
             
             <h3 className="text-lg font-bold text-white">2. Penggunaan Wajar</h3>

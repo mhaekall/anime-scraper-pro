@@ -5,12 +5,12 @@ import { Toaster } from "@/ui/overlays/Toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AnimeScraper Pro",
-  description: "Nonton anime subtitle Indonesia — cepat, gratis, tanpa iklan.",
+  title: "Orca",
+  description: "Platform streaming anime premium minimalis — cepat, elegan, gratis.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "AnimeScraper Pro",
+    title: "Orca",
   },
 };
 

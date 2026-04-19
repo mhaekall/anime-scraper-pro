@@ -20,6 +20,10 @@ function formatCountdown(seconds: number) {
   return `${m}M`;
 }
 
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 export default function DetailClient({ detail, id }: { detail: any; id: string }) {
   const router = useRouter();
   const accent = "#0A84FF";
@@ -27,7 +31,12 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
   const { items, toggle } = useCollection(session?.user?.id);
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false); // For synopsis
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const { data: stats } = useSWR(
+    `https://jonyyyyyyyu-anime-scraper-api.hf.space/api/v2/social/anime/${id}/stats`,
+    fetcher
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -40,6 +49,18 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
   const recs = d.recommendations || [];
 
   const firstEp = eps.length > 0 && eps[0].url ? eps[0].url.replace(/\/$/, "").split("/").pop() : null;
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: d.title,
+        url: window.location.href
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast("Link disalin!", "success");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-black pb-24 text-white overflow-y-auto no-scrollbar">
@@ -86,7 +107,7 @@ export default function DetailClient({ detail, id }: { detail: any; id: string }
                 className={`w-12 py-3 rounded-2xl flex items-center justify-center border active:scale-95 ${saved ? "bg-white/15 border-white/30 text-white" : "bg-[#1c1c1e] border-white/10 text-[#8e8e93]"}`}>
                 <IconBookmark filled={saved} />
               </button>
-              <button className="w-12 py-3 rounded-2xl bg-[#1c1c1e] flex items-center justify-center border border-white/10 text-[#8e8e93] active:scale-95"><IconShare /></button>
+              <button onClick={handleShare} className="w-12 py-3 rounded-2xl bg-[#1c1c1e] flex items-center justify-center border border-white/10 text-[#8e8e93] active:scale-95"><IconShare /></button>
             </div>
           </div>
         </div>

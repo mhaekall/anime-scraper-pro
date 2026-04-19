@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'AnimeScraper Pro',
-    short_name: 'AnimePro',
-    description: 'Nonton anime subtitle Indonesia — cepat, gratis, tanpa iklan.',
+    name: 'Orca',
+    short_name: 'Orca',
+    description: 'Platform streaming anime premium minimalis — cepat, elegan, gratis.',
     start_url: '/',
     display: 'standalone',
     background_color: '#000000',

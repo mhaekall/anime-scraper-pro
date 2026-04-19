@@ -93,10 +93,17 @@ export default function HomeView({
 
       <div className="space-y-12">
         {/* Rows — HIG: Content is King */}
+        {initialAiring.length > 0 && <AnimeRow title="Sedang Tayang (Airing)" items={initialAiring} />}
         {initialTrending.length > 0 && <SpecialPopularRow title="Populer Saat Ini" items={initialTrending} />}
+        
         <HomeGenreGrid />
+        
+        {initialPopular.length > 0 && <AnimeRow title="Terpopuler Sepanjang Masa" items={initialPopular} />}
+        {initialTopRated.length > 0 && <AnimeRow title="Skor Tertinggi" items={initialTopRated} />}
+        
         {initialCompleted.length > 0 && <LatestGrid title="Anime Tamat Terbaik" items={initialCompleted} />}
         {initialIsekai.length > 0 && <AnimeRow title="Dunia Fantasi & Isekai" items={initialIsekai} />}
+        {initialMovies.length > 0 && <AnimeRow title="Film Anime (Movies)" items={initialMovies} />}
       </div>
       
       {/* Visual Explainer Placeholder / Decorative Gradient */}

@@ -1,7 +1,8 @@
 // features/explore/ExploreView.tsx — Search-first explore with AniList proxy
 "use client";
 
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, memo, Suspense, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/core/lib/api";
 import { AnimeCard } from "@/ui/cards/AnimeCard";
 import { IconSearch, IconClose, IconClock } from "@/ui/icons";
@@ -46,9 +47,12 @@ function saveSearchHist(terms: string[]) {
   localStorage.setItem("ani-search-v2", JSON.stringify(terms.slice(0, 10)));
 }
 
-export default function ExploreView({ initialResults = [] }: { initialResults?: any[] }) {
-  const [query, setQuery] = useState("");
-  const [genre, setGenre] = useState("");
+function ExploreViewInner({ initialResults = [] }: { initialResults?: any[] }) {
+  const searchParams = useSearchParams();
+  const q = searchParams.get("q") || "";
+  const initGenre = searchParams.get("genre") || "";
+  const [query, setQuery] = useState(q);
+  const [genre, setGenre] = useState(initGenre);
   const [year, setYear] = useState("");
   const [format, setFormat] = useState("");
   const [sort, setSort] = useState("POPULARITY_DESC");
@@ -56,8 +60,16 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
   const [loading, setLoading] = useState(false);
   const [searchHist, setSearchHist] = useState<string[]>([]);
   const dq = useDebounce(query, 600);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setSearchHist(getSearchHist()), []);
+
+  useEffect(() => {
+    // Focus the input immediately when the page loads, unless we came here via a genre click
+    if (!initGenre && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [initGenre]);
 
   useEffect(() => {
     if (!dq && !genre && !year && !format && sort === "POPULARITY_DESC") {
@@ -110,6 +122,8 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
         <div className="relative max-w-2xl mx-auto">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40"><IconSearch className="w-5 h-5" /></div>
           <input 
+            ref={inputRef}
+            autoFocus
             value={query} 
             onChange={(e) => setQuery(e.target.value)} 
             className="w-full bg-[#1c1c1e] text-white rounded-[16px] py-3.5 pl-12 pr-10 outline-none text-[16px] placeholder-white/30 border border-white/10 focus:border-white/20 transition-all shadow-lg" 
@@ -123,39 +137,6 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
               <IconClose className="w-3.5 h-3.5" />
             </button>
           )}
-        </div>
-
-        {/* Advanced Filters */}
-        <div className="max-w-2xl mx-auto mt-4 flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
-           <select value={year} onChange={e => setYear(e.target.value)} className="bg-[#1c1c1e] text-white/80 text-[12px] font-bold px-4 py-2 rounded-full border border-white/10 outline-none appearance-none cursor-pointer hover:bg-white/5 transition-colors">
-              <option value="">Semua Tahun</option>
-              {Array.from({length: 10}).map((_, i) => {
-                 const y = new Date().getFullYear() - i;
-                 return <option key={y} value={y}>{y}</option>
-              })}
-           </select>
-           
-           <select value={format} onChange={e => setFormat(e.target.value)} className="bg-[#1c1c1e] text-white/80 text-[12px] font-bold px-4 py-2 rounded-full border border-white/10 outline-none appearance-none cursor-pointer hover:bg-white/5 transition-colors">
-              <option value="">Semua Format</option>
-              <option value="TV">TV</option>
-              <option value="MOVIE">Movie</option>
-              <option value="OVA">OVA</option>
-           </select>
-
-           <select value={sort} onChange={e => setSort(e.target.value)} className="bg-[#1c1c1e] text-white/80 text-[12px] font-bold px-4 py-2 rounded-full border border-white/10 outline-none appearance-none cursor-pointer hover:bg-white/5 transition-colors">
-              <option value="POPULARITY_DESC">Terpopuler</option>
-              <option value="SCORE_DESC">Rating Tertinggi</option>
-              <option value="START_DATE_DESC">Terbaru</option>
-           </select>
-
-           {(genre || year || format || sort !== "POPULARITY_DESC") && (
-              <button 
-                onClick={() => { setGenre(""); setYear(""); setFormat(""); setSort("POPULARITY_DESC"); }}
-                className="text-[12px] font-bold text-[#FF453A] px-2 py-1"
-              >
-                Reset
-              </button>
-           )}
         </div>
       </div>
 
@@ -172,7 +153,7 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
                 <span className="text-white/40 text-[11px] font-medium">{results.length} item</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
-                {results.map((a) => <AnimeCard key={a.id} id={a.id} title={a.title} img={a.img} score={a.score} color={a.color} />)}
+                {results.map((a) => <AnimeCard key={a.id} id={String(a.id)} title={a.title} img={a.img} score={a.score} color={a.color} />)}
               </div>
             </div>
           ) : (
@@ -201,49 +182,17 @@ export default function ExploreView({ initialResults = [] }: { initialResults?: 
                 </div>
               </div>
             )}
-
-            {/* Trending & Popular Rows */}
-            {initialResults.length > 0 && (
-              <div className="space-y-8">
-                <div>
-                  <div className="px-5 md:px-0 flex justify-between items-center mb-3">
-                    <h2 className="text-lg font-bold text-white">Populer Saat Ini</h2>
-                  </div>
-                  <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 px-5 md:px-0 snap-x">
-                    {initialResults.slice(0, 15).map((a) => (
-                      <div key={a.id} className="min-w-[140px] md:min-w-[160px] snap-start">
-                        <AnimeCard id={a.id} title={a.title} img={a.img} score={a.score} color={a.color} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="px-5 md:px-0">
-              <h2 className="text-lg font-bold text-white mb-5">Telusuri Genre</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                {GENRES.map((g) => (
-                  <button 
-                    key={g.name} 
-                    onClick={() => setGenre(g.name)} 
-                    className="relative overflow-hidden h-28 rounded-[24px] transition-all active:scale-95 group shadow-lg shadow-black/20"
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${g.gradient} opacity-90 group-hover:opacity-100 transition-opacity`} />
-                    <img 
-                      src={g.image} 
-                      alt={g.name} 
-                      className="absolute -right-2 top-0 w-24 h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity rotate-[12deg] translate-x-4 scale-125"
-                    />
-                    <div className="absolute inset-0 bg-black/10 group-active:bg-black/30 transition-colors" />
-                    <span className="absolute bottom-5 left-5 text-white font-black text-xl tracking-tight drop-shadow-md z-10">{g.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function ExploreView(props: { initialResults?: any[] }) {
+  return (
+    <Suspense fallback={<div className="w-full min-h-screen bg-black" />}>
+      <ExploreViewInner {...props} />
+    </Suspense>
   );
 }

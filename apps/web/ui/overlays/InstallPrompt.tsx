@@ -50,11 +50,11 @@ export function InstallPrompt() {
 
         <div className="flex gap-4 items-start pr-6">
           <div className="flex-shrink-0 w-12 h-12 bg-zinc-800 rounded-xl flex items-center justify-center border border-white/5">
-            <span className="text-white font-bold text-xl">AP</span>
+            <span className="text-white font-bold text-xl">O</span>
           </div>
           
           <div className="flex flex-col gap-1">
-            <h3 className="text-sm font-semibold text-white">Install AnimeScraper</h3>
+            <h3 className="text-sm font-semibold text-white">Install Orca</h3>
             
             {isIOS ? (
               <div className="text-xs text-white/70 leading-relaxed space-y-2">

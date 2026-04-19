@@ -52,7 +52,7 @@ function ContinueWatchingInner({ userId }: { userId?: string }) {
               {/* Card — HIG: Glassmorphism / Large Rounded Corners */}
               <div className="w-full aspect-video rounded-[22px] bg-[#1c1c1e] relative overflow-hidden mb-3 border border-white/[0.08] group-hover:border-white/[0.18] transition-all duration-300 shadow-lg">
                 <img 
-                  src={item.animeCover || `https://img.anilist.co/media/${item.anilistId}/banner/medium`} 
+                  src={item.animeCover || `https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx${item.anilistId}.jpg`} 
                   className="w-full h-full object-cover opacity-60 group-hover:scale-[1.03] group-hover:opacity-80 transition-all duration-700 ease-out" 
                   alt="" 
                   loading="lazy"

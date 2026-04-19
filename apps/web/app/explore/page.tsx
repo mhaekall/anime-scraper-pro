@@ -1,8 +1,7 @@
 import ExploreView from "@/features/explore/ExploreView";
 import { api } from "@/core/lib/api";
 
-export const runtime = "edge";
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const SEARCH_Q = `
   query ($search: String, $page: Int, $perPage: Int, $genres: [String], $sort: [MediaSort]) {

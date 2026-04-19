@@ -62,9 +62,8 @@ export const api = {
 
   /** AniList GraphQL proxy or direct call */
   anilist: (query: string, variables?: Record<string, any>, init?: RequestInit) => {
-    // If running on the server, hit AniList directly to avoid localhost connection issues during build/prerender
-    const isServer = typeof window === 'undefined';
-    const url = isServer ? 'https://graphql.anilist.co' : '/api/anilist';
+    // Selalu hit langsung ke AniList untuk menghindari rate limit IP server Cloudflare
+    const url = 'https://graphql.anilist.co';
     
     return request<any>(url, {
       method: "POST",

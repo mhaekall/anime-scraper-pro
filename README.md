@@ -8,7 +8,7 @@ app_port: 7860
 pinned: false
 ---
 
-# Anime Scraper Pro Backend API
+# Orca Backend API
 
-Backend untuk Anime Scraper Pro, berjalan di Hugging Face Spaces.
+Backend untuk Orca, berjalan di Hugging Face Spaces.
 Memiliki Ingestion Engine dengan Telegram Swarm Storage.

@@ -23,7 +23,7 @@ export default function PrivacyPage() {
           
           <div className="space-y-6 text-[15px] leading-relaxed text-[#e5e5ea]">
             <p>
-              AnimeScraper Pro sangat menghargai privasi Anda. Karena aplikasi ini pada dasarnya beroperasi dengan prinsip <strong>Zero-Trust dan $0 Cost Serverless Architecture</strong>, kami tidak mengumpulkan, menjual, atau mengeksploitasi data pribadi Anda.
+              Orca sangat menghargai privasi Anda. Karena aplikasi ini pada dasarnya beroperasi dengan prinsip <strong>Zero-Trust dan $0 Cost Serverless Architecture</strong>, kami tidak mengumpulkan, menjual, atau mengeksploitasi data pribadi Anda.
             </p>
             
             <h3 className="text-lg font-bold text-white">1. Data yang Dikumpulkan</h3>

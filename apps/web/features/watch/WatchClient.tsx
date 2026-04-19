@@ -64,10 +64,7 @@ export default function WatchClient({ id, episode: initialEpisode, title, poster
     }
   };
 
-  const handleLike = () => {
-    setLiked(!liked);
-    setLikes(prev => liked ? prev - 1 : prev + 1);
-  };
+
 
   // Scroll current episode into view on mount
   const epsContainerRef = useRef<HTMLDivElement>(null);
@@ -84,6 +81,64 @@ export default function WatchClient({ id, episode: initialEpisode, title, poster
   useEffect(() => {
     setActiveEpisode(initialEpisode);
   }, [initialEpisode]);
+
+  const { data: epStats, mutate: mutateEpStats } = useSWR(
+    mounted ? `https://jonyyyyyyyu-anime-scraper-api.hf.space/api/v2/social/episode/${id}/${activeEpisode}/stats${session?.user?.id ? `?user_id=${session.user.id}` : ''}` : null,
+    async (url) => {
+      const res = await fetch(url);
+      return res.json();
+    },
+    { revalidateOnFocus: false }
+  );
+
+  const realLikes = epStats?.likes || 0;
+  const isLiked = epStats?.user_liked || false;
+
+  useEffect(() => {
+    if (!mounted || !session?.user?.id) return;
+    
+    const timer = setTimeout(() => {
+      fetch('https://jonyyyyyyyu-anime-scraper-api.hf.space/api/v2/social/watch-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: session.user.id,
+          anilistId: parseInt(id),
+          episodeNumber: parseFloat(activeEpisode),
+          event_type: 'complete',
+          timestamp_sec: 0
+        })
+      }).catch(console.error);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, [activeEpisode, mounted, session?.user?.id, id]);
+
+  const handleLike = async () => {
+    if (!session?.user?.id) return alert("Silakan login untuk menyukai episode ini.");
+    
+    mutateEpStats((prev: any) => ({
+      ...prev,
+      likes: prev?.user_liked ? (prev.likes - 1) : (prev?.likes || 0) + 1,
+      user_liked: !prev?.user_liked
+    }), false);
+
+    try {
+      await fetch('https://jonyyyyyyyu-anime-scraper-api.hf.space/api/v2/social/episode/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: session.user.id,
+          anilistId: parseInt(id),
+          episodeNumber: parseFloat(activeEpisode)
+        })
+      });
+      mutateEpStats();
+    } catch (e) {
+      console.error("Like failed", e);
+      mutateEpStats();
+    }
+  };
 
   const handleEpisodeChange = (newEp: string) => {
     if (newEp === activeEpisode) return;
@@ -180,10 +235,10 @@ export default function WatchClient({ id, episode: initialEpisode, title, poster
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
               <button 
                 onClick={handleLike}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${liked ? 'bg-[#ff453a]/20 text-[#ff453a]' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-colors ${isLiked ? 'bg-[#ff453a]/20 text-[#ff453a]' : 'bg-white/10 text-white hover:bg-white/20'}`}
               >
-                <HeartIcon size={16} fill={liked ? "currentColor" : "none"} />
-                {likes}
+                <HeartIcon size={16} fill={isLiked ? "currentColor" : "none"} />
+                {realLikes}
               </button>
               
               <button 

@@ -1,4 +1,4 @@
-# Anime Scraper Pro: Architect Manifesto
+# Orca: Architect Manifesto
 **Role:** Apple Senior Design Developer Persona
 **Principle:** First Principles Thinking & Lateral Problem Solving
 

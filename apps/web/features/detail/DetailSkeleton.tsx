@@ -1,37 +1,56 @@
 export default function DetailSkeleton() {
   return (
-    <div className="min-h-screen bg-black pb-24 animate-pulse">
-      {/* Hero skeleton */}
-      <div className="w-full h-[280px] bg-[#1c1c1e]" />
-      
-      <div className="px-5 -mt-16 relative z-10 max-w-4xl mx-auto">
-        <div className="flex gap-4 mb-6">
-          {/* Cover */}
-          <div className="w-[100px] aspect-[2/3] rounded-2xl bg-[#2c2c2e] shrink-0" />
-          
-          <div className="pt-10 flex-1 space-y-3">
-            {/* Title */}
-            <div className="h-8 w-3/4 bg-[#2c2c2e] rounded-xl" />
-            <div className="h-4 w-1/2 bg-[#2c2c2e] rounded-lg" />
-            {/* Buttons */}
-            <div className="flex gap-2 mt-4">
-              <div className="h-11 w-32 bg-[#2c2c2e] rounded-2xl" />
-              <div className="h-11 w-12 bg-[#2c2c2e] rounded-2xl" />
+    <div className="min-h-screen bg-black pb-24 text-white overflow-y-auto no-scrollbar">
+      {/* Hero */}
+      <div className="w-full h-[450px] md:h-[500px] relative bg-[#1c1c1e] animate-pulse">
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-[250px] bg-gradient-to-t from-black via-black/80 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-[100px] bg-gradient-to-t from-black to-transparent" />
+        <div className="absolute top-10 left-5 w-9 h-9 bg-[#2c2c2e] rounded-full" />
+      </div>
+
+      <div className="px-5 md:px-8 -mt-[200px] md:-mt-[240px] relative z-10 max-w-4xl mx-auto">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-8">
+          <div className="flex-1 min-w-0 animate-pulse">
+            <div className="h-10 w-3/4 bg-[#2c2c2e] rounded-xl mb-3" />
+            <div className="h-4 w-1/2 bg-[#2c2c2e] rounded-lg mb-6" />
+            
+            <div className="flex gap-2 mb-6">
+              <div className="h-4 w-16 bg-[#2c2c2e] rounded-full" />
+              <div className="h-4 w-16 bg-[#2c2c2e] rounded-full" />
+              <div className="h-4 w-16 bg-[#2c2c2e] rounded-full" />
+            </div>
+            
+            <div className="flex gap-2">
+              <div className="h-12 w-40 bg-[#2c2c2e] rounded-2xl" />
+              <div className="h-12 w-12 bg-[#2c2c2e] rounded-2xl" />
+              <div className="h-12 w-12 bg-[#2c2c2e] rounded-2xl" />
             </div>
           </div>
         </div>
-        
-        {/* Episode list skeleton */}
-        <div className="space-y-2 mt-6">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex gap-3 p-2.5 rounded-2xl bg-[#1c1c1e]/50">
-              <div className="w-[110px] aspect-video rounded-xl bg-[#2c2c2e]" />
-              <div className="flex-1 space-y-2 py-2">
-                <div className="h-4 w-3/4 bg-[#2c2c2e] rounded" />
-                <div className="h-3 w-1/3 bg-[#2c2c2e] rounded" />
-              </div>
+
+        <div className="space-y-8 animate-pulse">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-[#1c1c1e] h-16 rounded-2xl border border-white/5" />
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            <div className="h-5 w-32 bg-[#2c2c2e] rounded-lg" />
+            <div className="h-4 w-full bg-[#1c1c1e] rounded-lg" />
+            <div className="h-4 w-full bg-[#1c1c1e] rounded-lg" />
+            <div className="h-4 w-2/3 bg-[#1c1c1e] rounded-lg" />
+          </div>
+
+          <div className="space-y-4">
+            <div className="h-5 w-24 bg-[#2c2c2e] rounded-lg" />
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
+               {Array.from({ length: 16 }).map((_, i) => (
+                  <div key={i} className="bg-[#1c1c1e] h-10 rounded-xl border border-white/5" />
+               ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </div>
