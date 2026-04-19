@@ -28,15 +28,17 @@ const fetcher = async (url: string, userId?: string): Promise<WatchHistoryItem[]
     const res = await fetch(`${url}?user_id=${userId}`);
     const data = await res.json();
     
+    const dataArray = Array.isArray(data) ? data : (data?.data || []);
     // Map backend response back to WatchHistoryItem frontend format
-    const mapped = (data || []).map((h: any) => ({
-      anilistId: h.anilistId,
-      episode: h.episodeNumber,
-      timestampSec: h.progressSeconds,
-      durationSec: h.durationSeconds,
-      completed: h.isCompleted,
+    const mapped = dataArray.map((h: any) => ({
+      anilistId: parseInt(h.animeSlug || h.anilistId),
+      episode: h.episode || h.episodeNumber,
+      timestampSec: h.timestampSec || h.progressSeconds,
+      durationSec: h.durationSec || h.durationSeconds,
+      completed: h.completed || h.isCompleted,
       updatedAt: h.updatedAt,
-      // Note: backend doesn't store metadata, frontend merges it if needed
+      animeTitle: h.cleanTitle || h.nativeTitle || h.animeTitle,
+      animeCover: h.coverImage || h.animeCover
     }));
 
     if (mapped.length > 0) saveLocal(mapped);
@@ -54,7 +56,7 @@ export function useWatchHistory(userId?: string) {
   const { data: history = [], mutate, isLoading } = useSWR<WatchHistoryItem[]>(
     mounted && userId ? [API_URL, userId] : null,
     ([url, uid]: [string, string]) => fetcher(url, uid),
-    { revalidateOnFocus: false, dedupingInterval: 10_000 }
+    { revalidateOnFocus: false, dedupingInterval: 10_000, keepPreviousData: true }
   );
 
   const display = history.length === 0 && isLoading && mounted ? getLocal() : history;

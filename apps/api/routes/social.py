@@ -46,9 +46,19 @@ class ProgressUpdate(BaseModel):
 
 @router.get("/progress")
 async def get_progress(user_id: str, anilistId: Optional[int] = None):
-    query = select(watch_history).where(watch_history.c.user_id == user_id)
+    # Join with anime_metadata to get coverImage and title (even though watch_history might have them, we ensure consistency)
+    from db.models import anime_metadata
+    query = select(
+        watch_history,
+        anime_metadata.c.coverImage,
+        anime_metadata.c.cleanTitle,
+        anime_metadata.c.nativeTitle
+    ).select_from(
+        watch_history.outerjoin(anime_metadata, watch_history.c.animeSlug == func.cast(anime_metadata.c.anilistId, String))
+    ).where(watch_history.c.userId == user_id)
+    
     if anilistId:
-        query = query.where(watch_history.c.anilistId == anilistId)
+        query = query.where(watch_history.c.animeSlug == str(anilistId))
     
     rows = await database.fetch_all(query=query)
     return [dict(row) for row in rows]
@@ -58,9 +68,17 @@ async def save_progress(prog: ProgressUpdate):
     upsert_user = pg_insert(users).values(id=prog.user_id, username=f"user_{prog.user_id[-4:]}").on_conflict_do_nothing()
     await database.execute(upsert_user)
     
-    stmt = pg_insert(watch_history).values(**prog.dict()).on_conflict_do_update(
-        index_elements=["user_id", "anilistId", "episodeNumber"],
-        set_={"progressSeconds": prog.progressSeconds, "durationSeconds": prog.durationSeconds, "isCompleted": prog.isCompleted, "updatedAt": func.now()}
+    # Extract metadata if we want to store it directly, but for now we just use what we have
+    stmt = pg_insert(watch_history).values(
+        userId=prog.user_id,
+        animeSlug=str(prog.anilistId),
+        episode=prog.episodeNumber,
+        timestampSec=prog.progressSeconds,
+        durationSec=prog.durationSeconds,
+        completed=prog.isCompleted
+    ).on_conflict_do_update(
+        index_elements=["userId", "animeSlug", "episode"],
+        set_={"timestampSec": prog.progressSeconds, "durationSec": prog.durationSeconds, "completed": prog.isCompleted, "updatedAt": func.now()}
     )
     await database.execute(stmt)
     return {"success": True}
