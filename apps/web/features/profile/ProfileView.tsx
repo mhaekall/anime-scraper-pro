@@ -1,20 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useWatchlist } from "@/core/stores/app-store";
+import { useCollection } from "@/core/hooks/use-collection";
 import { useWatchHistory } from "@/core/hooks/use-watch-history";
 import { useMounted } from "@/core/hooks/use-mounted";
-import { LogOut, ChevronRight, Crown, Shield, FileText } from "lucide-react";
+import { LogOut, ChevronRight, Crown, Shield, FileText, Copy, Mail, Hash, User as UserIcon } from "lucide-react";
 import { authClient } from "@/core/lib/auth-client";
 import { AuthModal } from "@/ui/overlays/AuthModal";
 import Link from "next/link";
 
 export default function ProfileView() {
   const mounted = useMounted();
-  const { items: watchlist } = useWatchlist();
-  const { history } = useWatchHistory();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { data: session, isPending } = authClient.useSession();
+  const { items: watchlist } = useCollection(session?.user?.id);
+  const { history } = useWatchHistory();
 
   const stats = useMemo(() => {
     const completed = watchlist.filter((w) => w.status === "completed").length;
@@ -31,9 +31,9 @@ export default function ProfileView() {
       <div className="rounded-[32px] p-8 bg-[#1c1c1e] border border-white/5 shadow-xl relative overflow-hidden anim-fade">
         <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none bg-[#0A84FF]" />
         
-        <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 rounded-[24px] overflow-hidden border-4 border-white/10 shadow-2xl shrink-0">
+        <div className="flex items-start justify-between relative z-10">
+          <div className="flex items-start gap-5 md:gap-6 w-full">
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-[20px] md:rounded-[24px] overflow-hidden border-4 border-white/10 shadow-2xl shrink-0 mt-1">
               <img 
                 src={session?.user?.image || "https://api.dicebear.com/7.x/notionists/svg?seed=Guest"} 
                 alt="avatar" 
@@ -41,24 +41,54 @@ export default function ProfileView() {
                 loading="lazy" 
               />
             </div>
-            <div>
-              <h2 className="text-2xl md:text-3xl font-black text-white mb-1 line-clamp-1">
-                {isPending ? "Loading..." : session?.user?.name || "Guest"}
-              </h2>
-              <div className="flex gap-2 items-center mt-1">
-                <span className="px-2 py-0.5 bg-white text-black text-[9px] font-black rounded uppercase tracking-widest">
-                  {session?.user ? "PRO TIER" : "FREE TIER"}
-                </span>
-                {session?.user && <span className="text-[10px] text-white/40 font-bold">ID: {session.user.id.substring(0, 6).toUpperCase()}</span>}
-              </div>
+            <div className="flex-1 min-w-0">
+              {session?.user ? (
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex gap-2 items-center mb-1.5">
+                      <span className="px-2 py-0.5 bg-[#0A84FF] text-white text-[9px] font-black rounded uppercase tracking-widest shadow-lg shadow-[#0A84FF]/30">
+                        PRO TIER
+                      </span>
+                    </div>
+                    <h2 className="text-xl md:text-2xl font-black text-white leading-tight truncate">
+                      @{session.user.email?.split('@')[0] || "user"}
+                    </h2>
+                    <p className="text-sm text-white/60 font-bold truncate mt-0.5">{session.user.name}</p>
+                  </div>
+                  
+                  <div className="space-y-1.5 pt-2 border-t border-white/10">
+                    <div className="flex items-center gap-2 text-[11px] md:text-xs">
+                      <Mail className="w-3.5 h-3.5 text-white/40" />
+                      <span className="text-white/80 truncate">{session.user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] md:text-xs group cursor-pointer" onClick={() => navigator.clipboard.writeText(session.user.id)}>
+                      <Hash className="w-3.5 h-3.5 text-white/40" />
+                      <span className="text-white/80 font-mono truncate">{session.user.id}</span>
+                      <Copy className="w-3 h-3 text-white/0 group-hover:text-white/40 transition-colors ml-1" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-2">
+                  <h2 className="text-2xl md:text-3xl font-black text-white mb-1 line-clamp-1">
+                    {isPending ? "Loading..." : "Guest"}
+                  </h2>
+                  <div className="flex gap-2 items-center mt-1">
+                    <span className="px-2 py-0.5 bg-white text-black text-[9px] font-black rounded uppercase tracking-widest">
+                      FREE TIER
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           
-          <div className="shrink-0 ml-4">
+          <div className="shrink-0 ml-2">
             {session?.user && (
               <button 
                 onClick={() => authClient.signOut()} 
                 className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-colors"
+                title="Keluar"
               >
                 <LogOut className="w-4 h-4 text-white" />
               </button>
@@ -151,7 +181,7 @@ export default function ProfileView() {
         </section>
 
         <div className="text-center space-y-1">
-          <p className="text-white/20 text-[10px] font-black tracking-widest uppercase">AnimeScraper Pro v2.4.1</p>
+          <p className="text-white/20 text-[10px] font-black tracking-widest uppercase">Orca v2.4.1</p>
           <p className="text-white/10 text-[9px] font-bold">Didesain untuk efisiensi maksimal </p>
         </div>
       </div>
