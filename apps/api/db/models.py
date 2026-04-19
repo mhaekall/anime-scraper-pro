@@ -172,3 +172,15 @@ watch_history = Table(
     Column("updatedAt", DateTime, nullable=False, server_default=func.now(), onupdate=func.now()),
     UniqueConstraint("userId", "animeSlug", "episode", name="watch_history_userId_animeSlug_episode_key"),
 )
+
+collections = Table(
+    "collections",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("userId", String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("animeSlug", String, nullable=False),
+    Column("status", String, nullable=False, default="plan_to_watch"), # watching, plan_to_watch, completed, dropped
+    Column("progress", Float, nullable=False, default=0),
+    Column("updatedAt", DateTime, nullable=False, server_default=func.now(), onupdate=func.now()),
+    UniqueConstraint("userId", "animeSlug", name="uq_user_anime_collection"),
+)
