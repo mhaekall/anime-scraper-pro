@@ -36,7 +36,7 @@ async def get_home_v2(response: Response):
             FROM episodes
             GROUP BY "anilistId"
             ORDER BY last_up DESC
-            LIMIT 20
+            LIMIT 60
         )
         SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score",
                l.max_ep as "latestEpisode"
@@ -54,7 +54,7 @@ async def get_home_v2(response: Response):
     '''
 
     completed_query = '''
-        SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score"
+        SELECT m."anilistId", m."cleanTitle", m."nativeTitle", m."coverImage", m."bannerImage", m."score", m."totalEpisodes"
         FROM anime_metadata m
         WHERE m.status = 'FINISHED' AND EXISTS (SELECT 1 FROM episodes e WHERE e."anilistId" = m."anilistId")
         ORDER BY m.popularity DESC NULLS LAST, m.score DESC NULLS LAST
@@ -122,7 +122,8 @@ async def get_home_v2(response: Response):
             "nextAiringEpisode": d.get("nextAiringEpisode"),
             "url": f"/anime/{d['anilistId']}",
             "anilistId": d["anilistId"],
-            "latestEpisode": d.get("latestEpisode")
+            "latestEpisode": d.get("latestEpisode"),
+            "episodes": d.get("totalEpisodes")
         }
 
     return {

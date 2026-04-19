@@ -28,57 +28,42 @@ export function Navigation({ children }: { children: React.ReactNode }) {
   const isMainTab = TABS.some(t => pathname === t.id);
 
   return (
-    <div className="w-full min-h-[100dvh] bg-[#121212] text-white flex sm:flex-row flex-col relative select-none antialiased min-w-0 transition-colors duration-500">
-      {/* Desktop Sidebar (Always mounted, hidden on mobile) */}
-      <aside className="hidden sm:flex flex-col w-64 h-screen sticky top-0 bg-[#1c1c1e] border-white/5 border-r pt-12 pb-6 z-50 shrink-0 shadow-xl">
-        <div className="px-8 mb-12">
-          <h1 className="text-2xl font-black text-white tracking-tight">AnimeScraper<span className="text-[#0A84FF]">.</span></h1>
-        </div>
-        <nav className="flex-1 px-4 flex flex-col gap-2">
-          {TABS.map((t) => {
-            const active = pathname === t.id || (t.id !== "/" && pathname.startsWith(t.id));
-            const Icon = t.icon;
-            return (
-              <Link 
-                key={t.id} 
-                href={t.id}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-[16px] transition-all font-bold text-[14px] ${active ? 'bg-[#2c2c2e] text-white shadow-lg' : 'text-white/40 hover:bg-white/5 hover:text-white/60'}`}
-              >
-                <Icon className="w-5 h-5" filled={active} />
-                {t.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
+    <div className="w-full min-h-[100dvh] bg-[#121212] text-white flex flex-col relative select-none antialiased min-w-0 transition-colors duration-500">
       {/* Main content */}
       <div className="flex-1 w-full min-h-[100dvh] relative flex flex-col min-w-0">
-        <main className={`flex-1 w-full min-w-0 ${mounted && isMainTab ? 'pb-[70px] sm:pb-0' : 'pb-0'}`}>
+        <main className={`flex-1 w-full min-w-0 ${mounted && isMainTab ? 'pb-[100px]' : 'pb-0'}`}>
           {children}
         </main>
 
-        {/* Mobile Bottom Nav - Only render when mounted and on a main tab */}
+        {/* Global Bottom Nav - Render when mounted and on a main tab */}
         {mounted && isMainTab && (
-          <>
-            <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#121212] via-[#121212]/80 to-transparent z-[90] pointer-events-none sm:hidden" />
-            <nav className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[300px] z-[100] sm:hidden bg-[#1c1c1e]/70 backdrop-blur-3xl border border-white/10 shadow-black/80 rounded-[24px] shadow-2xl overflow-hidden">
-              <div className="flex justify-around items-center px-2 h-[50px]">
+          <div className="fixed bottom-0 left-0 right-0 h-[72px] z-[90] flex flex-col justify-end items-center pb-2 pointer-events-auto" aria-hidden="true" title="Bottom Navigation Area">
+            <nav className="relative w-[calc(100%-32px)] max-w-[320px] z-[100] bg-[#1c1c1e] border border-[#2c2c2e] shadow-[0_8px_32px_rgba(0,0,0,0.8)] rounded-[32px] overflow-hidden" aria-hidden="false">
+              <div className="flex justify-around items-center px-2 h-[60px]">
                 {TABS.map((t) => {
-                  const active = pathname === t.id;
+                  const active = pathname === t.id || (t.id !== "/" && pathname.startsWith(t.id));
                   const Icon = t.icon;
+                  
+                  const isProfileTab = t.id === "/profile";
+                  const isLoggedIn = !!session?.user;
+                  const avatarUrl = session?.user?.image || (isLoggedIn ? `https://api.dicebear.com/7.x/notionists/svg?seed=${session?.user?.id || 'orca'}&backgroundColor=0a84ff,bf5af2` : null);
+
                   return (
-                    <Link key={t.id} href={t.id} className="flex flex-col items-center justify-center h-full aspect-square">
-                      <div className={`transition-all duration-300 ${active ? "scale-110" : "scale-100 opacity-60"}`}>
-                        <Icon className="w-[20px] h-[20px] text-white" filled={active} />
+                    <Link key={t.id} href={t.id} className="flex flex-col items-center justify-center h-full aspect-square group">
+                      <div className={`transition-all duration-300 ${active ? "scale-110" : "scale-100 opacity-60 group-hover:opacity-100 group-hover:scale-105"}`}>
+                        {isProfileTab && avatarUrl ? (
+                          <img src={avatarUrl} alt="Profile" className={`w-[22px] h-[22px] rounded-full object-cover border-2 ${active ? 'border-white' : 'border-transparent'}`} />
+                        ) : (
+                          <Icon className="w-[22px] h-[22px] text-white" filled={active} />
+                        )}
                       </div>
-                      <span className={`text-[8px] mt-0.5 transition-colors ${active ? "text-white font-bold" : "text-white/40 font-medium"}`}>{t.label}</span>
+                      <span className={`text-[9px] mt-1 transition-colors ${active ? "text-white font-bold" : "text-white/40 font-medium group-hover:text-white/70"}`}>{t.label}</span>
                     </Link>
                   );
                 })}
               </div>
             </nav>
-          </>
+          </div>
         )}
       </div>
 

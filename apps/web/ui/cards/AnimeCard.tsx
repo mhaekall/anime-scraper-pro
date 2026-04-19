@@ -22,9 +22,11 @@ interface Props {
   epId?: string;
   rank?: number;
   variant?: "vertical" | "horizontal";
+  isNew?: boolean;
+  totalEps?: number | null;
 }
 
-function AnimeCardInner({ id, title, img, banner, score, color, epId, rank, variant = "vertical" }: Props) {
+function AnimeCardInner({ id, title, img, banner, score, color, epId, rank, variant = "vertical", isNew, totalEps }: Props) {
   const accent = "#0A84FF";
   const { history } = useWatchHistory();
   const ref = useRef<HTMLDivElement>(null);
@@ -73,8 +75,14 @@ function AnimeCardInner({ id, title, img, banner, score, color, epId, rank, vari
           <div className="absolute top-0 left-0 w-7 h-9 bg-black/60 rounded-br-xl flex items-center justify-center font-black text-sm text-white z-10">{rank}</div>
         )}
 
+        {!rank && isNew && (
+          <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-gradient-to-r from-[#FFCC00] to-[#FF9500] text-black text-[9px] font-black uppercase tracking-wider rounded shadow-md z-10">NEW</span>
+        )}
+
         {epId && (
-          <span className="absolute top-2 right-2 px-1.5 py-0.5 bg-[#FF453A]/90 text-[9px] font-bold uppercase tracking-wider rounded z-10">EPS {epId}</span>
+          <span className="absolute top-2 right-2 px-1.5 py-0.5 bg-[#FF453A]/90 text-[9px] font-bold uppercase tracking-wider rounded z-10">
+            {totalEps ? `EPS ${epId}/${totalEps}` : `EPS ${epId}`}
+          </span>
         )}
 
         <div className="absolute bottom-2 left-2 right-2 z-10 flex items-center justify-between opacity-0 group-hover:opacity-100 translate-y-3 group-hover:translate-y-0 transition-all duration-200">
@@ -89,9 +97,16 @@ function AnimeCardInner({ id, title, img, banner, score, color, epId, rank, vari
         )}
       </button>
       <h3 className="text-[#f2f2f7] font-semibold text-[13px] line-clamp-2 leading-[1.3] px-0.5 group-hover:text-white transition-colors">{title}</h3>
-      {watched?.completed && (
-        <span className="text-[10px] font-bold text-[#30D158] flex items-center gap-0.5 mt-0.5 px-0.5"><IconCheck className="w-3 h-3" /> Selesai</span>
-      )}
+      <div className="flex items-center gap-2 mt-1 px-0.5">
+        {score ? (
+          <span className="text-[10px] font-bold text-[#FFD60A] flex items-center gap-0.5">
+            ★ {(score / 10).toFixed(1)}
+          </span>
+        ) : null}
+        {watched?.completed && (
+          <span className="text-[10px] font-bold text-[#30D158] flex items-center gap-0.5"><IconCheck className="w-3 h-3" /> Selesai</span>
+        )}
+      </div>
     </div>
   );
 }
