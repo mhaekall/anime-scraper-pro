@@ -1,8 +1,7 @@
 import HomeView from "@/features/home/HomeView";
 import { api } from "@/core/lib/api";
 
-export const runtime = "edge";
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function Page() {
   let hero = [];
@@ -29,7 +28,7 @@ export default async function Page() {
       trending = res.data.trending || [];
     }
   } catch (error) {
-    console.error("Failed to fetch home data:", error);
+    console.error("Failed to fetch home data during build (will retry on client):", error);
   }
 
   return <HomeView 
